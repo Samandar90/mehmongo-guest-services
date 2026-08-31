@@ -1,0 +1,17 @@
+begin;
+select plan(13);
+select has_table('public'::name, 'admin_users'::name);
+select has_table('public'::name, 'hotels'::name);
+select has_table('public'::name, 'rooms'::name);
+select has_table('public'::name, 'service_requests'::name);
+select has_table('public'::name, 'telegram_deliveries'::name);
+select has_column('public'::name, 'hotels'::name, 'commission_bps'::name, 'hotels has commission_bps');
+select col_is_unique('public'::name, 'rooms'::name, 'public_token'::name, 'rooms.public_token is unique');
+select col_is_unique('public'::name, 'service_requests'::name, 'reference'::name, 'service_requests.reference is unique');
+select col_is_unique('public'::name, 'service_requests'::name, 'idempotency_key'::name, 'service_requests.idempotency_key is unique');
+select has_index('public'::name, 'service_requests'::name, 'service_requests_hotel_created_idx'::name);
+select has_index('public'::name, 'service_requests'::name, 'service_requests_rate_limit_idx'::name);
+select policies_are('public', 'hotels', array['super admins manage hotels']);
+select policies_are('public', 'service_requests', array['super admins read requests']);
+select * from finish();
+rollback;
