@@ -75,7 +75,7 @@ it('creates filesystem-safe stable names', () => {
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm test -- --run lib/assets/room-plaque.test.ts`  
+Run: `npm test -- --run lib/assets/room-plaque.test.ts`
 Expected: FAIL because the module is absent.
 
 - [ ] **Step 3: Install pinned packages**
@@ -142,7 +142,7 @@ it('rejects non-HTTPS production URLs', async () => {
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm test -- --run lib/assets/qr.test.ts`  
+Run: `npm test -- --run lib/assets/qr.test.ts`
 Expected: FAIL because QR module is absent.
 
 - [ ] **Step 3: Implement QR generation**
@@ -159,7 +159,7 @@ Test decoding converts the data URL to RGBA pixels and passes them to jsQR. Prod
 
 - [ ] **Step 4: Run tests and commit**
 
-Run: `npm test -- --run lib/assets/qr.test.ts`  
+Run: `npm test -- --run lib/assets/qr.test.ts`
 Expected: exact URL round-trip passes.
 
 ```powershell
@@ -200,7 +200,7 @@ it('revokes temporary download URL', () => {
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm test -- --run lib/assets/rasterize.test.ts lib/assets/download.test.ts`  
+Run: `npm test -- --run lib/assets/rasterize.test.ts lib/assets/download.test.ts`
 Expected: FAIL because modules are absent.
 
 - [ ] **Step 3: Implement browser-safe rasterization**
@@ -213,7 +213,7 @@ Append a temporary `<a download>`, click it, remove it, and revoke the URL in a 
 
 - [ ] **Step 5: Verify and commit**
 
-Run: `npm test -- --run lib/assets/rasterize.test.ts lib/assets/download.test.ts && npm run lint`  
+Run: `npm test -- --run lib/assets/rasterize.test.ts lib/assets/download.test.ts && npm run lint`
 Expected: raster and cleanup tests pass; lint exits 0.
 
 ```powershell
@@ -252,7 +252,7 @@ it('creates one page per room in input order', async () => {
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm test -- --run lib/assets/pdf.test.ts`  
+Run: `npm test -- --run lib/assets/pdf.test.ts`
 Expected: FAIL because PDF module is absent.
 
 - [ ] **Step 3: Implement exact A5 documents**
@@ -261,7 +261,7 @@ Create PDF pages at the point dimensions above, embed each PNG once, and draw it
 
 - [ ] **Step 4: Run tests and commit**
 
-Run: `npm test -- --run lib/assets/pdf.test.ts`  
+Run: `npm test -- --run lib/assets/pdf.test.ts`
 Expected: dimensions and page counts pass.
 
 ```powershell
@@ -296,7 +296,7 @@ it('contains one PNG and PDF per room', async () => {
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm test -- --run lib/assets/zip.test.ts`  
+Run: `npm test -- --run lib/assets/zip.test.ts`
 Expected: FAIL because ZIP module is absent.
 
 - [ ] **Step 3: Implement deterministic ZIP creation**
@@ -305,7 +305,7 @@ Reject duplicate basenames, sort assets by basename, add exact `.png` and `.pdf`
 
 - [ ] **Step 4: Run tests and commit**
 
-Run: `npm test -- --run lib/assets/zip.test.ts`  
+Run: `npm test -- --run lib/assets/zip.test.ts`
 Expected: ZIP content test passes.
 
 ```powershell
@@ -378,7 +378,7 @@ Define `renderAssetGenerator`, room fixtures, generated asset fixtures, and cont
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm test -- --run components/admin/asset-generator.test.tsx`  
+Run: `npm test -- --run components/admin/asset-generator.test.tsx`
 Expected: FAIL because generator is absent.
 
 - [ ] **Step 3: Implement sequential bounded generation**

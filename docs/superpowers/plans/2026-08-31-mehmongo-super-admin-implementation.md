@@ -83,7 +83,7 @@ it('returns active super-admin identity', async () => {
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm test -- --run lib/admin/auth.test.ts`  
+Run: `npm test -- --run lib/admin/auth.test.ts`
 Expected: FAIL because the auth module is absent.
 
 - [ ] **Step 3: Implement auth without trusting local session metadata**
@@ -133,7 +133,7 @@ Navigation contains `Обзор`, `Отели`, `Заявки`, and `Выйти`
 
 - [ ] **Step 6: Run focused verification**
 
-Run: `npm test -- --run lib/admin/auth.test.ts components/admin/admin-shell.test.tsx components/admin/login-form.test.tsx && npm run lint`  
+Run: `npm test -- --run lib/admin/auth.test.ts components/admin/admin-shell.test.tsx components/admin/login-form.test.tsx && npm run lint`
 Expected: all auth/UI tests pass and lint exits 0.
 
 - [ ] **Step 7: Commit**
@@ -173,7 +173,7 @@ it('rejects malformed slug and commission', async () => {
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm test -- --run lib/admin/hotels.test.ts`  
+Run: `npm test -- --run lib/admin/hotels.test.ts`
 Expected: FAIL because repository is absent.
 
 - [ ] **Step 3: Implement validation and repository methods**
@@ -218,7 +218,7 @@ Fields: `Название`, `Slug`, `Адрес`, `Процент отеля`. D
 
 - [ ] **Step 6: Run tests and commit**
 
-Run: `npm test -- --run lib/admin/hotels.test.ts components/admin/hotel-form.test.tsx && npm run lint`  
+Run: `npm test -- --run lib/admin/hotels.test.ts components/admin/hotel-form.test.tsx && npm run lint`
 Expected: all tests pass.
 
 ```powershell
@@ -274,7 +274,7 @@ Define `kamilovsFixture` and `renderHotelList` as local typed fixtures in the te
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm test -- --run components/admin/hotel-list.test.tsx`  
+Run: `npm test -- --run components/admin/hotel-list.test.tsx`
 Expected: FAIL because list is absent.
 
 - [ ] **Step 3: Implement routes and responsive list**
@@ -287,7 +287,7 @@ Use existing MehmonGo colors, 44px minimum controls, visible focus, and no guest
 
 - [ ] **Step 5: Verify and commit**
 
-Run: `npm test -- --run components/admin/hotel-list.test.tsx && npm run lint && npm run build`  
+Run: `npm test -- --run components/admin/hotel-list.test.tsx && npm run lint && npm run build`
 Expected: list test, lint, and build pass.
 
 ```powershell
@@ -324,7 +324,7 @@ it('reports duplicates case-insensitively', () => {
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm test -- --run lib/admin/rooms.test.ts`  
+Run: `npm test -- --run lib/admin/rooms.test.ts`
 Expected: FAIL because parser is absent.
 
 - [ ] **Step 3: Implement parser and repository**
@@ -345,7 +345,7 @@ Assert anonymous execution is denied, non-admin execution is denied, super-admin
 
 - [ ] **Step 6: Verify and commit**
 
-Run: `npm test -- --run lib/admin/rooms.test.ts && npm run supabase:test`  
+Run: `npm test -- --run lib/admin/rooms.test.ts && npm run supabase:test`
 Expected: parser and database tests pass.
 
 ```powershell
@@ -406,7 +406,7 @@ Define `renderRoomEditor`, `room205Fixture`, and `room206Fixture` in the compone
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm test -- --run components/admin/room-editor.test.tsx`  
+Run: `npm test -- --run components/admin/room-editor.test.tsx`
 Expected: FAIL because editor is absent.
 
 - [ ] **Step 3: Implement editor**
@@ -415,7 +415,7 @@ Provide `Добавить одну комнату` and `Вставить спи�
 
 - [ ] **Step 4: Verify and commit**
 
-Run: `npm test -- --run components/admin/room-editor.test.tsx && npm run lint && npm run build`  
+Run: `npm test -- --run components/admin/room-editor.test.tsx && npm run lint && npm run build`
 Expected: tests, lint, and build pass.
 
 ```powershell
@@ -467,7 +467,7 @@ Define `requestQueryClient`, `functionClient`, and `requestRowFixture` in the re
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm test -- --run lib/admin/requests.test.ts`  
+Run: `npm test -- --run lib/admin/requests.test.ts`
 Expected: FAIL because repository is absent.
 
 - [ ] **Step 3: Implement typed queries**
@@ -507,7 +507,7 @@ Use Russian labels. Mask contact in the collapsed mobile row and reveal it only 
 
 - [ ] **Step 6: Verify and commit**
 
-Run: `npm test -- --run lib/admin/requests.test.ts components/admin/request-table.test.tsx && npm run lint && npm run build`  
+Run: `npm test -- --run lib/admin/requests.test.ts components/admin/request-table.test.tsx && npm run lint && npm run build`
 Expected: repository/UI tests, lint, and build pass.
 
 ```powershell
@@ -540,7 +540,7 @@ it('counts only active hotels and rooms and new requests', async () => {
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm test -- --run lib/admin/requests.test.ts components/admin/dashboard-cards.test.tsx`  
+Run: `npm test -- --run lib/admin/requests.test.ts components/admin/dashboard-cards.test.tsx`
 Expected: FAIL because metrics are absent.
 
 - [ ] **Step 3: Implement metrics and dashboard**

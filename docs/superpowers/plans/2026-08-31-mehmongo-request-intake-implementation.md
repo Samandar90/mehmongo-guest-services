@@ -79,7 +79,7 @@ describe('getSupabaseBrowserClient', () => {
 
 - [ ] **Step 2: Run the test and confirm RED**
 
-Run: `npm test -- --run lib/supabase/client.test.ts`  
+Run: `npm test -- --run lib/supabase/client.test.ts`
 Expected: FAIL because `lib/supabase/client.ts` does not exist.
 
 - [ ] **Step 3: Install pinned packages and add scripts**
@@ -130,7 +130,7 @@ Keep `.env*` ignored and add `!.env.example`.
 
 - [ ] **Step 5: Run focused verification**
 
-Run: `npm test -- --run lib/supabase/client.test.ts && npm run lint`  
+Run: `npm test -- --run lib/supabase/client.test.ts && npm run lint`
 Expected: 1 test passes; lint exits 0.
 
 - [ ] **Step 6: Commit**
@@ -188,7 +188,7 @@ rollback;
 
 - [ ] **Step 3: Start local Supabase and confirm RED**
 
-Run: `npm run supabase:start && npm run supabase:test`  
+Run: `npm run supabase:start && npm run supabase:test`
 Expected: pgTAP fails because the tables are absent.
 
 - [ ] **Step 4: Implement tables, constraints, indexes, grants, and RLS**
@@ -308,7 +308,7 @@ Deno.test('normalizes a valid transport request', () => {
 
 - [ ] **Step 2: Run tests and confirm RED**
 
-Run: `npm run functions:test -- supabase/functions/_shared/validation.test.ts`.  
+Run: `npm run functions:test -- supabase/functions/_shared/validation.test.ts`.
 Expected: FAIL because modules are absent.
 
 - [ ] **Step 3: Implement contracts and exhaustive validation**
@@ -401,7 +401,7 @@ Deno.test('returns 404 for inactive room', async () => {
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm run functions:test -- supabase/functions/room-context/index.test.ts`  
+Run: `npm run functions:test -- supabase/functions/room-context/index.test.ts`
 Expected: FAIL because the handler is absent.
 
 - [ ] **Step 3: Implement minimal public lookup**
@@ -474,7 +474,7 @@ Deno.test('rate key is stable but hides contact', async () => {
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm run functions:test -- supabase/functions/_shared/security.test.ts`  
+Run: `npm run functions:test -- supabase/functions/_shared/security.test.ts`
 Expected: FAIL because helpers are absent.
 
 - [ ] **Step 3: Implement helpers**
@@ -537,7 +537,7 @@ The repository uses the server-only secret key; never expose it through the resp
 
 - [ ] **Step 6: Run focused tests**
 
-Run: `npm run functions:test -- supabase/functions/_shared/security.test.ts supabase/functions/submit-request/index.test.ts`  
+Run: `npm run functions:test -- supabase/functions/_shared/security.test.ts supabase/functions/submit-request/index.test.ts`
 Expected: all helper and handler tests pass.
 
 - [ ] **Step 7: Commit**
@@ -580,7 +580,7 @@ Deno.test('formats transport request in Russian', () => {
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm run functions:test -- supabase/functions/_shared/telegram.test.ts`  
+Run: `npm run functions:test -- supabase/functions/_shared/telegram.test.ts`
 Expected: FAIL because formatter is absent.
 
 - [ ] **Step 3: Implement formatter and Bot API client**
@@ -671,7 +671,7 @@ it('keeps entered values when the API fails', async () => {
 
 - [ ] **Step 2: Confirm RED**
 
-Run: `npm test -- --run components/guest-experience.test.tsx`  
+Run: `npm test -- --run components/guest-experience.test.tsx`
 Expected: FAIL because submission is still simulated.
 
 - [ ] **Step 3: Implement typed submission**
