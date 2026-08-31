@@ -72,7 +72,8 @@ create table public.rooms (
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (hotel_id, label)
+  unique (hotel_id, label),
+  unique (id, hotel_id)
 );
 
 create table public.service_requests (
@@ -82,7 +83,7 @@ create table public.service_requests (
   idempotency_key uuid not null unique,
   rate_limit_key text not null,
   hotel_id uuid not null references public.hotels(id) on delete restrict,
-  room_id uuid not null references public.rooms(id) on delete restrict,
+  room_id uuid not null,
   service_type text not null check (service_type in ('tours', 'transport', 'restaurants', 'tickets')),
   choice text,
   pickup text,
@@ -95,7 +96,8 @@ create table public.service_requests (
   note text not null default '',
   status text not null default 'new' check (status in ('new')),
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  foreign key (room_id, hotel_id) references public.rooms(id, hotel_id) on delete restrict
 );
 
 create table public.telegram_deliveries (
