@@ -1,50 +1,15 @@
-export type ServiceId = 'tours' | 'transport' | 'restaurants' | 'tickets';
+import type { GuestRequestFields, RoomContextResult, ServiceId } from '../supabase/functions/_shared/contracts';
 
-export type GuestContext = {
-  hotelId: string;
-  hotelName: string;
-  room: string;
-};
+export type { GuestRequestFields, RoomContextResult, ServiceId } from '../supabase/functions/_shared/contracts';
 
-export type RequestFields = {
-  choice: string;
-  pickup: string;
-  destination: string;
-  date: string;
-  time: string;
-  count: string;
-  guestName: string;
-  contact: string;
-  note: string;
-};
+export type GuestContext = RoomContextResult;
+export type RequestFields = GuestRequestFields;
 
 export type RequestErrors = Partial<Record<keyof RequestFields, string>>;
-
-const hotels: Record<string, string> = {
-  kamilovs: 'Kamilovs Hotel',
-};
-
-const fallback: GuestContext = {
-  hotelId: 'kamilovs',
-  hotelName: 'Kamilovs Hotel',
-  room: '205',
-};
 
 export const emptyRequest: RequestFields = {
   choice: '', pickup: '', destination: '', date: '', time: '', count: '1', guestName: '', contact: '', note: '',
 };
-
-export function readGuestContext(searchParams: URLSearchParams): GuestContext {
-  const requestedHotel = searchParams.get('hotel')?.trim().toLowerCase() ?? '';
-  const requestedRoom = searchParams.get('room')?.trim() ?? '';
-  if (!hotels[requestedHotel]) return fallback;
-
-  return {
-    hotelId: requestedHotel,
-    hotelName: hotels[requestedHotel],
-    room: /^[a-z0-9-]{1,12}$/i.test(requestedRoom) ? requestedRoom : fallback.room,
-  };
-}
 
 const labels: Record<ServiceId, { choice: string; count: string }> = {
   tours: { choice: 'Enter a tour or destination', count: 'Enter at least 1 guest' },

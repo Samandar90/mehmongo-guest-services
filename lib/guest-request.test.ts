@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   createRequestReference,
-  readGuestContext,
   validateRequest,
-  type RequestFields,
 } from './guest-request';
+import type { GuestRequestFields } from '../supabase/functions/_shared/contracts';
 
-const validTransport: RequestFields = {
+const validTransport: GuestRequestFields = {
   pickup: 'Kamilovs Hotel',
   destination: 'Samarkand railway station',
   date: '2026-09-02',
@@ -19,22 +18,6 @@ const validTransport: RequestFields = {
 };
 
 describe('guest request domain', () => {
-  it('reads Kamilovs Hotel and room from the QR query', () => {
-    expect(readGuestContext(new URLSearchParams('hotel=kamilovs&room=205'))).toEqual({
-      hotelId: 'kamilovs',
-      hotelName: 'Kamilovs Hotel',
-      room: '205',
-    });
-  });
-
-  it('falls back to the representative room when query data is missing', () => {
-    expect(readGuestContext(new URLSearchParams())).toEqual({
-      hotelId: 'kamilovs',
-      hotelName: 'Kamilovs Hotel',
-      room: '205',
-    });
-  });
-
   it('accepts a complete transport request', () => {
     expect(validateRequest('transport', validTransport)).toEqual({});
   });

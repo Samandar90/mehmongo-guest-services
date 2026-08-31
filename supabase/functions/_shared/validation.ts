@@ -1,0 +1,124 @@
+import {
+  REQUEST_FIELD_MAX_LENGTHS,
+  type GuestRequestFields,
+  type ServiceId,
+} from './contracts.ts';
+
+export type ValidatedRequest = {
+  roomToken: string;
+  idempotencyKey: string;
+  service: ServiceId;
+  choice: string;
+  pickup: string;
+  destination: string;
+  date: string;
+  time: string;
+  partySize: number;
+  guestName: string;
+  contact: string;
+  note: string;
+};
+
+const payloadKeys = ['roomToken', 'idempotencyKey', 'service', 'fields', 'website'] as const;
+const fieldKeys = ['choice', 'pickup', 'destination', 'date', 'time', 'count', 'guestName', 'contact', 'note'] as const;
+const services = new Set<ServiceId>(['tours', 'transport', 'restaurants', 'tickets']);
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+const timePattern = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
+const countPattern = /^(?:[1-9]|[1-4]\d|50)$/;
+
+function fail(message: string): never {
+  throw new Error(message);
+}
+
+function record(value: unknown, name: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) fail(`${name} must be an object`);
+  return value as Record<string, unknown>;
+}
+
+function hasOnlyKeys(value: Record<string, unknown>, allowedKeys: readonly string[], name: string) {
+  if (Object.keys(value).some((key) => !allowedKeys.includes(key))) fail(`${name} contains an unknown field`);
+}
+
+function string(value: unknown, name: string): string {
+  if (typeof value !== 'string') fail(`${name} must be a string`);
+  return value;
+}
+
+function trimmed(value: unknown, name: string, maximum?: number): string {
+  const normalized = string(value, name).trim();
+  if (maximum !== undefined && normalized.length > maximum) fail(`${name} is too long`);
+  return normalized;
+}
+
+function required(value: string, name: string) {
+  if (!value) fail(`${name} is required`);
+}
+
+function validDate(value: string): boolean {
+  if (!datePattern.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+}
+
+function validateFields(input: unknown): GuestRequestFields {
+  const fields = record(input, 'fields');
+  hasOnlyKeys(fields, fieldKeys, 'fields');
+
+  return {
+    choice: trimmed(fields.choice, 'fields.choice', REQUEST_FIELD_MAX_LENGTHS.choice),
+    pickup: trimmed(fields.pickup, 'fields.pickup', REQUEST_FIELD_MAX_LENGTHS.pickup),
+    destination: trimmed(fields.destination, 'fields.destination', REQUEST_FIELD_MAX_LENGTHS.destination),
+    date: string(fields.date, 'fields.date'),
+    time: string(fields.time, 'fields.time'),
+    count: string(fields.count, 'fields.count'),
+    guestName: trimmed(fields.guestName, 'fields.guestName', REQUEST_FIELD_MAX_LENGTHS.guestName),
+    contact: trimmed(fields.contact, 'fields.contact', REQUEST_FIELD_MAX_LENGTHS.contact),
+    note: trimmed(fields.note, 'fields.note', REQUEST_FIELD_MAX_LENGTHS.note),
+  };
+}
+
+export function validateSubmitPayload(input: unknown): ValidatedRequest {
+  const payload = record(input, 'payload');
+  hasOnlyKeys(payload, payloadKeys, 'payload');
+
+  const roomToken = string(payload.roomToken, 'roomToken');
+  const idempotencyKey = string(payload.idempotencyKey, 'idempotencyKey');
+  const service = string(payload.service, 'service');
+  const website = string(payload.website, 'website');
+  if (!uuidPattern.test(roomToken)) fail('roomToken must be a UUID');
+  if (!uuidPattern.test(idempotencyKey)) fail('idempotencyKey must be a UUID');
+  if (!services.has(service as ServiceId)) fail('service is invalid');
+  if (website !== '') fail('website must be empty');
+
+  const fields = validateFields(payload.fields);
+  if (!validDate(fields.date)) fail('fields.date must be an ISO date');
+  if (fields.date < new Date().toISOString().slice(0, 10)) fail('fields.date cannot be in the past');
+  if (fields.time && !timePattern.test(fields.time)) fail('fields.time must use 24-hour time');
+  if (!countPattern.test(fields.count)) fail('fields.count must be an integer from 1 to 50');
+  required(fields.guestName, 'fields.guestName');
+  required(fields.contact, 'fields.contact');
+
+  if (service === 'transport') {
+    required(fields.pickup, 'fields.pickup');
+    required(fields.destination, 'fields.destination');
+  } else {
+    required(fields.choice, 'fields.choice');
+  }
+  if ((service === 'transport' || service === 'restaurants') && !fields.time) fail('fields.time is required');
+
+  return {
+    roomToken,
+    idempotencyKey,
+    service: service as ServiceId,
+    choice: fields.choice,
+    pickup: fields.pickup,
+    destination: fields.destination,
+    date: fields.date,
+    time: fields.time,
+    partySize: Number(fields.count),
+    guestName: fields.guestName,
+    contact: fields.contact,
+    note: fields.note,
+  };
+}

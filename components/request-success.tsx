@@ -11,7 +11,7 @@ export function RequestSuccess({ context, reference, onRestart }: { context: Gue
       <p className="form-intro">Our concierge team will contact you shortly to confirm the details.</p>
       <dl className="request-summary">
         <div><dt>Reference</dt><dd>{reference}</dd></div>
-        <div><dt>Stay</dt><dd>{context.hotelName} · Room {context.room}</dd></div>
+        <div><dt>Stay</dt><dd>{context.hotelName} · Room {context.roomLabel}</dd></div>
       </dl>
       <div className="response-note"><Clock3 aria-hidden="true" /><span><strong>Usually within 10 minutes</strong><small>We will message the contact you provided.</small></span></div>
       <Button className="submit-button" type="button" onClick={onRestart}>Request another service</Button>

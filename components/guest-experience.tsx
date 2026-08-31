@@ -22,7 +22,7 @@ export function GuestExperience({ context }: { context: GuestContext }) {
       ) : (
         <>
           <section className="welcome-panel">
-            <div className="stay-context"><span>{context.hotelName}</span><span aria-hidden="true">•</span><span>Room {context.room}</span></div>
+            <div className="stay-context"><span>{context.hotelName}</span><span aria-hidden="true">•</span><span>Room {context.roomLabel}</span></div>
             <p className="eyebrow">Guest services</p>
             <h1>Good stay,<br /><em>made simple.</em></h1>
             <p className="intro">Choose what you need. Our local team will take care of the rest.</p>

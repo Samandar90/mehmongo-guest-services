@@ -2,12 +2,25 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GuestExperience } from './guest-experience';
+import type { RoomContextResult } from '../supabase/functions/_shared/contracts';
 
-const context = { hotelId: 'kamilovs', hotelName: 'Kamilovs Hotel', room: '205' };
+const context: RoomContextResult = {
+  hotelName: 'Kamilovs Hotel',
+  roomLabel: '205',
+  roomToken: '20000000-0000-4000-8000-000000000205',
+  services: ['tours', 'transport', 'restaurants', 'tickets'],
+};
 
 afterEach(() => vi.useRealTimers());
 
 describe('GuestExperience', () => {
+  it('shows the server-provided hotel and room context', () => {
+    render(<GuestExperience context={context} />);
+
+    expect(screen.getByText('Kamilovs Hotel')).toBeVisible();
+    expect(screen.getByText('Room 205')).toBeVisible();
+  });
+
   it('does not ask for a time when the service only needs a date', async () => {
     const user = userEvent.setup();
     render(<GuestExperience context={context} />);
