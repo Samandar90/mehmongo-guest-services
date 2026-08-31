@@ -6,11 +6,11 @@ Mobile-first hotel concierge for guests to request tours, transport, restaurant 
 
 [Kamilovs Hotel — Room 205](https://mehmongo-guest-services.xurshidaoldcity.chatgpt.site/?hotel=kamilovs&room=205)
 
-## Repository QR code
+## Guest site QR code
 
-Scan to open this repository:
+Scan to open the MehmonGo guest services page for Kamilovs Hotel, room 205:
 
-![QR code for the MehmonGo GitHub repository](github-repository-qr.png)
+![QR code for the MehmonGo guest site](mehmongo-site-room-205-qr.png)
 
 ## Local development
 
