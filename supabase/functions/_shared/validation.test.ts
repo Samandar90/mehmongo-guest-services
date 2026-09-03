@@ -1,6 +1,6 @@
 /// <reference lib="deno.ns" />
 
-import { assertEquals, assertThrows } from 'jsr:@std/assert';
+import { assertEquals, assertThrows } from '@std/assert';
 import { validateSubmitPayload } from './validation.ts';
 
 const validFields = {

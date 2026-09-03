@@ -36,3 +36,9 @@
 
 - Reviewed category coverage, strict parsing, trimming behavior, no fallback lookup, and test-runner boundaries; no unresolved defects found.
 - The root route is intentionally unavailable until the approved QR route in Task 4 is implemented.
+
+## Fix Round 1 — Deno lint coverage
+
+- RED: `npx deno@2.9.6 lint supabase/functions/_shared/contracts.ts supabase/functions/_shared/validation.ts supabase/functions/_shared/validation.test.ts` reported `no-import-prefix` and `no-unversioned-import` for `jsr:@std/assert`.
+- Added root `deno.json` with `@std/assert` pinned to `jsr:@std/assert@1.0.19`, changed the test to use the bare alias, and added `functions:lint` for the complete Deno function tree.
+- GREEN: `npm run functions:lint` passed after the alias change.

@@ -17,7 +17,8 @@
     "supabase:stop": "supabase stop",
     "supabase:test": "supabase test db",
     "supabase:functions": "supabase functions serve --env-file supabase/.env.local",
-    "functions:test": "deno test supabase/functions"
+    "functions:test": "deno test supabase/functions",
+    "functions:lint": "deno lint supabase/functions"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
