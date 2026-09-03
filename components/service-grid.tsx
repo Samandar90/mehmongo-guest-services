@@ -10,10 +10,16 @@ const services = [
   { id: 'tickets' as const, title: 'Tickets', description: 'Train, flight and event assistance', icon: Ticket, tone: 'teal' },
 ];
 
-export function ServiceGrid({ onSelect }: { onSelect: (id: ServiceId) => void }) {
+export function ServiceGrid({
+  onSelect,
+  allowedServices = services.map(({ id }) => id),
+}: {
+  onSelect: (id: ServiceId) => void;
+  allowedServices?: ServiceId[];
+}) {
   return (
     <div className="service-grid" aria-label="Available services">
-      {services.map(({ id, title, description, icon: Icon, tone }) => (
+      {services.filter(({ id }) => allowedServices.includes(id)).map(({ id, title, description, icon: Icon, tone }) => (
         <button className="service-card" data-tone={tone} key={id} onClick={() => onSelect(id)} type="button" aria-label={`${title}: ${description}`}>
           <span className="service-icon" aria-hidden="true"><Icon /></span>
           <span className="service-copy"><strong>{title}</strong><small>{description}</small></span>

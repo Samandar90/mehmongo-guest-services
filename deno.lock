@@ -18,7 +18,8 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@std/assert@1.0.19"
+      "jsr:@std/assert@1.0.19",
+      "npm:@supabase/supabase-js@2.112.4"
     ],
     "packageJson": {
       "dependencies": [

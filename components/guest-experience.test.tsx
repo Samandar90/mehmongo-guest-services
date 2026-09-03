@@ -21,6 +21,13 @@ describe('GuestExperience', () => {
     expect(screen.getByText('Room 205')).toBeVisible();
   });
 
+  it('shows only the services allowed by the resolved room context', () => {
+    render(<GuestExperience context={{ ...context, services: ['transport'] }} />);
+
+    expect(screen.getByRole('button', { name: /Transport/i })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /Tours/i })).not.toBeInTheDocument();
+  });
+
   it('does not ask for a time when the service only needs a date', async () => {
     const user = userEvent.setup();
     render(<GuestExperience context={context} />);

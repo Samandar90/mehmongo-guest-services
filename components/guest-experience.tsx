@@ -28,8 +28,8 @@ export function GuestExperience({ context }: { context: GuestContext }) {
             <p className="intro">Choose what you need. Our local team will take care of the rest.</p>
           </section>
           <section className="services-section" aria-labelledby="services-title">
-            <div className="section-heading"><h2 id="services-title">How can we help?</h2><span>4 services</span></div>
-            <ServiceGrid onSelect={setService} />
+            <div className="section-heading"><h2 id="services-title">How can we help?</h2><span>{context.services.length} services</span></div>
+            <ServiceGrid onSelect={setService} allowedServices={context.services} />
           </section>
           <footer><span className="status-dot" aria-hidden="true" />Local concierge team available</footer>
         </>
