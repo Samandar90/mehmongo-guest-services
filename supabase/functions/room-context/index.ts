@@ -5,11 +5,22 @@ import type { PublicRoomContext, ServiceId } from '../_shared/contracts.ts';
 import { emptyResponse, jsonResponse } from '../_shared/http.ts';
 
 const services: ServiceId[] = ['tours', 'transport', 'restaurants', 'tickets'];
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type ActiveRoomContext = Pick<PublicRoomContext, 'hotelName' | 'roomLabel'>;
 
 export type RoomContextRepository = {
   findActiveRoom: (token: string) => Promise<ActiveRoomContext | null>;
+};
+
+export type RoomContextQuery = {
+  select: (columns: string) => RoomContextQuery;
+  eq: (column: string, value: unknown) => RoomContextQuery;
+  maybeSingle: () => Promise<{ data: unknown; error: unknown }>;
+};
+
+export type RoomContextClient = {
+  from: (table: 'rooms') => RoomContextQuery;
 };
 
 export type RoomContextDependencies = {
@@ -49,15 +60,21 @@ function getServerSecretKey(): string | undefined {
   }
 }
 
-function createRepository(): RoomContextRepository {
+export function createRepository(client?: RoomContextClient): RoomContextRepository {
+  if (client) return repositoryFor(client);
+
   const url = Deno.env.get('SUPABASE_URL');
   const secretKey = getServerSecretKey();
   if (!url || !secretKey) throw new Error('Supabase server configuration is missing');
 
-  const client = createClient(url, secretKey, {
+  const supabase = createClient(url, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
-  });
+  }) as unknown as RoomContextClient;
 
+  return repositoryFor(supabase);
+}
+
+function repositoryFor(client: RoomContextClient): RoomContextRepository {
   return {
     async findActiveRoom(token) {
       const { data, error } = await client
@@ -82,7 +99,9 @@ export async function handler(
   if (request.method !== 'GET') return jsonResponse({ error: 'Method not allowed' }, 405);
 
   const token = new URL(request.url).searchParams.get('token');
-  if (!token) return jsonResponse({ error: 'Room not found' }, 404);
+  if (!token || !uuidPattern.test(token)) {
+    return jsonResponse({ error: 'Room not found' }, 404);
+  }
 
   try {
     const repository = context && 'repository' in context

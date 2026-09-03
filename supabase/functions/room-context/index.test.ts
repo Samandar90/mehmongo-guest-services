@@ -1,7 +1,12 @@
 /// <reference lib="deno.ns" />
 
 import { assertEquals } from '@std/assert';
-import { handler, type RoomContextRepository } from './index.ts';
+import {
+  createRepository,
+  handler,
+  type RoomContextClient,
+  type RoomContextRepository,
+} from './index.ts';
 
 const ACTIVE_ROOM_TOKEN = '20000000-0000-4000-8000-000000000205';
 const INACTIVE_ROOM_TOKEN = '20000000-0000-4000-8000-000000000206';
@@ -33,4 +38,44 @@ Deno.test('returns 404 when the room or its hotel is inactive', async () => {
   );
 
   assertEquals(response.status, 404);
+});
+
+Deno.test('returns 404 without querying for a malformed token', async () => {
+  let queries = 0;
+  const repository: RoomContextRepository = {
+    findActiveRoom: () => {
+      queries += 1;
+      return Promise.resolve(null);
+    },
+  };
+
+  const response = await handler(
+    new Request('http://local/?token=not-a-uuid'),
+    { repository },
+  );
+
+  assertEquals(response.status, 404);
+  assertEquals(await response.json(), { error: 'Room not found' });
+  assertEquals(queries, 0);
+});
+
+Deno.test('production repository requires active room and hotel records', async () => {
+  const predicates: Array<[string, unknown]> = [];
+  const query = {
+    select: () => query,
+    eq: (column: string, value: unknown) => {
+      predicates.push([column, value]);
+      return query;
+    },
+    maybeSingle: () => Promise.resolve({ data: null, error: null }),
+  };
+  const client: RoomContextClient = { from: () => query };
+
+  await createRepository(client).findActiveRoom(ACTIVE_ROOM_TOKEN);
+
+  assertEquals(predicates, [
+    ['public_token', ACTIVE_ROOM_TOKEN],
+    ['active', true],
+    ['hotels.active', true],
+  ]);
 });
