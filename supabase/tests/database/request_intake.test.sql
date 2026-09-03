@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(23);
 select has_table('public'::name, 'admin_users'::name);
 select has_table('public'::name, 'hotels'::name);
 select has_table('public'::name, 'rooms'::name);
@@ -49,6 +49,114 @@ select throws_ok(
   '23503'::char(5),
   null,
   'mismatched hotel and room are rejected'
+);
+
+select ok(
+  to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text)') is not null,
+  'atomic submit function exists'
+);
+
+select ok(
+  has_function_privilege(
+    'service_role',
+    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text)'),
+    'EXECUTE'
+  ),
+  'service_role can execute atomic submit function'
+);
+
+select ok(
+  not has_function_privilege(
+    'anon',
+    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text)'),
+    'EXECUTE'
+  ),
+  'anon cannot execute atomic submit function'
+);
+
+select ok(
+  not has_function_privilege(
+    'authenticated',
+    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text)'),
+    'EXECUTE'
+  ),
+  'authenticated cannot execute atomic submit function'
+);
+
+select ok(
+  pg_get_functiondef(to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text)'))
+    like '%pg_advisory_xact_lock%',
+  'atomic submit function takes an advisory transaction lock'
+);
+
+select results_eq(
+  $$
+    select outcome, reference
+    from public.submit_guest_request(
+      'MG-ATOMIC01',
+      '40000000-0000-4000-8000-000000000001',
+      'atomic-idempotency-rate-key',
+      '30000000-0000-4000-8000-000000000001',
+      '30000000-0000-4000-8000-000000000003',
+      'transport', '', 'Hotel A', 'Airport', '2099-12-31', '14:30', 2, 'Alex', '+998901234567', ''
+    )
+  $$,
+  $$values ('created'::text, 'MG-ATOMIC01'::text)$$,
+  'atomic submit creates the first idempotent request'
+);
+
+select results_eq(
+  $$
+    select outcome, reference
+    from public.submit_guest_request(
+      'MG-ATOMIC02',
+      '40000000-0000-4000-8000-000000000001',
+      'atomic-idempotency-rate-key',
+      '30000000-0000-4000-8000-000000000001',
+      '30000000-0000-4000-8000-000000000003',
+      'transport', '', 'Hotel A', 'Airport', '2099-12-31', '14:30', 2, 'Alex', '+998901234567', ''
+    )
+  $$,
+  $$values ('existing'::text, 'MG-ATOMIC01'::text)$$,
+  'atomic submit returns the existing request for duplicate idempotency'
+);
+
+select results_eq(
+  $$
+    select outcome
+    from (
+      select request_number, (
+        public.submit_guest_request(
+          'MG-RATE' || lpad(request_number::text, 4, '0'),
+          ('50000000-0000-4000-8000-' || lpad(request_number::text, 12, '0'))::uuid,
+          'atomic-rate-key',
+          '30000000-0000-4000-8000-000000000001',
+          '30000000-0000-4000-8000-000000000003',
+          'transport', '', 'Hotel A', 'Airport', '2099-12-31', '14:30', 2, 'Alex', '+998901234567', ''
+        )
+      ).outcome
+      from generate_series(1, 5) as series(request_number)
+    ) outcomes
+    order by request_number
+  $$,
+  $$values ('created'::text), ('created'::text), ('created'::text), ('created'::text), ('created'::text)$$,
+  'atomic submit accepts five matching requests'
+);
+
+select results_eq(
+  $$
+    select outcome, reference
+    from public.submit_guest_request(
+      'MG-RATE0006',
+      '50000000-0000-4000-8000-000000000006',
+      'atomic-rate-key',
+      '30000000-0000-4000-8000-000000000001',
+      '30000000-0000-4000-8000-000000000003',
+      'transport', '', 'Hotel A', 'Airport', '2099-12-31', '14:30', 2, 'Alex', '+998901234567', ''
+    )
+  $$,
+  $$values ('rate_limited'::text, null::text)$$,
+  'atomic submit rejects the sixth matching request'
 );
 select * from finish();
 rollback;

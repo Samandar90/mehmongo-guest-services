@@ -1,6 +1,7 @@
 {
   "imports": {
     "@std/assert": "jsr:@std/assert@1.0.19",
+    "@std/toml": "jsr:@std/toml@1.0.2",
     "@supabase/supabase-js": "npm:@supabase/supabase-js@2.112.4"
   }
 }

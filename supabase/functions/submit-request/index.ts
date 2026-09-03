@@ -6,8 +6,6 @@ import { validateSubmitPayload } from '../_shared/validation.ts';
 import { emptyResponse, jsonResponse } from '../_shared/http.ts';
 import { createRateLimitKey, createReference } from '../_shared/security.ts';
 
-const RATE_LIMIT_WINDOW_MS = 10 * 60_000;
-const RATE_LIMIT_MAX_REQUESTS = 5;
 const REFERENCE_INSERT_ATTEMPTS = 3;
 const POST_ALLOWED_METHODS = 'POST, OPTIONS';
 
@@ -28,17 +26,17 @@ export type InsertRequest = ValidatedRequest & {
 };
 
 export type InsertResult =
-  | { kind: 'inserted'; request: StoredRequest }
-  | { kind: 'idempotency_conflict' }
+  | { kind: 'created'; request: StoredRequest }
+  | { kind: 'existing'; request: StoredRequest }
+  | { kind: 'rate_limited' }
   | { kind: 'reference_conflict' };
 
-type InsertConflict = Exclude<InsertResult, { kind: 'inserted' }>['kind'];
+type InsertConflict = 'idempotency_conflict' | 'reference_conflict';
 
 export type SubmitRequestRepository = {
   findByIdempotencyKey: (idempotencyKey: string) => Promise<StoredRequest | null>;
   findActiveRoom: (roomToken: string) => Promise<ActiveRoom | null>;
-  countRecent: (rateKey: string, windowMs: number) => Promise<number>;
-  insertRequest: (request: InsertRequest) => Promise<InsertResult>;
+  submitAtomically: (request: InsertRequest) => Promise<InsertResult>;
 };
 
 export type SubmitRequestDependencies = {
@@ -50,21 +48,17 @@ export type SubmitRequestDependencies = {
 type QueryResult = {
   data: unknown;
   error: unknown;
-  count?: number | null;
 };
 
 export type SubmitRequestQuery = {
-  select: (columns: string, options?: { count?: 'exact'; head?: boolean }) => SubmitRequestQuery;
+  select: (columns: string) => SubmitRequestQuery;
   eq: (column: string, value: unknown) => SubmitRequestQuery;
-  gte: (column: string, value: unknown) => SubmitRequestQuery;
-  insert: (values: Record<string, unknown>) => SubmitRequestQuery;
   maybeSingle: () => Promise<QueryResult>;
-  single: () => Promise<QueryResult>;
-  then: Promise<QueryResult>['then'];
 };
 
 export type SubmitRequestClient = {
   from: (table: 'rooms' | 'service_requests') => SubmitRequestQuery;
+  rpc: (functionName: 'submit_guest_request', arguments_: Record<string, unknown>) => Promise<QueryResult>;
 };
 
 type HandlerContext = SubmitRequestDependencies | Deno.ServeHandlerInfo;
@@ -99,6 +93,22 @@ function uniqueConflict(error: unknown): InsertConflict | null {
   return null;
 }
 
+function readAtomicResult(data: unknown): InsertResult {
+  if (!Array.isArray(data) || data.length !== 1 || !data[0] || typeof data[0] !== 'object') {
+    throw new Error('Atomic request response is invalid');
+  }
+
+  const result = data[0] as { outcome?: unknown; reference?: unknown };
+  if (result.outcome === 'rate_limited') return { kind: 'rate_limited' };
+  if ((result.outcome === 'created' || result.outcome === 'existing') && typeof result.reference === 'string') {
+    return {
+      kind: result.outcome,
+      request: { reference: result.reference, telegramStatus: 'failed' },
+    };
+  }
+  throw new Error('Atomic request response has an unknown outcome');
+}
+
 function getServerSecretKey(): string | undefined {
   const configuredSecretKeys = Deno.env.get('SUPABASE_SECRET_KEYS');
   if (!configuredSecretKeys) {
@@ -127,16 +137,18 @@ export function createRepository(client?: SubmitRequestClient): SubmitRequestRep
 }
 
 function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
+  const findByIdempotencyKey: SubmitRequestRepository['findByIdempotencyKey'] = async (idempotencyKey) => {
+    const { data, error } = await client
+      .from('service_requests')
+      .select('reference')
+      .eq('idempotency_key', idempotencyKey)
+      .maybeSingle();
+    if (error) throw error;
+    return readStoredRequest(data);
+  };
+
   return {
-    async findByIdempotencyKey(idempotencyKey) {
-      const { data, error } = await client
-        .from('service_requests')
-        .select('reference')
-        .eq('idempotency_key', idempotencyKey)
-        .maybeSingle();
-      if (error) throw error;
-      return readStoredRequest(data);
-    },
+    findByIdempotencyKey,
     async findActiveRoom(roomToken) {
       const { data, error } = await client
         .from('rooms')
@@ -148,46 +160,32 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
       if (error) throw error;
       return readActiveRoom(data);
     },
-    async countRecent(rateKey, windowMs) {
-      const start = new Date(Date.now() - windowMs).toISOString();
-      const { count, error } = await client
-        .from('service_requests')
-        .select('id', { count: 'exact', head: true })
-        .eq('rate_limit_key', rateKey)
-        .gte('created_at', start);
-      if (error) throw error;
-      return count ?? 0;
-    },
-    async insertRequest(request) {
-      const { data, error } = await client
-        .from('service_requests')
-        .insert({
-          reference: request.reference,
-          idempotency_key: request.idempotencyKey,
-          rate_limit_key: request.rateKey,
-          hotel_id: request.room.hotelId,
-          room_id: request.room.id,
-          service_type: request.service,
-          choice: request.choice,
-          pickup: request.pickup,
-          destination: request.destination,
-          requested_date: request.date,
-          requested_time: request.time || null,
-          party_size: request.partySize,
-          guest_name: request.guestName,
-          guest_contact: request.contact,
-          note: request.note,
-        })
-        .select('reference')
-        .single();
+    async submitAtomically(request) {
+      const { data, error } = await client.rpc('submit_guest_request', {
+        p_reference: request.reference,
+        p_idempotency_key: request.idempotencyKey,
+        p_rate_limit_key: request.rateKey,
+        p_hotel_id: request.room.hotelId,
+        p_room_id: request.room.id,
+        p_service_type: request.service,
+        p_choice: request.choice,
+        p_pickup: request.pickup,
+        p_destination: request.destination,
+        p_requested_date: request.date,
+        p_requested_time: request.time || null,
+        p_party_size: request.partySize,
+        p_guest_name: request.guestName,
+        p_guest_contact: request.contact,
+        p_note: request.note,
+      });
       const conflict = uniqueConflict(error);
-      if (conflict === 'idempotency_conflict') return { kind: conflict };
       if (conflict === 'reference_conflict') return { kind: conflict };
+      if (conflict === 'idempotency_conflict') {
+        const existingRequest = await findByIdempotencyKey(request.idempotencyKey);
+        if (existingRequest) return { kind: 'existing', request: existingRequest };
+      }
       if (error) throw error;
-
-      const storedRequest = readStoredRequest(data);
-      if (!storedRequest) throw new Error('Inserted request is missing a reference');
-      return { kind: 'inserted', request: storedRequest };
+      return readAtomicResult(data);
     },
   };
 }
@@ -233,19 +231,13 @@ export async function handler(request: Request, context?: HandlerContext): Promi
     if (!room) return submitJson({ code: 'ROOM_UNAVAILABLE' }, 404);
 
     const rateKey = await createRateLimitKey(dependencies.requestHashSecret, room.id, validated.contact);
-    if (await dependencies.repository.countRecent(rateKey, RATE_LIMIT_WINDOW_MS) >= RATE_LIMIT_MAX_REQUESTS) {
-      return submitJson({ code: 'RATE_LIMITED' }, 429);
-    }
 
     for (let attempt = 0; attempt < REFERENCE_INSERT_ATTEMPTS; attempt += 1) {
       const reference = dependencies.referenceFactory?.() ?? nextReference();
-      const result = await dependencies.repository.insertRequest({ ...validated, room, rateKey, reference });
-      if (result.kind === 'inserted') return submitJson(result.request, 201);
-      if (result.kind === 'idempotency_conflict') {
-        const racedRequest = await dependencies.repository.findByIdempotencyKey(validated.idempotencyKey);
-        if (racedRequest) return submitJson(racedRequest, 200);
-        throw new Error('Idempotency conflict did not return a request');
-      }
+      const result = await dependencies.repository.submitAtomically({ ...validated, room, rateKey, reference });
+      if (result.kind === 'created') return submitJson(result.request, 201);
+      if (result.kind === 'existing') return submitJson(result.request, 200);
+      if (result.kind === 'rate_limited') return submitJson({ code: 'RATE_LIMITED' }, 429);
     }
 
     throw new Error('Unable to allocate a request reference');

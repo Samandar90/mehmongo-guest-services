@@ -21,11 +21,10 @@ type DependencyOptions = {
   activeRoom?: typeof ACTIVE_ROOM | null;
   existingReference?: string;
   existingTelegramStatus?: 'sent' | 'failed';
-  recentMatchingRequests?: number;
-  insertResults?: Array<'inserted' | 'idempotency_conflict' | 'reference_conflict'>;
+  atomicResults?: Array<'created' | 'existing' | 'rate_limited' | 'reference_conflict'>;
   insertedReference?: string;
   insertedTelegramStatus?: 'sent' | 'failed';
-  countRecentError?: Error;
+  atomicError?: Error;
 };
 
 function validSubmitRequest(overrides: Record<string, unknown> = {}): Request {
@@ -56,8 +55,7 @@ function validSubmitRequest(overrides: Record<string, unknown> = {}): Request {
 function requestDependencies(options: DependencyOptions = {}) {
   const findByIdempotencyCalls: string[] = [];
   const findActiveRoomCalls: string[] = [];
-  const countRecentCalls: Array<{ rateKey: string; windowMs: number }> = [];
-  const insertCalls: Array<Record<string, unknown>> = [];
+  const atomicCalls: Array<Record<string, unknown>> = [];
   let idempotencyReads = 0;
   let insertReads = 0;
 
@@ -75,18 +73,21 @@ function requestDependencies(options: DependencyOptions = {}) {
       findActiveRoomCalls.push(roomToken);
       return Promise.resolve(options.activeRoom === undefined ? ACTIVE_ROOM : options.activeRoom);
     },
-    countRecent: (rateKey: string, windowMs: number) => {
-      countRecentCalls.push({ rateKey, windowMs });
-      if (options.countRecentError) return Promise.reject(options.countRecentError);
-      return Promise.resolve(options.recentMatchingRequests ?? 0);
-    },
-    insertRequest: (request: InsertRequest): Promise<InsertResult> => {
-      insertCalls.push(request);
-      const result = options.insertResults?.[insertReads] ?? 'inserted';
+    submitAtomically: (request: InsertRequest): Promise<InsertResult> => {
+      atomicCalls.push(request);
+      if (options.atomicError) return Promise.reject(options.atomicError);
+      const result = options.atomicResults?.[insertReads] ?? 'created';
       insertReads += 1;
-      if (result !== 'inserted') return Promise.resolve({ kind: result });
+      if (result === 'reference_conflict' || result === 'rate_limited') return Promise.resolve({ kind: result });
+      if (result === 'existing') return Promise.resolve({
+        kind: result,
+        request: {
+          reference: options.existingReference ?? 'MG-EXISTING',
+          telegramStatus: options.existingTelegramStatus ?? 'failed',
+        },
+      });
       return Promise.resolve({
-        kind: 'inserted' as const,
+        kind: 'created' as const,
         request: {
           reference: options.insertedReference ?? 'MG-ABCDEFGH',
           telegramStatus: options.insertedTelegramStatus ?? 'sent',
@@ -104,8 +105,7 @@ function requestDependencies(options: DependencyOptions = {}) {
     })(),
     findByIdempotencyCalls,
     findActiveRoomCalls,
-    countRecentCalls,
-    insertCalls,
+    atomicCalls,
   };
 }
 
@@ -115,14 +115,64 @@ Deno.test('stores one request and returns its reference', async () => {
 
   assertEquals(response.status, 201);
   assertEquals(await response.json(), { reference: 'MG-ABCDEFGH', telegramStatus: 'sent' });
-  assertEquals(dependencies.insertCalls.length, 1);
+  assertEquals(dependencies.atomicCalls.length, 1);
   assertEquals(dependencies.findActiveRoomCalls, [ROOM_TOKEN]);
-  assertEquals(dependencies.countRecentCalls[0].windowMs, 10 * 60_000);
-  assertEquals(dependencies.insertCalls[0].reference, 'MG-TEST0001');
-  assertEquals(dependencies.insertCalls[0].room, ACTIVE_ROOM);
-  assertEquals(dependencies.insertCalls[0].contact, '+998 90 123 45 67');
-  assertEquals(typeof dependencies.insertCalls[0].rateKey, 'string');
-  assertEquals((dependencies.insertCalls[0].rateKey as string).includes('99890'), false);
+  assertEquals(dependencies.atomicCalls[0].reference, 'MG-TEST0001');
+  assertEquals(dependencies.atomicCalls[0].room, ACTIVE_ROOM);
+  assertEquals(dependencies.atomicCalls[0].contact, '+998 90 123 45 67');
+  assertEquals(typeof dependencies.atomicCalls[0].rateKey, 'string');
+  assertEquals((dependencies.atomicCalls[0].rateKey as string).includes('99890'), false);
+});
+
+Deno.test('delegates unauthenticated acceptance to one atomic repository call', async () => {
+  const atomicCalls: Array<Record<string, unknown>> = [];
+  const dependencies = {
+    repository: {
+      findByIdempotencyKey: () => Promise.resolve(null),
+      findActiveRoom: () => Promise.resolve(ACTIVE_ROOM),
+      submitAtomically: (request: Record<string, unknown>) => {
+        atomicCalls.push(request);
+        return Promise.resolve({
+          kind: 'created',
+          request: { reference: 'MG-ATOMIC01', telegramStatus: 'failed' },
+        });
+      },
+    },
+    requestHashSecret: 'test-request-hash-secret',
+    referenceFactory: () => 'MG-ATOMIC01',
+  } as unknown as SubmitRequestDependencies;
+  const request = validSubmitRequest();
+
+  const response = await handler(request, dependencies);
+
+  assertEquals(request.headers.has('authorization'), false);
+  assertEquals(response.status, 201);
+  assertEquals(await response.json(), { reference: 'MG-ATOMIC01', telegramStatus: 'failed' });
+  assertEquals(atomicCalls.length, 1);
+  assertEquals(atomicCalls[0].reference, 'MG-ATOMIC01');
+  assertEquals((atomicCalls[0].rateKey as string).includes('99890'), false);
+});
+
+Deno.test('maps an atomic rate-limit outcome without calling separate persistence methods', async () => {
+  let atomicCalls = 0;
+  const dependencies = {
+    repository: {
+      findByIdempotencyKey: () => Promise.resolve(null),
+      findActiveRoom: () => Promise.resolve(ACTIVE_ROOM),
+      submitAtomically: () => {
+        atomicCalls += 1;
+        return Promise.resolve({ kind: 'rate_limited' });
+      },
+    },
+    requestHashSecret: 'test-request-hash-secret',
+    referenceFactory: () => 'MG-ATOMIC01',
+  } as unknown as SubmitRequestDependencies;
+
+  const response = await handler(validSubmitRequest(), dependencies);
+
+  assertEquals(response.status, 429);
+  assertEquals(await response.json(), { code: 'RATE_LIMITED' });
+  assertEquals(atomicCalls, 1);
 });
 
 Deno.test('returns existing request for duplicate idempotency key', async () => {
@@ -136,17 +186,17 @@ Deno.test('returns existing request for duplicate idempotency key', async () => 
 
   assertEquals(response.status, 200);
   assertEquals(await response.json(), { reference: 'MG-EXISTING', telegramStatus: 'failed' });
-  assertEquals(dependencies.insertCalls.length, 0);
+  assertEquals(dependencies.atomicCalls.length, 0);
   assertEquals(dependencies.findActiveRoomCalls.length, 0);
 });
 
 Deno.test('rejects sixth matching request in ten minutes', async () => {
-  const dependencies = requestDependencies({ recentMatchingRequests: 5 });
+  const dependencies = requestDependencies({ atomicResults: ['rate_limited'] });
   const response = await handler(validSubmitRequest(), dependencies);
 
   assertEquals(response.status, 429);
   assertEquals(await response.json(), { code: 'RATE_LIMITED' });
-  assertEquals(dependencies.insertCalls.length, 0);
+  assertEquals(dependencies.atomicCalls.length, 1);
 });
 
 Deno.test('rejects inactive room before insert', async () => {
@@ -155,41 +205,40 @@ Deno.test('rejects inactive room before insert', async () => {
 
   assertEquals(response.status, 404);
   assertEquals(await response.json(), { code: 'ROOM_UNAVAILABLE' });
-  assertEquals(dependencies.insertCalls.length, 0);
-  assertEquals(dependencies.countRecentCalls.length, 0);
+  assertEquals(dependencies.atomicCalls.length, 0);
 });
 
 Deno.test('returns the raced idempotent request after a unique conflict', async () => {
   const dependencies = requestDependencies({
     existingReference: 'MG-RACED123',
-    insertResults: ['idempotency_conflict'],
+    atomicResults: ['existing'],
   });
   const response = await handler(validSubmitRequest(), dependencies);
 
   assertEquals(response.status, 200);
   assertEquals(await response.json(), { reference: 'MG-RACED123', telegramStatus: 'failed' });
-  assertEquals(dependencies.findByIdempotencyCalls, [IDEMPOTENCY_KEY, IDEMPOTENCY_KEY]);
-  assertEquals(dependencies.insertCalls.length, 1);
+  assertEquals(dependencies.findByIdempotencyCalls, [IDEMPOTENCY_KEY]);
+  assertEquals(dependencies.atomicCalls.length, 1);
 });
 
 Deno.test('retries a unique reference collision with a new reference', async () => {
-  const dependencies = requestDependencies({ insertResults: ['reference_conflict', 'inserted'] });
+  const dependencies = requestDependencies({ atomicResults: ['reference_conflict', 'created'] });
   const response = await handler(validSubmitRequest(), dependencies);
 
   assertEquals(response.status, 201);
-  assertEquals(dependencies.insertCalls.length, 2);
-  assertEquals(dependencies.insertCalls.map((call) => call.reference), ['MG-TEST0001', 'MG-TEST0002']);
+  assertEquals(dependencies.atomicCalls.length, 2);
+  assertEquals(dependencies.atomicCalls.map((call) => call.reference), ['MG-TEST0001', 'MG-TEST0002']);
 });
 
 Deno.test('fails safely after bounded reference collisions', async () => {
   const dependencies = requestDependencies({
-    insertResults: ['reference_conflict', 'reference_conflict', 'reference_conflict'],
+    atomicResults: ['reference_conflict', 'reference_conflict', 'reference_conflict'],
   });
   const response = await handler(validSubmitRequest(), dependencies);
 
   assertEquals(response.status, 500);
   assertEquals(await response.json(), { code: 'REQUEST_FAILED' });
-  assertEquals(dependencies.insertCalls.length, 3);
+  assertEquals(dependencies.atomicCalls.length, 3);
 });
 
 Deno.test('accepts only POST JSON requests and supports POST preflight', async () => {
@@ -222,7 +271,7 @@ Deno.test('rejects media types that only contain the JSON token', async () => {
 });
 
 Deno.test('does not leak database errors', async () => {
-  const dependencies = requestDependencies({ countRecentError: new Error('database password: secret') });
+  const dependencies = requestDependencies({ atomicError: new Error('database password: secret') });
   const response = await handler(validSubmitRequest(), dependencies);
 
   assertEquals(response.status, 500);
@@ -230,23 +279,19 @@ Deno.test('does not leak database errors', async () => {
 });
 
 Deno.test('production persistence reports failed until Telegram delivery exists', async () => {
-  let insertedValues: Record<string, unknown> | undefined;
-  const query = {
-    insert: (values: Record<string, unknown>) => {
-      insertedValues = values;
-      return query;
-    },
-    select: () => query,
-    single: () => Promise.resolve({ data: { reference: 'MG-DURABLE1' }, error: null }),
-  };
+  let rpcArguments: Record<string, unknown> | undefined;
   const client = {
-    from: (table: string) => {
-      assertEquals(table, 'service_requests');
-      return query;
+    rpc: (functionName: string, arguments_: Record<string, unknown>) => {
+      assertEquals(functionName, 'submit_guest_request');
+      rpcArguments = arguments_;
+      return Promise.resolve({
+        data: [{ outcome: 'created', reference: 'MG-DURABLE1' }],
+        error: null,
+      });
     },
   } as unknown as SubmitRequestClient;
 
-  const result = await createRepository(client).insertRequest({
+  const result = await createRepository(client).submitAtomically({
     roomToken: ROOM_TOKEN,
     idempotencyKey: IDEMPOTENCY_KEY,
     service: 'transport',
@@ -265,57 +310,89 @@ Deno.test('production persistence reports failed until Telegram delivery exists'
   });
 
   assertEquals(result, {
-    kind: 'inserted',
+    kind: 'created',
     request: { reference: 'MG-DURABLE1', telegramStatus: 'failed' },
   });
-  assertEquals(insertedValues, {
-    reference: 'MG-DURABLE1',
-    idempotency_key: IDEMPOTENCY_KEY,
-    rate_limit_key: 'hashed-rate-key',
-    hotel_id: ACTIVE_ROOM.hotelId,
-    room_id: ACTIVE_ROOM.id,
-    service_type: 'transport',
-    choice: '',
-    pickup: 'Kamilovs Hotel',
-    destination: 'Samarkand Airport',
-    requested_date: '2099-12-31',
-    requested_time: '14:30',
-    party_size: 2,
-    guest_name: 'Alex',
-    guest_contact: '+998901234567',
-    note: '',
+  assertEquals(rpcArguments, {
+    p_reference: 'MG-DURABLE1',
+    p_idempotency_key: IDEMPOTENCY_KEY,
+    p_rate_limit_key: 'hashed-rate-key',
+    p_hotel_id: ACTIVE_ROOM.hotelId,
+    p_room_id: ACTIVE_ROOM.id,
+    p_service_type: 'transport',
+    p_choice: '',
+    p_pickup: 'Kamilovs Hotel',
+    p_destination: 'Samarkand Airport',
+    p_requested_date: '2099-12-31',
+    p_requested_time: '14:30',
+    p_party_size: 2,
+    p_guest_name: 'Alex',
+    p_guest_contact: '+998901234567',
+    p_note: '',
   });
 });
 
-Deno.test('production persistence classifies unique constraint collisions', async () => {
-  for (const [constraint, expected] of [
-    ['service_requests_reference_key', 'reference_conflict'],
-    ['service_requests_idempotency_key_key', 'idempotency_conflict'],
-  ] as const) {
-    const query = {
-      insert: () => query,
-      select: () => query,
-      single: () => Promise.resolve({ data: null, error: { code: '23505', constraint } }),
-    };
-    const client = { from: () => query } as unknown as SubmitRequestClient;
-    const result = await createRepository(client).insertRequest({
-      roomToken: ROOM_TOKEN,
-      idempotencyKey: IDEMPOTENCY_KEY,
-      service: 'transport',
-      choice: '',
-      pickup: 'Kamilovs Hotel',
-      destination: 'Samarkand Airport',
-      date: '2099-12-31',
-      time: '14:30',
-      partySize: 2,
-      guestName: 'Alex',
-      contact: '+998901234567',
-      note: '',
-      room: ACTIVE_ROOM,
-      rateKey: 'hashed-rate-key',
-      reference: 'MG-DURABLE1',
-    });
+Deno.test('production persistence classifies a unique reference collision', async () => {
+  const client = {
+    rpc: () => Promise.resolve({
+      data: null,
+      error: { code: '23505', constraint: 'service_requests_reference_key' },
+    }),
+  };
+  const result = await createRepository(client as unknown as SubmitRequestClient).submitAtomically({
+    roomToken: ROOM_TOKEN,
+    idempotencyKey: IDEMPOTENCY_KEY,
+    service: 'transport',
+    choice: '',
+    pickup: 'Kamilovs Hotel',
+    destination: 'Samarkand Airport',
+    date: '2099-12-31',
+    time: '14:30',
+    partySize: 2,
+    guestName: 'Alex',
+    contact: '+998901234567',
+    note: '',
+    room: ACTIVE_ROOM,
+    rateKey: 'hashed-rate-key',
+    reference: 'MG-DURABLE1',
+  });
 
-    assertEquals(result, { kind: expected });
-  }
+  assertEquals(result, { kind: 'reference_conflict' });
+});
+
+Deno.test('production persistence fetches the winner of an idempotency unique race', async () => {
+  const query = {
+    select: () => query,
+    eq: () => query,
+    maybeSingle: () => Promise.resolve({ data: { reference: 'MG-RACED123' }, error: null }),
+  };
+  const client = {
+    from: () => query,
+    rpc: () => Promise.resolve({
+      data: null,
+      error: { code: '23505', constraint: 'service_requests_idempotency_key_key' },
+    }),
+  } as unknown as SubmitRequestClient;
+  const result = await createRepository(client).submitAtomically({
+    roomToken: ROOM_TOKEN,
+    idempotencyKey: IDEMPOTENCY_KEY,
+    service: 'transport',
+    choice: '',
+    pickup: 'Kamilovs Hotel',
+    destination: 'Samarkand Airport',
+    date: '2099-12-31',
+    time: '14:30',
+    partySize: 2,
+    guestName: 'Alex',
+    contact: '+998901234567',
+    note: '',
+    room: ACTIVE_ROOM,
+    rateKey: 'hashed-rate-key',
+    reference: 'MG-DURABLE1',
+  });
+
+  assertEquals(result, {
+    kind: 'existing',
+    request: { reference: 'MG-RACED123', telegramStatus: 'failed' },
+  });
 });
