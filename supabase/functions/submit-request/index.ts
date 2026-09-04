@@ -5,6 +5,12 @@ import type { ValidatedRequest } from '../_shared/validation.ts';
 import { validateSubmitPayload } from '../_shared/validation.ts';
 import { emptyResponse, jsonResponse } from '../_shared/http.ts';
 import { createRateLimitKey, createReference } from '../_shared/security.ts';
+import {
+  formatTelegramRequest,
+  sendTelegramMessage,
+  TelegramDeliveryError,
+  type TelegramRequest,
+} from '../_shared/telegram.ts';
 
 const REFERENCE_INSERT_ATTEMPTS = 3;
 const POST_ALLOWED_METHODS = 'POST, OPTIONS';
@@ -17,6 +23,14 @@ export type ActiveRoom = {
 export type StoredRequest = {
   reference: string;
   telegramStatus: 'sent' | 'failed';
+};
+
+export type DeliveryRequest = TelegramRequest & {
+  id: string;
+};
+
+export type TelegramDelivery = {
+  id: string;
 };
 
 export type InsertRequest = ValidatedRequest & {
@@ -37,11 +51,16 @@ export type SubmitRequestRepository = {
   findByIdempotencyKey: (idempotencyKey: string) => Promise<StoredRequest | null>;
   findActiveRoom: (roomToken: string) => Promise<ActiveRoom | null>;
   submitAtomically: (request: InsertRequest) => Promise<InsertResult>;
+  findByReference: (reference: string) => Promise<DeliveryRequest | null>;
+  createDelivery: (requestId: string, attempt: number) => Promise<TelegramDelivery>;
+  completeDelivery: (deliveryId: string, result: { telegramMessageId: number }) => Promise<void>;
+  failDelivery: (deliveryId: string, error: { code: string; message: string }) => Promise<void>;
 };
 
 export type SubmitRequestDependencies = {
   repository: SubmitRequestRepository;
   requestHashSecret: string;
+  telegramSender: (request: TelegramRequest) => Promise<{ messageId: number }>;
   referenceFactory?: () => string;
 };
 
@@ -53,11 +72,15 @@ type QueryResult = {
 export type SubmitRequestQuery = {
   select: (columns: string) => SubmitRequestQuery;
   eq: (column: string, value: unknown) => SubmitRequestQuery;
+  order: (column: string, options: { ascending: boolean }) => SubmitRequestQuery;
+  limit: (count: number) => SubmitRequestQuery;
+  insert: (values: Record<string, unknown>) => SubmitRequestQuery;
+  update: (values: Record<string, unknown>) => SubmitRequestQuery;
   maybeSingle: () => Promise<QueryResult>;
 };
 
 export type SubmitRequestClient = {
-  from: (table: 'rooms' | 'service_requests') => SubmitRequestQuery;
+  from: (table: 'rooms' | 'service_requests' | 'telegram_deliveries') => SubmitRequestQuery;
   rpc: (functionName: 'submit_guest_request', arguments_: Record<string, unknown>) => Promise<QueryResult>;
 };
 
@@ -79,6 +102,53 @@ function readStoredRequest(data: unknown): StoredRequest | null {
   const reference = (data as { reference?: unknown }).reference;
   if (typeof reference !== 'string') return null;
   return { reference, telegramStatus: 'failed' };
+}
+
+function relation(value: unknown): Record<string, unknown> | null {
+  const related = Array.isArray(value) ? value[0] : value;
+  return related && typeof related === 'object' ? related as Record<string, unknown> : null;
+}
+
+function optionalText(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function readDeliveryRequest(data: unknown): DeliveryRequest | null {
+  if (!data || typeof data !== 'object') return null;
+  const request = data as Record<string, unknown>;
+  const room = relation(request.rooms);
+  const hotel = room ? relation(room.hotels) : null;
+  const service = request.service_type;
+  const partySize = request.party_size;
+  const requestedDate = request.requested_date;
+  const requestedTime = request.requested_time;
+
+  if (!room || !hotel || typeof request.id !== 'string' || typeof request.reference !== 'string' ||
+    typeof hotel.name !== 'string' || typeof room.label !== 'string' || typeof request.guest_name !== 'string' ||
+    typeof request.guest_contact !== 'string' || typeof request.note !== 'string' ||
+    !['tours', 'transport', 'restaurants', 'tickets'].includes(String(service)) ||
+    !(typeof partySize === 'number' || partySize === null) ||
+    !(typeof requestedDate === 'string' || requestedDate === null) ||
+    !(typeof requestedTime === 'string' || requestedTime === null)) {
+    return null;
+  }
+
+  return {
+    id: request.id,
+    reference: request.reference,
+    hotelName: hotel.name,
+    roomLabel: room.label,
+    service: service as DeliveryRequest['service'],
+    choice: optionalText(request.choice),
+    pickup: optionalText(request.pickup),
+    destination: optionalText(request.destination),
+    requestedDate,
+    requestedTime: requestedTime?.slice(0, 5) ?? null,
+    partySize,
+    guestName: request.guest_name,
+    contact: request.guest_contact,
+    note: request.note,
+  };
 }
 
 function uniqueConflict(error: unknown): InsertConflict | null {
@@ -140,11 +210,24 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
   const findByIdempotencyKey: SubmitRequestRepository['findByIdempotencyKey'] = async (idempotencyKey) => {
     const { data, error } = await client
       .from('service_requests')
-      .select('reference')
+      .select('id, reference')
       .eq('idempotency_key', idempotencyKey)
       .maybeSingle();
     if (error) throw error;
-    return readStoredRequest(data);
+    const stored = readStoredRequest(data);
+    if (!stored) return null;
+    const requestId = data && typeof data === 'object' ? (data as { id?: unknown }).id : null;
+    if (typeof requestId !== 'string') return stored;
+    const { data: delivery, error: deliveryError } = await client
+      .from('telegram_deliveries')
+      .select('status')
+      .eq('request_id', requestId)
+      .order('attempt', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (deliveryError) throw deliveryError;
+    const status = delivery && typeof delivery === 'object' ? (delivery as { status?: unknown }).status : null;
+    return { ...stored, telegramStatus: status === 'sent' ? 'sent' : 'failed' };
   };
 
   return {
@@ -187,13 +270,71 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
       if (error) throw error;
       return readAtomicResult(data);
     },
+    async findByReference(reference) {
+      const { data, error } = await client
+        .from('service_requests')
+        .select('id, reference, service_type, choice, pickup, destination, requested_date, requested_time, party_size, guest_name, guest_contact, note, rooms!inner(label, hotels!inner(name))')
+        .eq('reference', reference)
+        .maybeSingle();
+      if (error) throw error;
+      return readDeliveryRequest(data);
+    },
+    async createDelivery(requestId, attempt) {
+      const { data, error } = await client
+        .from('telegram_deliveries')
+        .insert({ request_id: requestId, attempt, status: 'pending' })
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      const id = data && typeof data === 'object' ? (data as { id?: unknown }).id : null;
+      if (typeof id !== 'string') throw new Error('Telegram delivery response is invalid');
+      return { id };
+    },
+    async completeDelivery(deliveryId, result) {
+      const { error } = await client
+        .from('telegram_deliveries')
+        .update({
+          status: 'sent',
+          telegram_message_id: result.telegramMessageId,
+          error_code: null,
+          error_message: null,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', deliveryId)
+        .maybeSingle();
+      if (error) throw error;
+    },
+    async failDelivery(deliveryId, failure) {
+      const { error } = await client
+        .from('telegram_deliveries')
+        .update({
+          status: 'failed',
+          error_code: failure.code,
+          error_message: failure.message,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', deliveryId)
+        .maybeSingle();
+      if (error) throw error;
+    },
   };
 }
 
 function createProductionDependencies(): SubmitRequestDependencies {
   const requestHashSecret = Deno.env.get('REQUEST_HASH_SECRET');
-  if (!requestHashSecret) throw new Error('Request hash configuration is missing');
-  return { repository: createRepository(), requestHashSecret };
+  const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
+  const chatId = Deno.env.get('TELEGRAM_CHAT_ID');
+  if (!requestHashSecret || !botToken || !chatId) throw new Error('Server configuration is missing');
+  return {
+    repository: createRepository(),
+    requestHashSecret,
+    telegramSender: (request) => sendTelegramMessage(
+      (input, init) => fetch(input, init),
+      botToken,
+      chatId,
+      formatTelegramRequest(request, 'Asia/Tashkent'),
+    ),
+  };
 }
 
 function dependenciesFor(context?: HandlerContext): SubmitRequestDependencies {
@@ -213,6 +354,48 @@ async function parsePayload(request: Request): Promise<ValidatedRequest | null> 
   } catch {
     return null;
   }
+}
+
+function safeDeliveryFailure(reason: unknown): { code: string; message: string } {
+  if (reason instanceof TelegramDeliveryError) {
+    if (reason.code === 'TELEGRAM_TIMEOUT') {
+      return { code: 'TELEGRAM_TIMEOUT', message: 'Telegram request timed out' };
+    }
+    if (reason.code === 'TELEGRAM_NETWORK_ERROR') {
+      return { code: 'TELEGRAM_NETWORK_ERROR', message: 'Telegram network request failed' };
+    }
+    if (reason.code === 'TELEGRAM_API_ERROR') {
+      return { code: 'TELEGRAM_API_ERROR', message: 'Telegram API request failed' };
+    }
+    if (reason.code === 'TELEGRAM_RESPONSE_INVALID') {
+      return { code: 'TELEGRAM_RESPONSE_INVALID', message: 'Telegram response was invalid' };
+    }
+  }
+  return { code: 'TELEGRAM_DELIVERY_FAILED', message: 'Telegram delivery failed' };
+}
+
+async function deliverNewRequest(
+  repository: SubmitRequestRepository,
+  telegramSender: SubmitRequestDependencies['telegramSender'],
+  request: DeliveryRequest,
+): Promise<'sent' | 'failed'> {
+  const delivery = await repository.createDelivery(request.id, 1);
+  let failure = { code: 'TELEGRAM_DELIVERY_FAILED', message: 'Telegram delivery failed' };
+
+  for (let sendAttempt = 0; sendAttempt < 2; sendAttempt += 1) {
+    let result: { messageId: number };
+    try {
+      result = await telegramSender(request);
+    } catch (reason) {
+      failure = safeDeliveryFailure(reason);
+      continue;
+    }
+    await repository.completeDelivery(delivery.id, { telegramMessageId: result.messageId });
+    return 'sent';
+  }
+
+  await repository.failDelivery(delivery.id, failure);
+  return 'failed';
 }
 
 export async function handler(request: Request, context?: HandlerContext): Promise<Response> {
@@ -235,8 +418,16 @@ export async function handler(request: Request, context?: HandlerContext): Promi
     for (let attempt = 0; attempt < REFERENCE_INSERT_ATTEMPTS; attempt += 1) {
       const reference = dependencies.referenceFactory?.() ?? nextReference();
       const result = await dependencies.repository.submitAtomically({ ...validated, room, rateKey, reference });
-      if (result.kind === 'created') return submitJson(result.request, 201);
-      if (result.kind === 'existing') return submitJson(result.request, 200);
+      if (result.kind === 'created') {
+        const stored = await dependencies.repository.findByReference(result.request.reference);
+        if (!stored) throw new Error('Created request is unavailable for delivery');
+        const telegramStatus = await deliverNewRequest(dependencies.repository, dependencies.telegramSender, stored);
+        return submitJson({ reference: stored.reference, telegramStatus }, telegramStatus === 'sent' ? 201 : 202);
+      }
+      if (result.kind === 'existing') {
+        const existingRequest = await dependencies.repository.findByIdempotencyKey(validated.idempotencyKey);
+        return submitJson(existingRequest ?? result.request, 200);
+      }
       if (result.kind === 'rate_limited') return submitJson({ code: 'RATE_LIMITED' }, 429);
     }
 

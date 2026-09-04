@@ -9,6 +9,7 @@ import {
   type SubmitRequestClient,
   type SubmitRequestDependencies,
 } from './index.ts';
+import { TelegramDeliveryError } from '../_shared/telegram.ts';
 
 const ROOM_TOKEN = '20000000-0000-4000-8000-000000000205';
 const IDEMPOTENCY_KEY = '10000000-0000-4000-8000-000000000001';
@@ -94,11 +95,19 @@ function requestDependencies(options: DependencyOptions = {}) {
         },
       });
     },
+    findByReference: () => Promise.resolve({
+      id: '40000000-0000-4000-8000-000000000004',
+      ...transportDeliveryRequest(),
+    }),
+    createDelivery: () => Promise.resolve({ id: '50000000-0000-4000-8000-000000000005' }),
+    completeDelivery: () => Promise.resolve(),
+    failDelivery: () => Promise.resolve(),
   };
 
   return {
     repository,
     requestHashSecret: 'test-request-hash-secret',
+    telegramSender: () => Promise.resolve({ messageId: 1 }),
     referenceFactory: (() => {
       const references = ['MG-TESTAAAA', 'MG-TESTAAAB', 'MG-TESTAAAC'];
       let index = 0;
@@ -143,9 +152,18 @@ Deno.test('delegates unauthenticated acceptance to one atomic repository call', 
           request: { reference: 'MG-ATOMICAB', telegramStatus: 'failed' },
         });
       },
+      findByReference: () => Promise.resolve({
+        id: '40000000-0000-4000-8000-000000000004',
+        ...transportDeliveryRequest(),
+        reference: 'MG-ATOMICAB',
+      }),
+      createDelivery: () => Promise.resolve({ id: '50000000-0000-4000-8000-000000000005' }),
+      completeDelivery: () => Promise.resolve(),
+      failDelivery: () => Promise.resolve(),
     },
     requestHashSecret: 'test-request-hash-secret',
     referenceFactory: () => 'MG-ATOMICAB',
+    telegramSender: () => Promise.resolve({ messageId: 1 }),
   } as unknown as SubmitRequestDependencies;
   const request = validSubmitRequest();
 
@@ -153,7 +171,7 @@ Deno.test('delegates unauthenticated acceptance to one atomic repository call', 
 
   assertEquals(request.headers.has('authorization'), false);
   assertEquals(response.status, 201);
-  assertEquals(await response.json(), { reference: 'MG-ATOMICAB', telegramStatus: 'failed' });
+  assertEquals(await response.json(), { reference: 'MG-ATOMICAB', telegramStatus: 'sent' });
   assertEquals(atomicCalls.length, 1);
   assertEquals(atomicCalls[0].reference, 'MG-ATOMICAB');
   assertEquals((atomicCalls[0].rateKey as string).includes('99890'), false);
@@ -223,7 +241,7 @@ Deno.test('returns the raced idempotent request after a unique conflict', async 
 
   assertEquals(response.status, 200);
   assertEquals(await response.json(), { reference: 'MG-RACEDABC', telegramStatus: 'failed' });
-  assertEquals(dependencies.findByIdempotencyCalls, [IDEMPOTENCY_KEY]);
+  assertEquals(dependencies.findByIdempotencyCalls, [IDEMPOTENCY_KEY, IDEMPOTENCY_KEY]);
   assertEquals(dependencies.atomicCalls.length, 1);
 });
 
@@ -402,3 +420,136 @@ Deno.test('production persistence fetches the winner of an idempotency unique ra
     request: { reference: 'MG-RACEDABC', telegramStatus: 'failed' },
   });
 });
+
+Deno.test('production persistence returns the latest Telegram delivery status for an idempotent request', async () => {
+  const deliveryPredicates: Array<[string, unknown]> = [];
+  const requestQuery = {
+    select: () => requestQuery,
+    eq: () => requestQuery,
+    maybeSingle: () => Promise.resolve({
+      data: { id: '40000000-0000-4000-8000-000000000004', reference: 'MG-DELIVERY' },
+      error: null,
+    }),
+  };
+  const deliveryQuery = {
+    select: () => deliveryQuery,
+    eq: (column: string, value: unknown) => {
+      deliveryPredicates.push([column, value]);
+      return deliveryQuery;
+    },
+    order: () => deliveryQuery,
+    limit: () => deliveryQuery,
+    maybeSingle: () => Promise.resolve({ data: { status: 'sent' }, error: null }),
+  };
+  const client = {
+    from: (table: string) => table === 'service_requests' ? requestQuery : deliveryQuery,
+  } as unknown as SubmitRequestClient;
+
+  const result = await createRepository(client).findByIdempotencyKey(IDEMPOTENCY_KEY);
+
+  assertEquals(result, { reference: 'MG-DELIVERY', telegramStatus: 'sent' });
+  assertEquals(deliveryPredicates, [['request_id', '40000000-0000-4000-8000-000000000004']]);
+});
+
+Deno.test('records a sent first delivery and returns sent', async () => {
+  const createdDeliveries: Array<{ requestId: string; attempt: number }> = [];
+  const completedDeliveries: Array<{ deliveryId: string; telegramMessageId: number }> = [];
+  const dependencies = {
+    repository: {
+      findByIdempotencyKey: () => Promise.resolve(null),
+      findActiveRoom: () => Promise.resolve(ACTIVE_ROOM),
+      submitAtomically: () => Promise.resolve({
+        kind: 'created',
+        request: { reference: 'MG-ABCDEFGH', telegramStatus: 'failed' },
+      }),
+      findByReference: () => Promise.resolve({
+        id: '40000000-0000-4000-8000-000000000004',
+        ...transportDeliveryRequest(),
+      }),
+      createDelivery: (requestId: string, attempt: number) => {
+        createdDeliveries.push({ requestId, attempt });
+        return Promise.resolve({ id: '50000000-0000-4000-8000-000000000005' });
+      },
+      completeDelivery: (deliveryId: string, result: { telegramMessageId: number }) => {
+        completedDeliveries.push({ deliveryId, ...result });
+        return Promise.resolve();
+      },
+      failDelivery: () => Promise.resolve(),
+    },
+    requestHashSecret: 'test-request-hash-secret',
+    referenceFactory: () => 'MG-ABCDEFGH',
+    telegramSender: () => Promise.resolve({ messageId: 42 }),
+  };
+
+  const response = await handler(validSubmitRequest(), dependencies as SubmitRequestDependencies);
+
+  assertEquals(response.status, 201);
+  assertEquals(await response.json(), { reference: 'MG-ABCDEFGH', telegramStatus: 'sent' });
+  assertEquals(createdDeliveries, [{ requestId: '40000000-0000-4000-8000-000000000004', attempt: 1 }]);
+  assertEquals(completedDeliveries, [{ deliveryId: '50000000-0000-4000-8000-000000000005', telegramMessageId: 42 }]);
+});
+
+Deno.test('keeps a newly accepted request after both Telegram sends fail', async () => {
+  const createdDeliveries: Array<{ requestId: string; attempt: number }> = [];
+  const failedDeliveries: Array<{ deliveryId: string; errorCode: string; errorMessage: string }> = [];
+  let sends = 0;
+  const dependencies = {
+    repository: {
+      findByIdempotencyKey: () => Promise.resolve(null),
+      findActiveRoom: () => Promise.resolve(ACTIVE_ROOM),
+      submitAtomically: () => Promise.resolve({
+        kind: 'created',
+        request: { reference: 'MG-ABCDEFGH', telegramStatus: 'failed' },
+      }),
+      findByReference: () => Promise.resolve({
+        id: '40000000-0000-4000-8000-000000000004',
+        ...transportDeliveryRequest(),
+      }),
+      createDelivery: (requestId: string, attempt: number) => {
+        createdDeliveries.push({ requestId, attempt });
+        return Promise.resolve({ id: '50000000-0000-4000-8000-000000000005' });
+      },
+      completeDelivery: () => Promise.resolve(),
+      failDelivery: (deliveryId: string, error: { code: string; message: string }) => {
+        failedDeliveries.push({ deliveryId, errorCode: error.code, errorMessage: error.message });
+        return Promise.resolve();
+      },
+    },
+    requestHashSecret: 'test-request-hash-secret',
+    referenceFactory: () => 'MG-ABCDEFGH',
+    telegramSender: () => {
+      sends += 1;
+      return Promise.reject(new TelegramDeliveryError(
+        'TELEGRAM_API_ERROR',
+        'Telegram rejected guest contact +998 90 123 45 67',
+      ));
+    },
+  };
+
+  const response = await handler(validSubmitRequest(), dependencies as SubmitRequestDependencies);
+
+  assertEquals(response.status, 202);
+  assertEquals(await response.json(), { reference: 'MG-ABCDEFGH', telegramStatus: 'failed' });
+  assertEquals(sends, 2);
+  assertEquals(createdDeliveries, [{ requestId: '40000000-0000-4000-8000-000000000004', attempt: 1 }]);
+  assertEquals(failedDeliveries.length, 1);
+  assertEquals(failedDeliveries[0].errorMessage.includes('+998'), false);
+});
+
+function transportDeliveryRequest() {
+  return {
+    reference: 'MG-ABCDEFGH',
+    hotelName: 'Kamilovs Hotel',
+    roomLabel: '205',
+    service: 'transport' as const,
+    choice: '',
+    pickup: 'Kamilovs Hotel',
+    destination: 'Samarkand Airport',
+    requestedDate: '2099-12-31',
+    requestedTime: '14:30',
+    partySize: 2,
+    guestName: 'Alex',
+    contact: '+998 90 123 45 67',
+    note: '',
+  };
+}
