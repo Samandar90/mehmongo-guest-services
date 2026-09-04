@@ -94,39 +94,43 @@ export async function sendTelegramMessage(
 ): Promise<{ messageId: number }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TELEGRAM_TIMEOUT_MS);
-  let response: Response;
 
   try {
-    response = await fetcher(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const response = await fetcher(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: TELEGRAM_PARSE_MODE }),
       signal: controller.signal,
     });
+    if (!response.ok) {
+      throw new TelegramDeliveryError('TELEGRAM_API_ERROR', 'Telegram API request failed');
+    }
+
+    let payload: unknown;
+    try {
+      payload = await response.json();
+    } catch {
+      if (controller.signal.aborted) {
+        throw new TelegramDeliveryError('TELEGRAM_TIMEOUT', 'Telegram request timed out');
+      }
+      throw new TelegramDeliveryError('TELEGRAM_RESPONSE_INVALID', 'Telegram response was invalid');
+    }
+
+    const result = payload && typeof payload === 'object'
+      ? (payload as { ok?: unknown; result?: { message_id?: unknown } }).result
+      : undefined;
+    if (!payload || typeof payload !== 'object' || (payload as { ok?: unknown }).ok !== true ||
+      !result || typeof result.message_id !== 'number') {
+      throw new TelegramDeliveryError('TELEGRAM_RESPONSE_INVALID', 'Telegram response was invalid');
+    }
+    return { messageId: result.message_id };
   } catch (reason) {
+    if (reason instanceof TelegramDeliveryError) throw reason;
+    if (controller.signal.aborted) {
+      throw new TelegramDeliveryError('TELEGRAM_TIMEOUT', 'Telegram request timed out');
+    }
     throw networkFailure(reason);
   } finally {
     clearTimeout(timeout);
   }
-
-  if (!response.ok) {
-    throw new TelegramDeliveryError('TELEGRAM_API_ERROR', 'Telegram API request failed');
-  }
-
-  let payload: unknown;
-  try {
-    payload = await response.json();
-  } catch {
-    throw new TelegramDeliveryError('TELEGRAM_RESPONSE_INVALID', 'Telegram response was invalid');
-  }
-
-  const result = payload && typeof payload === 'object'
-    ? (payload as { ok?: unknown; result?: { message_id?: unknown } }).result
-    : undefined;
-  if (!payload || typeof payload !== 'object' || (payload as { ok?: unknown }).ok !== true ||
-    !result || typeof result.message_id !== 'number') {
-    throw new TelegramDeliveryError('TELEGRAM_RESPONSE_INVALID', 'Telegram response was invalid');
-  }
-
-  return { messageId: result.message_id };
 }

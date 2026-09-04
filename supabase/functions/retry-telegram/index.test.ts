@@ -32,13 +32,16 @@ function retryDependencies(options: {
       createNextDelivery: (requestId: string) => {
         const attempt = 3;
         createdDeliveries.push({ requestId, attempt });
-        return Promise.resolve({ id: '50000000-0000-4000-8000-000000000005', attempt });
+        return Promise.resolve({
+          kind: 'created' as const,
+          delivery: { id: '50000000-0000-4000-8000-000000000005', attempt, status: 'pending' as const },
+        });
       },
       completeDelivery: (deliveryId: string, result: { telegramMessageId: number }) => {
         completedDeliveries.push({ deliveryId, ...result });
-        return Promise.resolve();
+        return Promise.resolve(true);
       },
-      failDelivery: () => Promise.resolve(),
+      failDelivery: () => Promise.resolve(true),
     },
     telegramSender: () => options.telegramResult instanceof Error
       ? Promise.reject(options.telegramResult)
@@ -89,6 +92,62 @@ Deno.test('creates the next delivery attempt and stores its Telegram message id'
   }]);
 });
 
+Deno.test('refuses a retry while the latest delivery attempt is pending', async () => {
+  let sends = 0;
+  const dependencies = {
+    repository: {
+      getUserId: () => Promise.resolve('user-1'),
+      isActiveSuperAdmin: () => Promise.resolve(true),
+      findRequest: () => Promise.resolve(deliveryRequest()),
+      createNextDelivery: () => Promise.resolve({ kind: 'pending' }),
+      completeDelivery: () => Promise.resolve(true),
+      failDelivery: () => Promise.resolve(true),
+    },
+    telegramSender: () => {
+      sends += 1;
+      return Promise.resolve({ messageId: 77 });
+    },
+  };
+
+  const response = await handler(retryRequest('valid-admin-token'), dependencies as never);
+
+  assertEquals(response.status, 409);
+  assertEquals(await response.json(), { code: 'TELEGRAM_DELIVERY_PENDING' });
+  assertEquals(sends, 0);
+});
+
+Deno.test('leaves a retry delivery pending when sent-state persistence fails', async () => {
+  let sends = 0;
+  let failedUpdates = 0;
+  const dependencies = {
+    repository: {
+      getUserId: () => Promise.resolve('user-1'),
+      isActiveSuperAdmin: () => Promise.resolve(true),
+      findRequest: () => Promise.resolve(deliveryRequest()),
+      createNextDelivery: () => Promise.resolve({
+        kind: 'created',
+        delivery: { id: '50000000-0000-4000-8000-000000000005', attempt: 3, status: 'pending' },
+      }),
+      completeDelivery: () => Promise.reject(new Error('database write failed')),
+      failDelivery: () => {
+        failedUpdates += 1;
+        return Promise.resolve(true);
+      },
+    },
+    telegramSender: () => {
+      sends += 1;
+      return Promise.resolve({ messageId: 77 });
+    },
+  };
+
+  const response = await handler(retryRequest('valid-admin-token'), dependencies as never);
+
+  assertEquals(response.status, 503);
+  assertEquals(await response.json(), { telegramStatus: 'pending' });
+  assertEquals(sends, 1);
+  assertEquals(failedUpdates, 0);
+});
+
 Deno.test('retries a conflicting delivery allocation with the next attempt number', async () => {
   const insertedAttempts: number[] = [];
   let insertCalls = 0;
@@ -96,13 +155,13 @@ Deno.test('retries a conflicting delivery allocation with the next attempt numbe
     auth: { getUser: () => Promise.resolve({ data: { user: null }, error: null }) },
     from: () => ({
       select: (columns: string) => {
-        if (columns === 'attempt') {
+        if (columns === 'attempt, status') {
           const attempt = insertedAttempts.length === 0 ? 2 : 3;
           const latest = {
             eq: () => latest,
             order: () => latest,
             limit: () => latest,
-            maybeSingle: () => Promise.resolve({ data: { attempt }, error: null }),
+            maybeSingle: () => Promise.resolve({ data: { attempt, status: 'failed' }, error: null }),
           };
           return latest;
         }
@@ -138,7 +197,45 @@ Deno.test('retries a conflicting delivery allocation with the next attempt numbe
   const delivery = await createRepository(client).createNextDelivery(REQUEST_ID);
 
   assertEquals(insertedAttempts, [3, 4]);
-  assertEquals(delivery, { id: '50000000-0000-4000-8000-000000000005', attempt: 4 });
+  assertEquals(delivery, {
+    kind: 'created',
+    delivery: { id: '50000000-0000-4000-8000-000000000005', attempt: 4, status: 'pending' },
+  });
+});
+
+Deno.test('production persistence fails only a pending retry delivery', async () => {
+  const predicates: Array<[string, unknown]> = [];
+  let update: Record<string, unknown> | null = null;
+  const query = {
+    update: (values: Record<string, unknown>) => {
+      update = values;
+      return query;
+    },
+    eq: (column: string, value: unknown) => {
+      predicates.push([column, value]);
+      return query;
+    },
+    select: () => query,
+    maybeSingle: () => Promise.resolve({ data: null, error: null }),
+  };
+  const client = {
+    auth: { getUser: () => Promise.resolve({ data: { user: null }, error: null }) },
+    from: () => query,
+  } as unknown as RetryTelegramClient;
+
+  const failed = await createRepository(client).failDelivery(
+    '50000000-0000-4000-8000-000000000005',
+    { code: 'TELEGRAM_TIMEOUT', message: 'Telegram request timed out' },
+  );
+
+  assertEquals(failed, false);
+  assertEquals(predicates, [
+    ['id', '50000000-0000-4000-8000-000000000005'],
+    ['status', 'pending'],
+  ]);
+  const recordedUpdate = update as Record<string, unknown> | null;
+  assertEquals(recordedUpdate?.status, 'failed');
+  assertEquals(recordedUpdate?.error_code, 'TELEGRAM_TIMEOUT');
 });
 
 function deliveryRequest() {

@@ -31,7 +31,7 @@ export type SubmitRequestPayload = {
 
 export type SubmitRequestResult = {
   reference: string;
-  telegramStatus: 'sent' | 'failed';
+  telegramStatus: 'pending' | 'sent' | 'failed';
 };
 
 export type RoomContextResult = {

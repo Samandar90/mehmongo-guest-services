@@ -21,10 +21,10 @@ const ACTIVE_ROOM = {
 type DependencyOptions = {
   activeRoom?: typeof ACTIVE_ROOM | null;
   existingReference?: string;
-  existingTelegramStatus?: 'sent' | 'failed';
+  existingTelegramStatus?: 'pending' | 'sent' | 'failed';
   atomicResults?: Array<'created' | 'existing' | 'rate_limited' | 'reference_conflict'>;
   insertedReference?: string;
-  insertedTelegramStatus?: 'sent' | 'failed';
+  insertedTelegramStatus?: 'pending' | 'sent' | 'failed';
   atomicError?: Error;
 };
 
@@ -83,15 +83,15 @@ function requestDependencies(options: DependencyOptions = {}) {
       if (result === 'existing') return Promise.resolve({
         kind: result,
         request: {
+          id: '40000000-0000-4000-8000-000000000004',
           reference: options.existingReference ?? 'MG-EXISTING',
-          telegramStatus: options.existingTelegramStatus ?? 'failed',
         },
       });
       return Promise.resolve({
         kind: 'created' as const,
         request: {
+          id: '40000000-0000-4000-8000-000000000004',
           reference: options.insertedReference ?? 'MG-ABCDEFGH',
-          telegramStatus: options.insertedTelegramStatus ?? 'sent',
         },
       });
     },
@@ -99,9 +99,9 @@ function requestDependencies(options: DependencyOptions = {}) {
       id: '40000000-0000-4000-8000-000000000004',
       ...transportDeliveryRequest(),
     }),
-    createDelivery: () => Promise.resolve({ id: '50000000-0000-4000-8000-000000000005' }),
-    completeDelivery: () => Promise.resolve(),
-    failDelivery: () => Promise.resolve(),
+    findDelivery: () => Promise.resolve({ id: '50000000-0000-4000-8000-000000000005', attempt: 1, status: 'pending' as const }),
+    completeDelivery: () => Promise.resolve(true),
+    failDelivery: () => Promise.resolve(true),
   };
 
   return {
@@ -149,7 +149,7 @@ Deno.test('delegates unauthenticated acceptance to one atomic repository call', 
         atomicCalls.push(request);
         return Promise.resolve({
           kind: 'created',
-          request: { reference: 'MG-ATOMICAB', telegramStatus: 'failed' },
+          request: { id: '40000000-0000-4000-8000-000000000004', reference: 'MG-ATOMICAB' },
         });
       },
       findByReference: () => Promise.resolve({
@@ -157,9 +157,9 @@ Deno.test('delegates unauthenticated acceptance to one atomic repository call', 
         ...transportDeliveryRequest(),
         reference: 'MG-ATOMICAB',
       }),
-      createDelivery: () => Promise.resolve({ id: '50000000-0000-4000-8000-000000000005' }),
-      completeDelivery: () => Promise.resolve(),
-      failDelivery: () => Promise.resolve(),
+      findDelivery: () => Promise.resolve({ id: '50000000-0000-4000-8000-000000000005', attempt: 1, status: 'pending' }),
+      completeDelivery: () => Promise.resolve(true),
+      failDelivery: () => Promise.resolve(true),
     },
     requestHashSecret: 'test-request-hash-secret',
     referenceFactory: () => 'MG-ATOMICAB',
@@ -309,7 +309,11 @@ Deno.test('production persistence reports failed until Telegram delivery exists'
       assertEquals(functionName, 'submit_guest_request');
       rpcArguments = arguments_;
       return Promise.resolve({
-        data: [{ outcome: 'created', reference: 'MG-DURABLEA' }],
+      data: [{
+        outcome: 'created',
+        request_id: '40000000-0000-4000-8000-000000000004',
+        reference: 'MG-DURABLEA',
+      }],
         error: null,
       });
     },
@@ -333,9 +337,9 @@ Deno.test('production persistence reports failed until Telegram delivery exists'
     reference: 'MG-DURABLEA',
   });
 
-  assertEquals(result, {
+  assertEquals(result as unknown, {
     kind: 'created',
-    request: { reference: 'MG-DURABLEA', telegramStatus: 'failed' },
+    request: { id: '40000000-0000-4000-8000-000000000004', reference: 'MG-DURABLEA' },
   });
   assertEquals(rpcArguments, {
     p_reference: 'MG-DURABLEA',
@@ -384,14 +388,65 @@ Deno.test('production persistence classifies a unique reference collision', asyn
   assertEquals(result, { kind: 'reference_conflict' });
 });
 
-Deno.test('production persistence fetches the winner of an idempotency unique race', async () => {
+Deno.test('production persistence resolves an atomic response without a request id by its unique reference', async () => {
   const query = {
     select: () => query,
     eq: () => query,
-    maybeSingle: () => Promise.resolve({ data: { reference: 'MG-RACEDABC' }, error: null }),
+    maybeSingle: () => Promise.resolve({
+      data: { id: '40000000-0000-4000-8000-000000000004', reference: 'MG-DURABLEA' },
+      error: null,
+    }),
   };
   const client = {
     from: () => query,
+    rpc: () => Promise.resolve({
+      data: [{ outcome: 'created', reference: 'MG-DURABLEA' }],
+      error: null,
+    }),
+  } as unknown as SubmitRequestClient;
+
+  const result = await createRepository(client).submitAtomically({
+    roomToken: ROOM_TOKEN,
+    idempotencyKey: IDEMPOTENCY_KEY,
+    service: 'transport',
+    choice: '',
+    pickup: 'Kamilovs Hotel',
+    destination: 'Samarkand Airport',
+    date: '2099-12-31',
+    time: '14:30',
+    partySize: 2,
+    guestName: 'Alex',
+    contact: '+998901234567',
+    note: '',
+    room: ACTIVE_ROOM,
+    rateKey: 'hashed-rate-key',
+    reference: 'MG-DURABLEA',
+  });
+
+  assertEquals(result, {
+    kind: 'created',
+    request: { id: '40000000-0000-4000-8000-000000000004', reference: 'MG-DURABLEA' },
+  });
+});
+
+Deno.test('production persistence fetches the winner of an idempotency unique race', async () => {
+  const requestQuery = {
+    select: () => requestQuery,
+    eq: () => requestQuery,
+    maybeSingle: () => Promise.resolve({
+      data: { id: '40000000-0000-4000-8000-000000000004', reference: 'MG-RACEDABC' },
+      error: null,
+    }),
+  };
+  const deliveryQuery = {
+    select: () => deliveryQuery,
+    eq: () => deliveryQuery,
+    order: () => deliveryQuery,
+    limit: () => deliveryQuery,
+    maybeSingle: () => Promise.resolve({ data: { status: 'failed' }, error: null }),
+  };
+  const client = {
+    from: (table: string) => table === 'telegram_deliveries' ? deliveryQuery : requestQuery,
     rpc: () => Promise.resolve({
       data: null,
       error: { code: '23505', constraint: 'service_requests_idempotency_key_key' },
@@ -417,7 +472,7 @@ Deno.test('production persistence fetches the winner of an idempotency unique ra
 
   assertEquals(result, {
     kind: 'existing',
-    request: { reference: 'MG-RACEDABC', telegramStatus: 'failed' },
+    request: { id: '40000000-0000-4000-8000-000000000004', reference: 'MG-RACEDABC' },
   });
 });
 
@@ -451,6 +506,129 @@ Deno.test('production persistence returns the latest Telegram delivery status fo
   assertEquals(deliveryPredicates, [['request_id', '40000000-0000-4000-8000-000000000004']]);
 });
 
+Deno.test('production persistence returns a pending idempotent delivery status exactly', async () => {
+  const requestQuery = {
+    select: () => requestQuery,
+    eq: () => requestQuery,
+    maybeSingle: () => Promise.resolve({
+      data: { id: '40000000-0000-4000-8000-000000000004', reference: 'MG-PENDINGA' },
+      error: null,
+    }),
+  };
+  const deliveryQuery = {
+    select: () => deliveryQuery,
+    eq: () => deliveryQuery,
+    order: () => deliveryQuery,
+    limit: () => deliveryQuery,
+    maybeSingle: () => Promise.resolve({ data: { status: 'pending' }, error: null }),
+  };
+  const client = {
+    from: (table: string) => table === 'service_requests' ? requestQuery : deliveryQuery,
+  } as unknown as SubmitRequestClient;
+
+  const result = await createRepository(client).findByIdempotencyKey(IDEMPOTENCY_KEY);
+
+  assertEquals(result, { reference: 'MG-PENDINGA', telegramStatus: 'pending' });
+});
+
+Deno.test('production persistence completes only a pending delivery', async () => {
+  const predicates: Array<[string, unknown]> = [];
+  let update: Record<string, unknown> | null = null;
+  const query = {
+    update: (values: Record<string, unknown>) => {
+      update = values;
+      return query;
+    },
+    eq: (column: string, value: unknown) => {
+      predicates.push([column, value]);
+      return query;
+    },
+    select: () => query,
+    maybeSingle: () => Promise.resolve({ data: { id: '50000000-0000-4000-8000-000000000005' }, error: null }),
+  };
+  const client = { from: () => query } as unknown as SubmitRequestClient;
+
+  const completed = await createRepository(client).completeDelivery(
+    '50000000-0000-4000-8000-000000000005',
+    { telegramMessageId: 42 },
+  );
+
+  assertEquals(completed, true);
+  assertEquals(predicates, [
+    ['id', '50000000-0000-4000-8000-000000000005'],
+    ['status', 'pending'],
+  ]);
+  const recordedUpdate = update as Record<string, unknown> | null;
+  assertEquals(recordedUpdate?.status, 'sent');
+  assertEquals(recordedUpdate?.telegram_message_id, 42);
+});
+
+Deno.test('uses the atomic first pending delivery instead of creating another delivery row', async () => {
+  let createDeliveryCalls = 0;
+  const dependencies = {
+    repository: {
+      findByIdempotencyKey: () => Promise.resolve(null),
+      findActiveRoom: () => Promise.resolve(ACTIVE_ROOM),
+      submitAtomically: () => Promise.resolve({
+        kind: 'created',
+        request: { id: '40000000-0000-4000-8000-000000000004', reference: 'MG-ABCDEFGH' },
+      }),
+      findByReference: () => Promise.resolve({ id: '40000000-0000-4000-8000-000000000004', ...transportDeliveryRequest() }),
+      findDelivery: () => Promise.resolve({ id: '50000000-0000-4000-8000-000000000005', attempt: 1, status: 'pending' }),
+      createDelivery: () => {
+        createDeliveryCalls += 1;
+        return Promise.reject(new Error('attempt one must be atomic'));
+      },
+      completeDelivery: () => Promise.resolve(true),
+      failDelivery: () => Promise.resolve(true),
+    },
+    requestHashSecret: 'test-request-hash-secret',
+    referenceFactory: () => 'MG-ABCDEFGH',
+    telegramSender: () => Promise.resolve({ messageId: 42 }),
+  };
+
+  const response = await handler(validSubmitRequest(), dependencies as unknown as SubmitRequestDependencies);
+
+  assertEquals(response.status, 201);
+  assertEquals(createDeliveryCalls, 0);
+});
+
+Deno.test('leaves an accepted request pending when sent-state persistence fails', async () => {
+  let sends = 0;
+  let failedUpdates = 0;
+  const dependencies = {
+    repository: {
+      findByIdempotencyKey: () => Promise.resolve(null),
+      findActiveRoom: () => Promise.resolve(ACTIVE_ROOM),
+      submitAtomically: () => Promise.resolve({
+        kind: 'created',
+        request: { id: '40000000-0000-4000-8000-000000000004', reference: 'MG-ABCDEFGH' },
+      }),
+      findByReference: () => Promise.resolve({ id: '40000000-0000-4000-8000-000000000004', ...transportDeliveryRequest() }),
+      findDelivery: () => Promise.resolve({ id: '50000000-0000-4000-8000-000000000005', attempt: 1, status: 'pending' }),
+      createDelivery: () => Promise.reject(new Error('should not create')),
+      completeDelivery: () => Promise.reject(new Error('database write failed')),
+      failDelivery: () => {
+        failedUpdates += 1;
+        return Promise.resolve(true);
+      },
+    },
+    requestHashSecret: 'test-request-hash-secret',
+    referenceFactory: () => 'MG-ABCDEFGH',
+    telegramSender: () => {
+      sends += 1;
+      return Promise.resolve({ messageId: 42 });
+    },
+  };
+
+  const response = await handler(validSubmitRequest(), dependencies as unknown as SubmitRequestDependencies);
+
+  assertEquals(response.status, 202);
+  assertEquals(await response.json(), { reference: 'MG-ABCDEFGH', telegramStatus: 'pending' });
+  assertEquals(sends, 1);
+  assertEquals(failedUpdates, 0);
+});
+
 Deno.test('records a sent first delivery and returns sent', async () => {
   const createdDeliveries: Array<{ requestId: string; attempt: number }> = [];
   const completedDeliveries: Array<{ deliveryId: string; telegramMessageId: number }> = [];
@@ -460,32 +638,29 @@ Deno.test('records a sent first delivery and returns sent', async () => {
       findActiveRoom: () => Promise.resolve(ACTIVE_ROOM),
       submitAtomically: () => Promise.resolve({
         kind: 'created',
-        request: { reference: 'MG-ABCDEFGH', telegramStatus: 'failed' },
+        request: { id: '40000000-0000-4000-8000-000000000004', reference: 'MG-ABCDEFGH' },
       }),
       findByReference: () => Promise.resolve({
         id: '40000000-0000-4000-8000-000000000004',
         ...transportDeliveryRequest(),
       }),
-      createDelivery: (requestId: string, attempt: number) => {
-        createdDeliveries.push({ requestId, attempt });
-        return Promise.resolve({ id: '50000000-0000-4000-8000-000000000005' });
-      },
+      findDelivery: () => Promise.resolve({ id: '50000000-0000-4000-8000-000000000005', attempt: 1, status: 'pending' }),
       completeDelivery: (deliveryId: string, result: { telegramMessageId: number }) => {
         completedDeliveries.push({ deliveryId, ...result });
-        return Promise.resolve();
+        return Promise.resolve(true);
       },
-      failDelivery: () => Promise.resolve(),
+      failDelivery: () => Promise.resolve(true),
     },
     requestHashSecret: 'test-request-hash-secret',
     referenceFactory: () => 'MG-ABCDEFGH',
     telegramSender: () => Promise.resolve({ messageId: 42 }),
   };
 
-  const response = await handler(validSubmitRequest(), dependencies as SubmitRequestDependencies);
+  const response = await handler(validSubmitRequest(), dependencies as unknown as SubmitRequestDependencies);
 
   assertEquals(response.status, 201);
   assertEquals(await response.json(), { reference: 'MG-ABCDEFGH', telegramStatus: 'sent' });
-  assertEquals(createdDeliveries, [{ requestId: '40000000-0000-4000-8000-000000000004', attempt: 1 }]);
+  assertEquals(createdDeliveries, []);
   assertEquals(completedDeliveries, [{ deliveryId: '50000000-0000-4000-8000-000000000005', telegramMessageId: 42 }]);
 });
 
@@ -499,20 +674,17 @@ Deno.test('keeps a newly accepted request after both Telegram sends fail', async
       findActiveRoom: () => Promise.resolve(ACTIVE_ROOM),
       submitAtomically: () => Promise.resolve({
         kind: 'created',
-        request: { reference: 'MG-ABCDEFGH', telegramStatus: 'failed' },
+        request: { id: '40000000-0000-4000-8000-000000000004', reference: 'MG-ABCDEFGH' },
       }),
       findByReference: () => Promise.resolve({
         id: '40000000-0000-4000-8000-000000000004',
         ...transportDeliveryRequest(),
       }),
-      createDelivery: (requestId: string, attempt: number) => {
-        createdDeliveries.push({ requestId, attempt });
-        return Promise.resolve({ id: '50000000-0000-4000-8000-000000000005' });
-      },
-      completeDelivery: () => Promise.resolve(),
+      findDelivery: () => Promise.resolve({ id: '50000000-0000-4000-8000-000000000005', attempt: 1, status: 'pending' }),
+      completeDelivery: () => Promise.resolve(true),
       failDelivery: (deliveryId: string, error: { code: string; message: string }) => {
         failedDeliveries.push({ deliveryId, errorCode: error.code, errorMessage: error.message });
-        return Promise.resolve();
+        return Promise.resolve(true);
       },
     },
     requestHashSecret: 'test-request-hash-secret',
@@ -526,12 +698,12 @@ Deno.test('keeps a newly accepted request after both Telegram sends fail', async
     },
   };
 
-  const response = await handler(validSubmitRequest(), dependencies as SubmitRequestDependencies);
+  const response = await handler(validSubmitRequest(), dependencies as unknown as SubmitRequestDependencies);
 
   assertEquals(response.status, 202);
   assertEquals(await response.json(), { reference: 'MG-ABCDEFGH', telegramStatus: 'failed' });
   assertEquals(sends, 2);
-  assertEquals(createdDeliveries, [{ requestId: '40000000-0000-4000-8000-000000000004', attempt: 1 }]);
+  assertEquals(createdDeliveries, []);
   assertEquals(failedDeliveries.length, 1);
   assertEquals(failedDeliveries[0].errorMessage.includes('+998'), false);
 });

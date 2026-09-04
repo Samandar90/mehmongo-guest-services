@@ -20,9 +20,16 @@ export type ActiveRoom = {
   hotelId: string;
 };
 
+export type TelegramStatus = 'pending' | 'sent' | 'failed';
+
 export type StoredRequest = {
   reference: string;
-  telegramStatus: 'sent' | 'failed';
+  telegramStatus: TelegramStatus;
+};
+
+export type AtomicRequest = {
+  id: string;
+  reference: string;
 };
 
 export type DeliveryRequest = TelegramRequest & {
@@ -31,6 +38,8 @@ export type DeliveryRequest = TelegramRequest & {
 
 export type TelegramDelivery = {
   id: string;
+  attempt: number;
+  status: TelegramStatus;
 };
 
 export type InsertRequest = ValidatedRequest & {
@@ -40,10 +49,14 @@ export type InsertRequest = ValidatedRequest & {
 };
 
 export type InsertResult =
-  | { kind: 'created'; request: StoredRequest }
-  | { kind: 'existing'; request: StoredRequest }
+  | { kind: 'created'; request: AtomicRequest }
+  | { kind: 'existing'; request: AtomicRequest }
   | { kind: 'rate_limited' }
   | { kind: 'reference_conflict' };
+
+type AtomicRpcResult =
+  | { kind: 'created' | 'existing'; request: { id: string | null; reference: string } }
+  | { kind: 'rate_limited' };
 
 type InsertConflict = 'idempotency_conflict' | 'reference_conflict';
 
@@ -52,9 +65,9 @@ export type SubmitRequestRepository = {
   findActiveRoom: (roomToken: string) => Promise<ActiveRoom | null>;
   submitAtomically: (request: InsertRequest) => Promise<InsertResult>;
   findByReference: (reference: string) => Promise<DeliveryRequest | null>;
-  createDelivery: (requestId: string, attempt: number) => Promise<TelegramDelivery>;
-  completeDelivery: (deliveryId: string, result: { telegramMessageId: number }) => Promise<void>;
-  failDelivery: (deliveryId: string, error: { code: string; message: string }) => Promise<void>;
+  findDelivery: (requestId: string, attempt: number) => Promise<TelegramDelivery | null>;
+  completeDelivery: (deliveryId: string, result: { telegramMessageId: number }) => Promise<boolean>;
+  failDelivery: (deliveryId: string, error: { code: string; message: string }) => Promise<boolean>;
 };
 
 export type SubmitRequestDependencies = {
@@ -163,17 +176,17 @@ function uniqueConflict(error: unknown): InsertConflict | null {
   return null;
 }
 
-function readAtomicResult(data: unknown): InsertResult {
+function readAtomicResult(data: unknown): AtomicRpcResult {
   if (!Array.isArray(data) || data.length !== 1 || !data[0] || typeof data[0] !== 'object') {
     throw new Error('Atomic request response is invalid');
   }
 
-  const result = data[0] as { outcome?: unknown; reference?: unknown };
+  const result = data[0] as { outcome?: unknown; request_id?: unknown; reference?: unknown };
   if (result.outcome === 'rate_limited') return { kind: 'rate_limited' };
   if ((result.outcome === 'created' || result.outcome === 'existing') && typeof result.reference === 'string') {
     return {
       kind: result.outcome,
-      request: { reference: result.reference, telegramStatus: 'failed' },
+      request: { id: typeof result.request_id === 'string' ? result.request_id : null, reference: result.reference },
     };
   }
   throw new Error('Atomic request response has an unknown outcome');
@@ -227,7 +240,18 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
       .maybeSingle();
     if (deliveryError) throw deliveryError;
     const status = delivery && typeof delivery === 'object' ? (delivery as { status?: unknown }).status : null;
-    return { ...stored, telegramStatus: status === 'sent' ? 'sent' : 'failed' };
+    return { ...stored, telegramStatus: status === 'pending' || status === 'sent' || status === 'failed' ? status : 'failed' };
+  };
+
+  const findRequestIdByReference = async (reference: string): Promise<string | null> => {
+    const { data, error } = await client
+      .from('service_requests')
+      .select('id')
+      .eq('reference', reference)
+      .maybeSingle();
+    if (error) throw error;
+    const id = data && typeof data === 'object' ? (data as { id?: unknown }).id : null;
+    return typeof id === 'string' ? id : null;
   };
 
   return {
@@ -265,10 +289,17 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
       if (conflict === 'reference_conflict') return { kind: conflict };
       if (conflict === 'idempotency_conflict') {
         const existingRequest = await findByIdempotencyKey(request.idempotencyKey);
-        if (existingRequest) return { kind: 'existing', request: existingRequest };
+        if (existingRequest) {
+          const id = await findRequestIdByReference(existingRequest.reference);
+          if (id) return { kind: 'existing', request: { id, reference: existingRequest.reference } };
+        }
       }
       if (error) throw error;
-      return readAtomicResult(data);
+      const atomicResult = readAtomicResult(data);
+      if (atomicResult.kind === 'rate_limited') return atomicResult;
+      const id = atomicResult.request.id ?? await findRequestIdByReference(atomicResult.request.reference);
+      if (!id) throw new Error('Atomic request response has no stored request');
+      return { kind: atomicResult.kind, request: { id, reference: atomicResult.request.reference } };
     },
     async findByReference(reference) {
       const { data, error } = await client
@@ -279,19 +310,22 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
       if (error) throw error;
       return readDeliveryRequest(data);
     },
-    async createDelivery(requestId, attempt) {
+    async findDelivery(requestId, attempt) {
       const { data, error } = await client
         .from('telegram_deliveries')
-        .insert({ request_id: requestId, attempt, status: 'pending' })
-        .select('id')
+        .select('id, attempt, status')
+        .eq('request_id', requestId)
+        .eq('attempt', attempt)
         .maybeSingle();
       if (error) throw error;
-      const id = data && typeof data === 'object' ? (data as { id?: unknown }).id : null;
-      if (typeof id !== 'string') throw new Error('Telegram delivery response is invalid');
-      return { id };
+      if (!data || typeof data !== 'object') return null;
+      const delivery = data as { id?: unknown; attempt?: unknown; status?: unknown };
+      if (typeof delivery.id !== 'string' || delivery.attempt !== attempt ||
+        (delivery.status !== 'pending' && delivery.status !== 'sent' && delivery.status !== 'failed')) return null;
+      return { id: delivery.id, attempt, status: delivery.status };
     },
     async completeDelivery(deliveryId, result) {
-      const { error } = await client
+      const { data, error } = await client
         .from('telegram_deliveries')
         .update({
           status: 'sent',
@@ -301,11 +335,14 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
           completed_at: new Date().toISOString(),
         })
         .eq('id', deliveryId)
+        .eq('status', 'pending')
+        .select('id')
         .maybeSingle();
       if (error) throw error;
+      return Boolean(data);
     },
     async failDelivery(deliveryId, failure) {
-      const { error } = await client
+      const { data, error } = await client
         .from('telegram_deliveries')
         .update({
           status: 'failed',
@@ -314,8 +351,11 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
           completed_at: new Date().toISOString(),
         })
         .eq('id', deliveryId)
+        .eq('status', 'pending')
+        .select('id')
         .maybeSingle();
       if (error) throw error;
+      return Boolean(data);
     },
   };
 }
@@ -378,8 +418,8 @@ async function deliverNewRequest(
   repository: SubmitRequestRepository,
   telegramSender: SubmitRequestDependencies['telegramSender'],
   request: DeliveryRequest,
-): Promise<'sent' | 'failed'> {
-  const delivery = await repository.createDelivery(request.id, 1);
+  delivery: TelegramDelivery,
+): Promise<TelegramStatus> {
   let failure = { code: 'TELEGRAM_DELIVERY_FAILED', message: 'Telegram delivery failed' };
 
   for (let sendAttempt = 0; sendAttempt < 2; sendAttempt += 1) {
@@ -390,12 +430,18 @@ async function deliverNewRequest(
       failure = safeDeliveryFailure(reason);
       continue;
     }
-    await repository.completeDelivery(delivery.id, { telegramMessageId: result.messageId });
-    return 'sent';
+    try {
+      return await repository.completeDelivery(delivery.id, { telegramMessageId: result.messageId }) ? 'sent' : 'pending';
+    } catch {
+      return 'pending';
+    }
   }
 
-  await repository.failDelivery(delivery.id, failure);
-  return 'failed';
+  try {
+    return await repository.failDelivery(delivery.id, failure) ? 'failed' : 'pending';
+  } catch {
+    return 'pending';
+  }
 }
 
 export async function handler(request: Request, context?: HandlerContext): Promise<Response> {
@@ -421,12 +467,16 @@ export async function handler(request: Request, context?: HandlerContext): Promi
       if (result.kind === 'created') {
         const stored = await dependencies.repository.findByReference(result.request.reference);
         if (!stored) throw new Error('Created request is unavailable for delivery');
-        const telegramStatus = await deliverNewRequest(dependencies.repository, dependencies.telegramSender, stored);
+        const delivery = await dependencies.repository.findDelivery(result.request.id, 1);
+        if (!delivery || delivery.status !== 'pending') {
+          return submitJson({ reference: stored.reference, telegramStatus: 'pending' }, 202);
+        }
+        const telegramStatus = await deliverNewRequest(dependencies.repository, dependencies.telegramSender, stored, delivery);
         return submitJson({ reference: stored.reference, telegramStatus }, telegramStatus === 'sent' ? 201 : 202);
       }
       if (result.kind === 'existing') {
         const existingRequest = await dependencies.repository.findByIdempotencyKey(validated.idempotencyKey);
-        return submitJson(existingRequest ?? result.request, 200);
+        return submitJson(existingRequest ?? { reference: result.request.reference, telegramStatus: 'failed' }, 200);
       }
       if (result.kind === 'rate_limited') return submitJson({ code: 'RATE_LIMITED' }, 429);
     }

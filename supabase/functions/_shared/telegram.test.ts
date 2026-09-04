@@ -80,3 +80,33 @@ Deno.test('classifies a Telegram API failure without exposing its response body'
   assertEquals(caught.message.includes('+998 90 123 45 67'), false);
   assertEquals(caught.message.includes('test-bot-token'), false);
 });
+
+Deno.test('keeps the abort timeout active while a Telegram response body stalls', async () => {
+  const originalSetTimeout = globalThis.setTimeout;
+  let aborted = false;
+  globalThis.setTimeout = ((callback: TimerHandler, _timeout?: number, ...args: unknown[]) =>
+    originalSetTimeout(callback, 1, ...args)) as typeof setTimeout;
+
+  try {
+    const result = await Promise.race([
+      sendTelegramMessage((_, init) => {
+        const signal = init?.signal;
+        return Promise.resolve({
+          ok: true,
+          json: () => new Promise((_, reject) => {
+            signal?.addEventListener('abort', () => {
+              aborted = true;
+              reject(new DOMException('aborted', 'AbortError'));
+            }, { once: true });
+          }),
+        } as unknown as Response);
+      }, 'test-bot-token', '-100123', 'request').then(() => 'resolved', () => 'rejected'),
+      new Promise<string>((resolve) => originalSetTimeout(() => resolve('test-timeout'), 50)),
+    ]);
+
+    assertEquals(result, 'rejected');
+    assertEquals(aborted, true);
+  } finally {
+    globalThis.setTimeout = originalSetTimeout;
+  }
+});

@@ -1,5 +1,5 @@
 begin;
-select plan(23);
+select plan(24);
 select has_table('public'::name, 'admin_users'::name);
 select has_table('public'::name, 'hotels'::name);
 select has_table('public'::name, 'rooms'::name);
@@ -91,7 +91,7 @@ select ok(
 
 select results_eq(
   $$
-    select outcome, reference
+    select outcome, reference, request_id is not null
     from public.submit_guest_request(
       'MG-ATOMICAB',
       '40000000-0000-4000-8000-000000000001',
@@ -101,13 +101,14 @@ select results_eq(
       'transport', '', 'Hotel A', 'Airport', '2099-12-31', '14:30', 2, 'Alex', '+998901234567', ''
     )
   $$,
-  $$values ('created'::text, 'MG-ATOMICAB'::text)$$,
-  'atomic submit creates the first idempotent request'
+  $$values ('created'::text, 'MG-ATOMICAB'::text, true)$$,
+  'atomic submit returns the created request id'
 );
 
 select results_eq(
   $$
-    select outcome, reference
+    select outcome, reference,
+      request_id = (select id from public.service_requests where reference = 'MG-ATOMICAB')
     from public.submit_guest_request(
       'MG-ATOMICCD',
       '40000000-0000-4000-8000-000000000001',
@@ -117,8 +118,19 @@ select results_eq(
       'transport', '', 'Hotel A', 'Airport', '2099-12-31', '14:30', 2, 'Alex', '+998901234567', ''
     )
   $$,
-  $$values ('existing'::text, 'MG-ATOMICAB'::text)$$,
-  'atomic submit returns the existing request for duplicate idempotency'
+  $$values ('existing'::text, 'MG-ATOMICAB'::text, true)$$,
+  'atomic submit returns the existing request id without creating another request'
+);
+
+select results_eq(
+  $$
+    select delivery.attempt, delivery.status
+    from public.telegram_deliveries as delivery
+    join public.service_requests as request on request.id = delivery.request_id
+    where request.reference = 'MG-ATOMICAB'
+  $$,
+  $$values (1::integer, 'pending'::text)$$,
+  'atomic submit creates exactly one pending first Telegram attempt'
 );
 
 select results_eq(

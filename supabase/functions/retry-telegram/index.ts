@@ -12,6 +12,7 @@ import {
 const POST_ALLOWED_METHODS = 'POST, OPTIONS';
 const DELIVERY_ALLOCATION_ATTEMPTS = 3;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+type TelegramStatus = 'pending' | 'sent' | 'failed';
 
 export type RetryRequest = TelegramRequest & {
   id: string;
@@ -21,9 +22,12 @@ export type RetryTelegramRepository = {
   getUserId: (bearerToken: string) => Promise<string | null>;
   isActiveSuperAdmin: (userId: string) => Promise<boolean>;
   findRequest: (requestId: string) => Promise<RetryRequest | null>;
-  createNextDelivery: (requestId: string) => Promise<{ id: string; attempt: number }>;
-  completeDelivery: (deliveryId: string, result: { telegramMessageId: number }) => Promise<void>;
-  failDelivery: (deliveryId: string, error: { code: string; message: string }) => Promise<void>;
+  createNextDelivery: (requestId: string) => Promise<
+    | { kind: 'pending' }
+    | { kind: 'created'; delivery: { id: string; attempt: number; status: TelegramStatus } }
+  >;
+  completeDelivery: (deliveryId: string, result: { telegramMessageId: number }) => Promise<boolean>;
+  failDelivery: (deliveryId: string, error: { code: string; message: string }) => Promise<boolean>;
 };
 
 export type RetryTelegramDependencies = {
@@ -173,7 +177,7 @@ function repositoryFor(client: RetryTelegramClient): RetryTelegramRepository {
       for (let allocationAttempt = 0; allocationAttempt < DELIVERY_ALLOCATION_ATTEMPTS; allocationAttempt += 1) {
         const { data: latest, error: latestError } = await client
           .from('telegram_deliveries')
-          .select('attempt')
+          .select('attempt, status')
           .eq('request_id', requestId)
           .order('attempt', { ascending: false })
           .limit(1)
@@ -183,6 +187,8 @@ function repositoryFor(client: RetryTelegramClient): RetryTelegramRepository {
         if (typeof previousAttempt !== 'number' || !Number.isInteger(previousAttempt) || previousAttempt < 0) {
           throw new Error('Telegram delivery attempt response is invalid');
         }
+        const latestStatus = latest && typeof latest === 'object' ? (latest as { status?: unknown }).status : null;
+        if (latestStatus === 'pending') return { kind: 'pending' };
         const attempt = previousAttempt + 1;
         const { data, error } = await client
           .from('telegram_deliveries')
@@ -195,12 +201,12 @@ function repositoryFor(client: RetryTelegramClient): RetryTelegramRepository {
         }
         const id = data && typeof data === 'object' ? (data as { id?: unknown }).id : null;
         if (typeof id !== 'string') throw new Error('Telegram delivery response is invalid');
-        return { id, attempt };
+        return { kind: 'created', delivery: { id, attempt, status: 'pending' } };
       }
       throw new Error('Unable to allocate Telegram delivery attempt');
     },
     async completeDelivery(deliveryId, result) {
-      const { error } = await client
+      const { data, error } = await client
         .from('telegram_deliveries')
         .update({
           status: 'sent',
@@ -210,11 +216,14 @@ function repositoryFor(client: RetryTelegramClient): RetryTelegramRepository {
           completed_at: new Date().toISOString(),
         })
         .eq('id', deliveryId)
+        .eq('status', 'pending')
+        .select('id')
         .maybeSingle();
       if (error) throw error;
+      return Boolean(data);
     },
     async failDelivery(deliveryId, failure) {
-      const { error } = await client
+      const { data, error } = await client
         .from('telegram_deliveries')
         .update({
           status: 'failed',
@@ -223,8 +232,11 @@ function repositoryFor(client: RetryTelegramClient): RetryTelegramRepository {
           completed_at: new Date().toISOString(),
         })
         .eq('id', deliveryId)
+        .eq('status', 'pending')
+        .select('id')
         .maybeSingle();
       if (error) throw error;
+      return Boolean(data);
     },
   };
 }
@@ -303,14 +315,27 @@ export async function handler(request: Request, context?: HandlerContext): Promi
     const storedRequest = await dependencies.repository.findRequest(requestId);
     if (!storedRequest) return retryJson({ code: 'REQUEST_NOT_FOUND' }, 404);
 
-    const delivery = await dependencies.repository.createNextDelivery(storedRequest.id);
+    const allocation = await dependencies.repository.createNextDelivery(storedRequest.id);
+    if (allocation.kind === 'pending') return retryJson({ code: 'TELEGRAM_DELIVERY_PENDING' }, 409);
+    const delivery = allocation.delivery;
+    let result: { messageId: number };
     try {
-      const result = await dependencies.telegramSender(storedRequest);
-      await dependencies.repository.completeDelivery(delivery.id, { telegramMessageId: result.messageId });
-      return retryJson({ telegramStatus: 'sent' });
+      result = await dependencies.telegramSender(storedRequest);
     } catch (reason) {
-      await dependencies.repository.failDelivery(delivery.id, safeDeliveryFailure(reason));
-      return retryJson({ telegramStatus: 'failed' }, 502);
+      try {
+        return await dependencies.repository.failDelivery(delivery.id, safeDeliveryFailure(reason))
+          ? retryJson({ telegramStatus: 'failed' }, 502)
+          : retryJson({ telegramStatus: 'pending' }, 503);
+      } catch {
+        return retryJson({ telegramStatus: 'pending' }, 503);
+      }
+    }
+    try {
+      return await dependencies.repository.completeDelivery(delivery.id, { telegramMessageId: result.messageId })
+        ? retryJson({ telegramStatus: 'sent' })
+        : retryJson({ telegramStatus: 'pending' }, 503);
+    } catch {
+      return retryJson({ telegramStatus: 'pending' }, 503);
     }
   } catch {
     return retryJson({ code: 'RETRY_FAILED' }, 500);
