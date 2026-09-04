@@ -93,7 +93,7 @@ select results_eq(
   $$
     select outcome, reference
     from public.submit_guest_request(
-      'MG-ATOMIC01',
+      'MG-ATOMICAB',
       '40000000-0000-4000-8000-000000000001',
       'atomic-idempotency-rate-key',
       '30000000-0000-4000-8000-000000000001',
@@ -101,7 +101,7 @@ select results_eq(
       'transport', '', 'Hotel A', 'Airport', '2099-12-31', '14:30', 2, 'Alex', '+998901234567', ''
     )
   $$,
-  $$values ('created'::text, 'MG-ATOMIC01'::text)$$,
+  $$values ('created'::text, 'MG-ATOMICAB'::text)$$,
   'atomic submit creates the first idempotent request'
 );
 
@@ -109,7 +109,7 @@ select results_eq(
   $$
     select outcome, reference
     from public.submit_guest_request(
-      'MG-ATOMIC02',
+      'MG-ATOMICCD',
       '40000000-0000-4000-8000-000000000001',
       'atomic-idempotency-rate-key',
       '30000000-0000-4000-8000-000000000001',
@@ -117,7 +117,7 @@ select results_eq(
       'transport', '', 'Hotel A', 'Airport', '2099-12-31', '14:30', 2, 'Alex', '+998901234567', ''
     )
   $$,
-  $$values ('existing'::text, 'MG-ATOMIC01'::text)$$,
+  $$values ('existing'::text, 'MG-ATOMICAB'::text)$$,
   'atomic submit returns the existing request for duplicate idempotency'
 );
 
@@ -127,7 +127,7 @@ select results_eq(
     from (
       select request_number, (
         public.submit_guest_request(
-          'MG-RATE' || lpad(request_number::text, 4, '0'),
+          'MG-RATEAAA' || chr(ascii('A') + request_number - 1),
           ('50000000-0000-4000-8000-' || lpad(request_number::text, 12, '0'))::uuid,
           'atomic-rate-key',
           '30000000-0000-4000-8000-000000000001',
@@ -147,7 +147,7 @@ select results_eq(
   $$
     select outcome, reference
     from public.submit_guest_request(
-      'MG-RATE0006',
+      'MG-RATEAAAF',
       '50000000-0000-4000-8000-000000000006',
       'atomic-rate-key',
       '30000000-0000-4000-8000-000000000001',

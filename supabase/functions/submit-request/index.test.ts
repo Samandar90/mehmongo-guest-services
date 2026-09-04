@@ -100,8 +100,14 @@ function requestDependencies(options: DependencyOptions = {}) {
     repository,
     requestHashSecret: 'test-request-hash-secret',
     referenceFactory: (() => {
-      let referenceNumber = 0;
-      return () => `MG-TEST${String(referenceNumber += 1).padStart(4, '0')}`;
+      const references = ['MG-TESTAAAA', 'MG-TESTAAAB', 'MG-TESTAAAC'];
+      let index = 0;
+      return () => {
+        const reference = references[index];
+        index += 1;
+        if (!reference) throw new Error('Test reference sequence exhausted');
+        return reference;
+      };
     })(),
     findByIdempotencyCalls,
     findActiveRoomCalls,
@@ -117,7 +123,7 @@ Deno.test('stores one request and returns its reference', async () => {
   assertEquals(await response.json(), { reference: 'MG-ABCDEFGH', telegramStatus: 'sent' });
   assertEquals(dependencies.atomicCalls.length, 1);
   assertEquals(dependencies.findActiveRoomCalls, [ROOM_TOKEN]);
-  assertEquals(dependencies.atomicCalls[0].reference, 'MG-TEST0001');
+  assertEquals(dependencies.atomicCalls[0].reference, 'MG-TESTAAAA');
   assertEquals(dependencies.atomicCalls[0].room, ACTIVE_ROOM);
   assertEquals(dependencies.atomicCalls[0].contact, '+998 90 123 45 67');
   assertEquals(typeof dependencies.atomicCalls[0].rateKey, 'string');
@@ -134,12 +140,12 @@ Deno.test('delegates unauthenticated acceptance to one atomic repository call', 
         atomicCalls.push(request);
         return Promise.resolve({
           kind: 'created',
-          request: { reference: 'MG-ATOMIC01', telegramStatus: 'failed' },
+          request: { reference: 'MG-ATOMICAB', telegramStatus: 'failed' },
         });
       },
     },
     requestHashSecret: 'test-request-hash-secret',
-    referenceFactory: () => 'MG-ATOMIC01',
+    referenceFactory: () => 'MG-ATOMICAB',
   } as unknown as SubmitRequestDependencies;
   const request = validSubmitRequest();
 
@@ -147,9 +153,9 @@ Deno.test('delegates unauthenticated acceptance to one atomic repository call', 
 
   assertEquals(request.headers.has('authorization'), false);
   assertEquals(response.status, 201);
-  assertEquals(await response.json(), { reference: 'MG-ATOMIC01', telegramStatus: 'failed' });
+  assertEquals(await response.json(), { reference: 'MG-ATOMICAB', telegramStatus: 'failed' });
   assertEquals(atomicCalls.length, 1);
-  assertEquals(atomicCalls[0].reference, 'MG-ATOMIC01');
+  assertEquals(atomicCalls[0].reference, 'MG-ATOMICAB');
   assertEquals((atomicCalls[0].rateKey as string).includes('99890'), false);
 });
 
@@ -165,7 +171,7 @@ Deno.test('maps an atomic rate-limit outcome without calling separate persistenc
       },
     },
     requestHashSecret: 'test-request-hash-secret',
-    referenceFactory: () => 'MG-ATOMIC01',
+    referenceFactory: () => 'MG-ATOMICAB',
   } as unknown as SubmitRequestDependencies;
 
   const response = await handler(validSubmitRequest(), dependencies);
@@ -210,13 +216,13 @@ Deno.test('rejects inactive room before insert', async () => {
 
 Deno.test('returns the raced idempotent request after a unique conflict', async () => {
   const dependencies = requestDependencies({
-    existingReference: 'MG-RACED123',
+    existingReference: 'MG-RACEDABC',
     atomicResults: ['existing'],
   });
   const response = await handler(validSubmitRequest(), dependencies);
 
   assertEquals(response.status, 200);
-  assertEquals(await response.json(), { reference: 'MG-RACED123', telegramStatus: 'failed' });
+  assertEquals(await response.json(), { reference: 'MG-RACEDABC', telegramStatus: 'failed' });
   assertEquals(dependencies.findByIdempotencyCalls, [IDEMPOTENCY_KEY]);
   assertEquals(dependencies.atomicCalls.length, 1);
 });
@@ -227,7 +233,7 @@ Deno.test('retries a unique reference collision with a new reference', async () 
 
   assertEquals(response.status, 201);
   assertEquals(dependencies.atomicCalls.length, 2);
-  assertEquals(dependencies.atomicCalls.map((call) => call.reference), ['MG-TEST0001', 'MG-TEST0002']);
+  assertEquals(dependencies.atomicCalls.map((call) => call.reference), ['MG-TESTAAAA', 'MG-TESTAAAB']);
 });
 
 Deno.test('fails safely after bounded reference collisions', async () => {
@@ -285,7 +291,7 @@ Deno.test('production persistence reports failed until Telegram delivery exists'
       assertEquals(functionName, 'submit_guest_request');
       rpcArguments = arguments_;
       return Promise.resolve({
-        data: [{ outcome: 'created', reference: 'MG-DURABLE1' }],
+        data: [{ outcome: 'created', reference: 'MG-DURABLEA' }],
         error: null,
       });
     },
@@ -306,15 +312,15 @@ Deno.test('production persistence reports failed until Telegram delivery exists'
     note: '',
     room: ACTIVE_ROOM,
     rateKey: 'hashed-rate-key',
-    reference: 'MG-DURABLE1',
+    reference: 'MG-DURABLEA',
   });
 
   assertEquals(result, {
     kind: 'created',
-    request: { reference: 'MG-DURABLE1', telegramStatus: 'failed' },
+    request: { reference: 'MG-DURABLEA', telegramStatus: 'failed' },
   });
   assertEquals(rpcArguments, {
-    p_reference: 'MG-DURABLE1',
+    p_reference: 'MG-DURABLEA',
     p_idempotency_key: IDEMPOTENCY_KEY,
     p_rate_limit_key: 'hashed-rate-key',
     p_hotel_id: ACTIVE_ROOM.hotelId,
@@ -354,7 +360,7 @@ Deno.test('production persistence classifies a unique reference collision', asyn
     note: '',
     room: ACTIVE_ROOM,
     rateKey: 'hashed-rate-key',
-    reference: 'MG-DURABLE1',
+    reference: 'MG-DURABLEA',
   });
 
   assertEquals(result, { kind: 'reference_conflict' });
@@ -364,7 +370,7 @@ Deno.test('production persistence fetches the winner of an idempotency unique ra
   const query = {
     select: () => query,
     eq: () => query,
-    maybeSingle: () => Promise.resolve({ data: { reference: 'MG-RACED123' }, error: null }),
+    maybeSingle: () => Promise.resolve({ data: { reference: 'MG-RACEDABC' }, error: null }),
   };
   const client = {
     from: () => query,
@@ -388,11 +394,11 @@ Deno.test('production persistence fetches the winner of an idempotency unique ra
     note: '',
     room: ACTIVE_ROOM,
     rateKey: 'hashed-rate-key',
-    reference: 'MG-DURABLE1',
+    reference: 'MG-DURABLEA',
   });
 
   assertEquals(result, {
     kind: 'existing',
-    request: { reference: 'MG-RACED123', telegramStatus: 'failed' },
+    request: { reference: 'MG-RACEDABC', telegramStatus: 'failed' },
   });
 });
