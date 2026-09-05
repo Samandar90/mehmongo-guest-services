@@ -20,7 +20,7 @@ export const catalogImages: Record<string, CatalogImageVariant> = {
       960
     ]
   },
-  "tashkent-chorsu-hall": {
+  "tashkent-chorsu-dome": {
     "fit": "cover",
     "width": 960,
     "height": 640,
