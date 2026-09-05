@@ -14,62 +14,64 @@ The user's messages should be answered in Russian. Guest-facing website copy sta
 - Preserve existing commits and do not rewrite history.
 - Never commit `.env.local`, Telegram credentials, Supabase service keys, or the ignored local smoke-owner fixture.
 - Use the existing pinned dependencies and the existing Supabase/Docker setup.
+- Files are CRLF on disk: use the Edit tool for multi-line changes and grep for the result; scripted `String.replace` edits have silently missed before.
 
 ## Binding documents
-
-Read these before continuing:
 
 1. `docs/superpowers/specs/2026-08-31-mehmongo-request-admin-design.md`
 2. `docs/superpowers/plans/2026-08-31-mehmongo-super-admin-implementation.md`
 3. `docs/superpowers/plans/2026-08-31-mehmongo-a5-assets-implementation.md`
 4. `docs/operations/supabase-pilot-runbook.md`
+5. `docs/operations/a5-print-checklist.md`
 
 The implementation plans use checkboxes but progress is tracked in the ignored ledgers under `.superpowers/sdd/`. Trust Git history and these ledgers rather than redoing completed tasks.
 
-## Completed work
+## Completed work (all reviewed, fix rounds applied)
 
-- Supabase schema, RLS, migrations, room context, durable guest request submission, rate limiting, idempotency, Telegram delivery, and protected manual retry.
-- Guest route `/r/<opaque-room-token>` and real API-backed English request form.
-- Guest intake Task 7 is reviewed and approved. Full frontend suite passed 23 tests at that point.
-- Deployment runbook committed.
-- Super-admin Task 1 implemented: verified owner login, active `super_admin` check, protected shell, login route, sign-out handling.
-- Task 1 review found sign-out failure/race issues; commit `f0adabe` fixes them and reports 9 focused tests, lint, and build passing. Start by independently reviewing that fix before marking Task 1 complete.
+- Guest intake plan Tasks 1–7: Supabase schema, RLS, migrations, room context, durable guest request submission, rate limiting, idempotency, Telegram delivery, protected manual retry, guest route `/r/<opaque-room-token>`.
+- Super-admin plan Tasks 1–7: owner login and protected shell (`/admin/login`, sign-out hardening incl. re-entry after sign-out), hotel repository and create/edit form, hotel list/detail routes with scoped `.admin-*` styles, room parser and atomic `create_rooms_batch` RPC (pgTAP with anon/non-admin/super-admin role simulation), room editor with selection and guest-link copy, request repository/filters/Telegram retry screen, dashboard metrics. Date filters use Asia/Tashkent day boundaries (recorded ruling; deviates from the plan's UTC test literals).
+- A5 asset plan Tasks 1–7: shared plaque template, QR, rasterizer, download, A5 PDF, ZIP, admin asset generator wired to the room editor selection, verifier script, print checklist. Browser canvas path verified in Chromium on a temporary page; Node generation verified with `npm run assets:generate` + `npm run assets:verify`.
+- Schema additions since the handoff: `updated_at` trigger (`private.set_updated_at`), `create_rooms_batch`, `service_requests_created_idx`. pgTAP suites: 44 assertions across four files.
+- `npm run typecheck` (`tsc -p tsconfig.typecheck.json`) is a clean gate; it extends the root config and excludes `supabase/functions`, which is Deno code verified by `functions:test`/`functions:lint`. Do not add that exclusion to the root `tsconfig.json`: Deno 2 reads it, and excluding the functions there strips their DOM lib types and breaks `deno test`.
+- Public guest origin for admin links and QR codes comes from `VITE_SITE_URL` (`lib/site-url.ts`); keep it identical to `SITE_URL`.
 
-Important recent commits:
-
-- `f0adabe` — harden admin sign-out state
-- `5cc6a7c` — protect the super-admin
-- `92319c3` — submit real guest requests
-- `19e965f` — prevent duplicate Telegram retry allocation
+Important recent commits (newest first): `b11987a` asset generator hardening, `d60d408` typecheck gate, `2ce3d71` A5 verifier, `e1dbb2c` asset generator, `7e1645d` dashboard fix, `e74ec2f` requests screen fix, `f814886` room editor fix, `cee6af3` room batches fix, `a218cbf` hotel screens fix, `6c2e46b` updated_at trigger.
 
 ## Exact next work
 
-1. Review diff `5cc6a7c..f0adabe` against the two findings in `.superpowers/sdd/2026-08-31-mehmongo-super-admin-implementation/task-1-review.md`. If clean, append Task 1 completion to that plan's `progress.md`.
-2. Continue Super Admin Task 2 from `.superpowers/sdd/2026-08-31-mehmongo-super-admin-implementation/task-2-brief.md`: typed hotel repository plus create/edit form, using TDD and a separate review.
-3. Complete Super Admin Tasks 3–7 in order.
-4. Complete the A5 asset-generation plan after the room editor exists.
-5. Run the full verification gate, then prepare the branch for the user's approval before merge/push/deploy.
+1. User-only manual scenario (Claude does not enter passwords): with the disposable ignored local owner, log in at `/admin/login`, create a hotel, paste rooms `205` and `206`, disable `206` and confirm its guest route returns unavailable, generate materials for the selected rooms, and retry a failed Telegram delivery from `/admin/requests`.
+2. User decides merge/push: the branch is ready for review; nothing has been pushed or merged.
+3. Production remains undeployed: select or create a dedicated MehmonGo Supabase project, configure Telegram bot token, group chat ID, request-hash secret, owner account, `SITE_URL` and `VITE_SITE_URL`, then follow `docs/operations/supabase-pilot-runbook.md` and `docs/operations/a5-print-checklist.md`.
 
-Do not add financial analytics yet. This MVP only stores hotel commission as integer basis points. Do not add hotel staff accounts, online payments, Telegram assignment buttons, or separate Telegram groups.
+Do not add financial analytics. This MVP only stores hotel commission as integer basis points. Do not add hotel staff accounts, online payments, Telegram assignment buttons, or separate Telegram groups.
+
+## Known limitations recorded in the ledgers
+
+- `retry-telegram` answers 409 for an already-sent delivery too; the UI says the delivery is already running and asks to refresh.
+- `service_requests.status` only allows `new`, so the dashboard's "Новые заявки" equals the total request count for now.
+- The hotel detail page ships pdf-lib, jszip, qrcode and jsqr in its client chunk (~770 KB) by design of the browser-side generator.
+- The reference plaque in `artifacts/` encodes a sample token and is a visual reference only.
 
 ## Local validation
 
 ```powershell
 npm test -- --run
 npm run lint
+npm run typecheck
 npm run build
+npm audit --omit=dev
 npm run functions:test
 npm run functions:lint
 npm run supabase:test
 npx supabase db lint --local --schema public,private --fail-on error
+npm run assets:generate -- <site-url> kamilovs "Kamilovs Hotel" 205:<token> 206:<token>
+npm run assets:verify -- outputs/a5-verification/manifest.json
 ```
 
-The root `tsc --noEmit` currently includes Deno Edge Function files and reports Deno-environment errors. Browser TypeScript errors were not observed outside `supabase/functions`. Fix the project configuration cleanly before using root `tsc` as a required gate; do not weaken application types.
-
-Local Supabase uses API port `56321` and database port `56322`. Docker Desktop previously failed because stale local runtime socket directories were inaccessible; it was recovered without a factory reset. Do not reset Docker or delete volumes. A local browser smoke test confirmed `/admin/login`; a disposable ignored local owner can log in and reaches `/admin`, which remains 404 until the dashboard task creates that route.
+Local Supabase uses API port `56321` and database port `56322`. Do not reset Docker or delete volumes. If `supabase test db` is interrupted it can leave the `pgtap` extension in `public`, which makes `db lint` report pgTAP internals; `drop extension pgtap` on the local database fixes it. The local database has seeded Kamilovs rooms `205` and `206` with deterministic tokens `20000000-0000-4000-8000-000000000205/206`.
 
 ## Production state
 
-No new backend has been deployed. The connected Supabase projects previously visible were Tishim and two unrelated inactive projects; none was identified as MehmonGo. Do not modify those projects. Production requires the user to select or create a dedicated MehmonGo Supabase project and privately configure Telegram bot token, group chat ID, request-hash secret, owner account, and final site origin.
+No new backend has been deployed. The connected Supabase projects previously visible were Tishim and two unrelated inactive projects; none was identified as MehmonGo. Do not modify those projects.
 
 The existing public demo is still the older hosted site. Do not claim the new Supabase/Telegram/admin system is live until real deployment and end-to-end verification succeed.
