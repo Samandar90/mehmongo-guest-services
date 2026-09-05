@@ -18,7 +18,9 @@
     "supabase:test": "supabase test db",
     "supabase:functions": "supabase functions serve --env-file supabase/.env.local",
     "functions:test": "deno test --allow-read=supabase/config.toml supabase/functions",
-    "functions:lint": "deno lint supabase/functions"
+    "functions:lint": "deno lint supabase/functions",
+    "assets:generate": "tsx scripts/generate-room-assets.ts",
+    "assets:verify": "node scripts/verify-room-assets.mjs"
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",

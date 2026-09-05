@@ -8,6 +8,16 @@ export type RoomGeneratedAsset = {
 };
 
 /**
+ * JSZip detects input types with instanceof checks, which fail across realms
+ * (jsdom tests) and for Blobs in plain Node (verification scripts). Plain bytes
+ * of the current realm work everywhere; Node additionally gets a Buffer.
+ */
+async function zipInput(data: Blob | Uint8Array): Promise<Uint8Array> {
+  const bytes = data instanceof Blob ? new Uint8Array(await data.arrayBuffer()) : new Uint8Array(data);
+  return typeof Buffer !== 'undefined' ? Buffer.from(bytes) : bytes;
+}
+
+/**
  * Deterministic ZIP with <baseName>.png and <baseName>.pdf per room, sorted by
  * base name and DEFLATE-compressed, so the same selection always yields the
  * same archive layout.
@@ -24,9 +34,8 @@ export async function buildHotelAssetZip(assets: RoomGeneratedAsset[]): Promise<
   const zip = new JSZip();
   const sorted = [...assets].sort((left, right) => left.baseName.localeCompare(right.baseName, 'en'));
   for (const asset of sorted) {
-    zip.file(`${asset.baseName}.png`, asset.png);
-    // Wrapped in a Blob: JSZip's typed-array detection is realm-sensitive (jsdom vs Node), Blobs are not.
-    zip.file(`${asset.baseName}.pdf`, new Blob([asset.pdf as BlobPart], { type: 'application/pdf' }));
+    zip.file(`${asset.baseName}.png`, await zipInput(asset.png));
+    zip.file(`${asset.baseName}.pdf`, await zipInput(asset.pdf));
   }
 
   return zip.generateAsync({ type: 'blob', mimeType: 'application/zip', compression: 'DEFLATE', compressionOptions: { level: 6 } });
