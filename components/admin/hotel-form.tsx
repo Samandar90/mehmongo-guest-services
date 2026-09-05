@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, type SubmitEvent } from 'react';
+import { useRef, useState, type SubmitEvent } from 'react';
 import {
   createHotel as createHotelDefault,
   formatCommissionPercent,
+  isDuplicateSlugError,
   updateHotel as updateHotelDefault,
   validateHotelInput,
   type Hotel,
@@ -19,6 +20,8 @@ type HotelFormProps = {
 };
 
 type FieldKey = keyof HotelInput;
+
+const fieldOrder: FieldKey[] = ['name', 'slug', 'address', 'commissionPercent'];
 
 const fieldLabels: Record<FieldKey, string> = {
   name: 'Название',
@@ -40,10 +43,6 @@ function toInput(hotel: Hotel): HotelInput {
   };
 }
 
-function isDuplicateSlug(error: unknown): boolean {
-  return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === '23505';
-}
-
 function isValidationError(error: unknown): error is { code: 'VALIDATION_ERROR'; fields: HotelFieldErrors } {
   return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'VALIDATION_ERROR';
 }
@@ -60,10 +59,17 @@ export function HotelForm({
   const [formError, setFormError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const inputs = useRef<Partial<Record<FieldKey, HTMLInputElement | null>>>({});
+
+  const focusFirstInvalid = (errors: HotelFieldErrors) => {
+    const key = fieldOrder.find((field) => errors[field]);
+    if (key) inputs.current[key]?.focus();
+  };
 
   const setField = (key: FieldKey, value: string) => {
     setValues((current) => ({ ...current, [key]: value }));
     setFieldErrors((current) => (current[key] ? { ...current, [key]: undefined } : current));
+    setFormError(null);
     setSuccess(null);
   };
 
@@ -75,6 +81,7 @@ export function HotelForm({
     const validation = validateHotelInput(values);
     if (!validation.ok) {
       setFieldErrors(validation.errors);
+      focusFirstInvalid(validation.errors);
       return;
     }
 
@@ -86,10 +93,12 @@ export function HotelForm({
       setSuccess(isEdit ? 'Изменения сохранены' : 'Отель создан');
       onSaved?.(saved);
     } catch (error) {
-      if (isDuplicateSlug(error)) {
+      if (isDuplicateSlugError(error)) {
         setFieldErrors({ slug: duplicateSlugMessage });
+        focusFirstInvalid({ slug: duplicateSlugMessage });
       } else if (isValidationError(error)) {
         setFieldErrors(error.fields);
+        focusFirstInvalid(error.fields);
       } else {
         setFormError(genericErrorMessage);
       }
@@ -108,6 +117,7 @@ export function HotelForm({
         <input
           id={id}
           name={key}
+          ref={(element) => { inputs.current[key] = element; }}
           value={values[key]}
           onChange={(event) => setField(key, event.target.value)}
           aria-invalid={error ? true : undefined}
@@ -123,7 +133,7 @@ export function HotelForm({
   return (
     <form className="admin-form" onSubmit={submit} noValidate>
       {renderField('name', { autoComplete: 'organization', maxLength: 120 })}
-      {renderField('slug', { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false, maxLength: 120 })}
+      {renderField('slug', { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false })}
       {renderField('address', { autoComplete: 'street-address', maxLength: 240 })}
       {renderField('commissionPercent', { inputMode: 'decimal', placeholder: '15' })}
       {formError ? <p role="alert" className="admin-form-error">{formError}</p> : null}

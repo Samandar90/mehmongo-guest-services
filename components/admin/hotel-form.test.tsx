@@ -121,6 +121,8 @@ describe('HotelForm', () => {
     await user.click(screen.getByRole('button', { name: 'Создать отель' }));
 
     expect(screen.getByRole('button', { name: 'Сохранение…' })).toBeDisabled();
+    expect(screen.getByLabelText('Название')).toBeDisabled();
+    expect(screen.getByLabelText('Процент отеля')).toBeDisabled();
     resolveCreate?.(kamilovsHotel);
     await waitFor(() => expect(screen.getByRole('button', { name: 'Создать отель' })).toBeEnabled());
   });
@@ -139,5 +141,43 @@ describe('HotelForm', () => {
     await user.click(screen.getByRole('button', { name: 'Создать отель' }));
     expect(await screen.findByRole('status')).toHaveTextContent('Отель создан');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('moves focus to the first invalid field when validation fails', async () => {
+    const user = userEvent.setup();
+    const createHotel = vi.fn();
+    renderHotelForm({ createHotel });
+
+    await fillHotelForm(user, { name: 'Kamilovs Hotel', slug: 'Bad Slug', address: '', percentage: '101' });
+    await user.click(screen.getByRole('button', { name: 'Создать отель' }));
+
+    expect(screen.getByLabelText('Slug')).toHaveFocus();
+    expect(screen.getByText('Slug: строчные латинские буквы, цифры и дефисы')).toHaveAttribute('id', 'slug-error');
+    expect(createHotel).not.toHaveBeenCalled();
+  });
+
+  it('clears the form-level error once the user edits a field', async () => {
+    const user = userEvent.setup();
+    renderHotelForm({ createHotel: vi.fn().mockRejectedValue(new Error('network')) });
+
+    await fillHotelForm(user, { name: 'Kamilovs Hotel', slug: 'kamilovs', address: '', percentage: '15' });
+    await user.click(screen.getByRole('button', { name: 'Создать отель' }));
+    await screen.findByRole('alert');
+
+    await user.type(screen.getByLabelText('Адрес'), 'Samarkand');
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('shows the duplicate slug error when an edit collides with another hotel', async () => {
+    const user = userEvent.setup();
+    const updateHotel = vi.fn().mockRejectedValue({ code: '23505', message: 'duplicate key value' });
+    renderHotelForm({ hotel: kamilovsHotel, updateHotel });
+
+    await fillField(user, 'Slug', 'other-hotel');
+    await user.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    expect(await screen.findByText('Такой slug уже используется')).toHaveAttribute('id', 'slug-error');
+    expect(screen.getByLabelText('Slug')).toHaveValue('other-hotel');
   });
 });

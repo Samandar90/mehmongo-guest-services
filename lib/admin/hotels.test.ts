@@ -3,6 +3,7 @@ import {
   createHotel,
   formatCommissionPercent,
   getHotel,
+  isDuplicateSlugError,
   listHotels,
   setHotelActive,
   updateHotel,
@@ -146,6 +147,25 @@ describe('hotel repository', () => {
 
     await expect(listHotels(client)).resolves.toEqual([kamilovsHotel]);
     expect(builder.order).toHaveBeenCalledWith('name', { ascending: true });
+  });
+
+  it('returns a mapped hotel by id', async () => {
+    const { client, builder } = createHotelsClient();
+
+    await expect(getHotel('hotel-1', client)).resolves.toEqual(kamilovsHotel);
+    expect(builder.eq).toHaveBeenCalledWith('id', 'hotel-1');
+  });
+
+  it('returns an empty list when the query yields no rows', async () => {
+    const { client } = createHotelsClient({ data: null, error: null });
+
+    await expect(listHotels(client)).resolves.toEqual([]);
+  });
+
+  it('recognizes a Postgres unique violation as a duplicate slug', () => {
+    expect(isDuplicateSlugError({ code: '23505', message: 'duplicate key value' })).toBe(true);
+    expect(isDuplicateSlugError(new Error('network'))).toBe(false);
+    expect(isDuplicateSlugError(null)).toBe(false);
   });
 
   it('returns null for a missing hotel', async () => {

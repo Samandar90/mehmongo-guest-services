@@ -84,6 +84,11 @@ export function validateHotelInput(input: HotelInput): HotelValidationResult {
   return { ok: true, value: { name, slug, address, commissionBps } };
 }
 
+/** Postgres unique_violation on hotels.slug (the only unique text column). */
+export function isDuplicateSlugError(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === '23505';
+}
+
 export function formatCommissionPercent(commissionBps: number): string {
   return (commissionBps / 100).toFixed(2).replace(/\.?0+$/, '');
 }
