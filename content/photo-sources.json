@@ -2,30 +2,30 @@
   "note": "Sources of the guest catalogue photos. scripts/build-catalog-images.mjs downloads and resizes them; app/photo-credits/page.tsx renders the credits from this file, so attribution can never drift from what the site serves. 'crop' picks the part of a place photo that stays in the 3:2 card.",
   "photos": [
     {
-      "name": "tashkent-hazrati-imam",
-      "title": "Hazrati Imam complex, Tashkent",
+      "name": "tashkent-barakhan-madrasah",
+      "title": "Barakhan Madrasah, Tashkent",
       "fit": "cover",
-      "author": "Muxriddin Azimov",
+      "author": "Ymblanter",
       "license": "CC BY-SA 4.0",
       "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File:Hazrati_Imom_majmuasi_1.jpg",
-      "commonsFile": "File:Hazrati Imom majmuasi 1.jpg",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Barakhan_Madrasah_Tashkent.jpg",
+      "commonsFile": "File:Barakhan Madrasah Tashkent.jpg",
       "shareAlike": true,
       "note": "Downloaded unchanged, then resized and converted to WebP and JPEG for this website; the page may crop its display to fit the layout.",
-      "crop": "north"
+      "crop": "centre"
     },
     {
-      "name": "tashkent-chorsu-market",
+      "name": "tashkent-chorsu-hall",
       "title": "Chorsu Bazaar, Tashkent",
       "fit": "cover",
-      "author": "Alexey Komarov",
-      "license": "CC BY-SA 4.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chorsu_Bazaar,_Tashkent,_Uzbekistan_-_2019-06-01_2.jpg",
-      "commonsFile": "File:Chorsu Bazaar, Tashkent, Uzbekistan - 2019-06-01 2.jpg",
+      "author": "Dan Lundberg",
+      "license": "CC BY-SA 2.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chorsu_Bazaar_20141003_Uzbekistan_0840_Tashkent_(16257413122).jpg",
+      "commonsFile": "File:Chorsu Bazaar 20141003 Uzbekistan 0840 Tashkent (16257413122).jpg",
       "shareAlike": true,
       "note": "Downloaded unchanged, then resized and converted to WebP and JPEG for this website; the page may crop its display to fit the layout.",
-      "crop": "attention"
+      "crop": "centre"
     },
     {
       "name": "charvak-lake",

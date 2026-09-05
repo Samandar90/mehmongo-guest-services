@@ -79,8 +79,8 @@ export const catalogData = {
         "unit": "per agreed excursion",
         "billingUnit": "excursion"
       },
-      "image": "assets/tashkent-hazrati-imam.jpg",
-      "imageAlt": "Turquoise domes and minarets of the Hazrati Imam complex in Tashkent",
+      "image": "assets/tashkent-barakhan-madrasah.jpg",
+      "imageAlt": "Tiled portal and turquoise domes of the Barakhan Madrasah in Tashkent",
       "imageFit": "cover",
       "imageCaption": "Tashkent inspiration. Your route is agreed separately.",
       "facts": [
@@ -156,8 +156,8 @@ export const catalogData = {
         "unit": "per vehicle · 09:00–18:00",
         "billingUnit": "vehicle_day"
       },
-      "image": "assets/tashkent-chorsu-market.jpg",
-      "imageAlt": "Dried fruit and nut stalls under the dome of Chorsu Bazaar in Tashkent",
+      "image": "assets/tashkent-chorsu-hall.jpg",
+      "imageAlt": "Traders and produce stalls under the domed hall of Chorsu Bazaar in Tashkent",
       "imageFit": "cover",
       "imageCaption": "City inspiration. Stops are agreed before confirmation.",
       "facts": [
