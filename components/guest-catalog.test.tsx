@@ -241,3 +241,58 @@ describe('guest catalogue', () => {
     expect(screen.getByText(/No payment is taken on this website/)).toBeInTheDocument();
   });
 });
+
+describe('idempotency across services', () => {
+  it('reuses the key for a retry but never for another service', async () => {
+    const user = renderCatalog();
+    server.submit
+      .mockRejectedValueOnce(new Error('REQUEST_FAILED'))
+      .mockResolvedValue({ reference: 'MG-ABCDEFGH', telegramStatus: 'sent' });
+
+    let details = await openDetails(user, 'Plan my mountain day');
+    await user.click(within(details).getByRole('button', { name: 'Plan my mountain day' }));
+    await user.selectOptions(screen.getByLabelText('Where would you like to go?'), 'Charvak');
+    await user.type(screen.getByLabelText('Preferred date'), '2099-12-31');
+    await user.type(screen.getByLabelText('Your name'), 'Amir Khan');
+    await user.type(screen.getByLabelText('One way to reach you'), '@amir');
+    await user.click(screen.getByRole('button', { name: 'Send my request' }));
+    await screen.findByRole('alert');
+
+    // The same request retried keeps its key, so the server can recognise the duplicate.
+    await user.click(screen.getByRole('button', { name: 'Send my request' }));
+    await waitFor(() => expect(server.submit).toHaveBeenCalledTimes(2));
+    const [firstCall, retryCall] = server.submit.mock.calls;
+    expect(retryCall[0].idempotencyKey).toBe(firstCall[0].idempotencyKey);
+  });
+
+  it('starts a new key and empty service fields after switching offer', async () => {
+    const user = renderCatalog();
+    server.submit.mockRejectedValueOnce(new Error('REQUEST_FAILED'));
+
+    let details = await openDetails(user, 'Plan my mountain day');
+    await user.click(within(details).getByRole('button', { name: 'Plan my mountain day' }));
+    await user.selectOptions(screen.getByLabelText('Where would you like to go?'), 'Charvak');
+    await user.type(screen.getByLabelText('Preferred date'), '2099-12-31');
+    await user.type(screen.getByLabelText('Your name'), 'Amir Khan');
+    await user.type(screen.getByLabelText('One way to reach you'), '@amir');
+    await user.click(screen.getByRole('button', { name: 'Send my request' }));
+    await screen.findByRole('alert');
+    const failedKey = server.submit.mock.calls[0][0].idempotencyKey;
+
+    await user.click(screen.getByRole('button', { name: 'Back to service' }));
+    await user.keyboard('{Escape}');
+    details = await openDetails(user, 'Plan my city day');
+    await user.click(within(details).getByRole('button', { name: 'Plan my city day' }));
+
+    // The mountain preference must not travel to the city request.
+    expect(screen.getByLabelText('Pickup point in Tashkent')).toHaveValue('');
+    await user.type(screen.getByLabelText('Pickup point in Tashkent'), 'Hotel lobby');
+    server.submit.mockResolvedValue({ reference: 'MG-SECONDAA', telegramStatus: 'sent' });
+    await user.click(screen.getByRole('button', { name: 'Send my request' }));
+
+    await waitFor(() => expect(server.submit).toHaveBeenCalledTimes(2));
+    const secondCall = server.submit.mock.calls[1][0];
+    expect(secondCall.offerId).toBe('tashkent-city-car');
+    expect(secondCall.idempotencyKey).not.toBe(failedKey);
+  });
+});
