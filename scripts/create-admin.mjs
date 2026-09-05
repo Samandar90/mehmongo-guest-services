@@ -40,21 +40,60 @@ async function credentials() {
   return { ...local, where: `${local.url} (local stack)` };
 }
 
-/** Reads a line without echoing it back to the terminal. */
+const ENTER = [13, 10];
+const CTRL_C = 3;
+const BACKSPACE = [127, 8];
+
+/**
+ * Reads a password from the terminal without echoing it.
+ *
+ * On a real terminal the input is read in raw mode, so the characters never
+ * reach the screen at all. Without a terminal (a pipe, CI) it falls back to a
+ * plain line read, because there is nothing to hide the input from.
+ */
 function askHidden(question) {
   return new Promise((resolve) => {
-    const rl = createInterface({ input: process.stdin, output: process.stdout, terminal: true });
-    const onData = (char) => {
-      if (['\n', '\r', ''].includes(String(char))) process.stdin.removeListener('data', onData);
-      else process.stdout.write('[2K[200D' + question);
-    };
+    const input = process.stdin;
     process.stdout.write(question);
-    process.stdin.on('data', onData);
-    rl.question('', (answer) => {
-      process.stdout.write('\n');
-      rl.close();
+
+    if (!input.isTTY) {
+      const rl = createInterface({ input, terminal: false });
+      rl.once('line', (line) => {
+        rl.close();
+        console.log('');
+        resolve(line);
+      });
+      return;
+    }
+
+    let value = '';
+    input.setRawMode(true);
+    input.setEncoding('utf8');
+    input.resume();
+
+    const finish = (answer, code) => {
+      input.setRawMode(false);
+      input.pause();
+      input.removeListener('data', onData);
+      console.log('');
+      if (code !== undefined) process.exitCode = code;
       resolve(answer);
-    });
+    };
+
+    const onData = (chunk) => {
+      for (const char of chunk) {
+        const code = char.charCodeAt(0);
+        if (ENTER.includes(code)) return finish(value);
+        if (code === CTRL_C) return finish('', 130);
+        if (BACKSPACE.includes(code)) {
+          value = value.slice(0, -1);
+          continue;
+        }
+        value += char;
+      }
+    };
+
+    input.on('data', onData);
   });
 }
 
