@@ -17,9 +17,9 @@ export const A5_PIXEL_HEIGHT = 2480;
 export const PLAQUE_COLORS = { navy: '#102B4E', magenta: '#D3226A', warm: '#F7F3EC' } as const;
 
 /**
- * The approved mark, byte-for-byte the content of public/mehmongo-mark.svg.
- * Inlined so the browser template and the Node script share one source;
- * room-plaque.test.ts fails if the two files ever drift apart.
+ * The approved mark, the content of public/mehmongo-mark.svg up to trailing
+ * whitespace. Inlined so the browser template and the Node script share one
+ * source; room-plaque.test.ts fails if the two ever drift apart.
  */
 export const MEHMONGO_MARK_SVG = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="300" height="190" viewBox="0 0 300 190">
@@ -70,11 +70,16 @@ export function buildRoomPlaqueSvg(input: RoomAssetInput, qrDataUrl: string): st
   if (!pngDataUrlPattern.test(qrDataUrl)) throw new Error('Invalid QR data URL');
 
   const hotelName = escapeXml(input.hotelName);
-  const roomBadge = escapeXml(`ROOM ${input.roomLabel}`);
-  // The approved badge is 348px wide and right-aligned at x=1622; longer labels widen it leftwards.
-  const badgeWidth = Math.max(348, Math.round(roomBadge.length * 21 + 90));
+  const badgeText = `ROOM ${input.roomLabel}`;
+  const roomBadge = escapeXml(badgeText);
+  // The approved badge is 348px wide and right-aligned at x=1622. Longer labels widen it
+  // leftwards, measured on the visible text (34px Arial bold ≈ 21px per glyph), but never past
+  // x=820 so it stays clear of the wordmark; beyond that the type shrinks instead.
+  const neededWidth = Math.round(badgeText.length * 21 + 90);
+  const badgeWidth = Math.min(Math.max(348, neededWidth), 1622 - 820);
   const badgeX = 1622 - badgeWidth;
   const badgeCenter = badgeX + badgeWidth / 2;
+  const badgeFontSize = neededWidth > badgeWidth ? Math.max(18, Math.floor(34 * badgeWidth / neededWidth)) : 34;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${A5_PIXEL_WIDTH}" height="${A5_PIXEL_HEIGHT}" viewBox="0 0 1748 2480">
@@ -88,7 +93,7 @@ export function buildRoomPlaqueSvg(input: RoomAssetInput, qrDataUrl: string): st
   </g>
 
   <rect x="${badgeX}" y="130" width="${badgeWidth}" height="98" rx="49" fill="#FFFFFF" stroke="#E2D9CD" stroke-width="3"/>
-  <text x="${badgeCenter}" y="194" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700" fill="${PLAQUE_COLORS.navy}">${roomBadge}</text>
+  <text x="${badgeCenter}" y="194" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="${badgeFontSize}" font-weight="700" fill="${PLAQUE_COLORS.navy}">${roomBadge}</text>
 
   <text x="128" y="445" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="700" letter-spacing="7" fill="${PLAQUE_COLORS.magenta}">GUEST SERVICES</text>
   <text x="128" y="575" font-family="Arial, Helvetica, sans-serif" font-size="108" font-weight="750" letter-spacing="-5" fill="${PLAQUE_COLORS.navy}">

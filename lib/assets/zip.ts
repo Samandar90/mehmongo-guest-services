@@ -7,6 +7,14 @@ export type RoomGeneratedAsset = {
   pdf: Uint8Array;
 };
 
+/** Two rooms slugged to the same file name (for example "205 A" and "205/A"). */
+export class DuplicateAssetNameError extends Error {
+  constructor(readonly baseName: string) {
+    super(`Duplicate asset name: ${baseName}`);
+    this.name = 'DuplicateAssetNameError';
+  }
+}
+
 /**
  * JSZip detects input types with instanceof checks, which fail across realms
  * (jsdom tests) and for Blobs in plain Node (verification scripts). Plain bytes
@@ -27,7 +35,7 @@ export async function buildHotelAssetZip(assets: RoomGeneratedAsset[]): Promise<
 
   const seen = new Set<string>();
   for (const asset of assets) {
-    if (seen.has(asset.baseName)) throw new Error(`Duplicate asset name: ${asset.baseName}`);
+    if (seen.has(asset.baseName)) throw new DuplicateAssetNameError(asset.baseName);
     seen.add(asset.baseName);
   }
 

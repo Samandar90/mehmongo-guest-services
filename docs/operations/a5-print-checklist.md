@@ -19,7 +19,7 @@ Use this before any batch of MehmonGo room plaques goes to a hotel. The files co
 
    Exit 0 means page count, A5 page size, ZIP members and every decoded QR are correct. Any other exit code names the room and the defect.
 2. Open the combined PDF and confirm each page shows: MehmonGo mark and wordmark, the hotel name in the footer, the room badge at the top right, the headline, the QR inside its white card, the four service labels, the instruction line. Nothing may overlap the safe margin of about 6 mm.
-3. Compare one page against `artifacts/mehmongo-room-205-plaque.png` (visual reference). Colors must be navy `#102B4E`, magenta `#D3226A`, warm `#F7F3EC`.
+3. Compare one page against `artifacts/mehmongo-room-205-plaque.png` (visual reference only: its QR encodes a sample token and opens nothing). Colors must be navy `#102B4E`, magenta `#D3226A`, warm `#F7F3EC`.
 
 ## Printer settings
 

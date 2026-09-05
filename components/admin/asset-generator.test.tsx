@@ -190,6 +190,72 @@ describe('AssetGenerator', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('QR комнаты 206 не совпадает с гостевой ссылкой');
   });
 
+  it('keeps the preview URL alive across re-renders and revokes it only on unmount (production adapter)', async () => {
+    const user = userEvent.setup();
+    const createObjectURL = vi.fn(() => 'blob:live');
+    const revokeObjectURL = vi.fn();
+    // jsdom has no object URLs; install fakes on the global for the production adapter.
+    const hadObjectUrls = 'createObjectURL' in URL;
+    Object.assign(URL, { createObjectURL, revokeObjectURL });
+    try {
+      const verifyQr = vi.fn(async () => asset205.url);
+      const view = render(
+        <AssetGenerator hotel={kamilovs} rooms={[room205]} siteUrl="https://example.com" initialGenerated={[asset205]} downloadBlob={vi.fn()} verifyQr={verifyQr} />,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Предпросмотр 205' }));
+      // A state change unrelated to the preview must not revoke it.
+      await user.click(screen.getByRole('button', { name: 'Проверить QR 205' }));
+      await screen.findByRole('status');
+
+      expect(createObjectURL).toHaveBeenCalledTimes(1);
+      expect(revokeObjectURL).not.toHaveBeenCalled();
+      expect(screen.getByRole('img', { name: 'Плакет комнаты 205' })).toHaveAttribute('src', 'blob:live');
+
+      view.unmount();
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:live');
+    } finally {
+      if (!hadObjectUrls) {
+        Reflect.deleteProperty(URL, 'createObjectURL');
+        Reflect.deleteProperty(URL, 'revokeObjectURL');
+      }
+    }
+  });
+
+  it('bounds one generation run and explains the limit', () => {
+    const rooms = Array.from({ length: 51 }, (_, index) => ({ ...room205, id: `room-${index}`, label: `${100 + index}` }));
+    renderAssetGenerator({ rooms });
+
+    expect(screen.getByRole('button', { name: 'Создать материалы' })).toBeDisabled();
+    expect(screen.getByText('За один раз можно создать материалы не больше чем для 50 комнат')).toBeInTheDocument();
+  });
+
+  it('names colliding file names when the ZIP cannot be built', async () => {
+    const user = userEvent.setup();
+    const clash = { ...asset206, baseName: 'kamilovs-room-205' };
+    renderAssetGenerator({ rooms: [room205, room206], generated: [asset205, clash], downloadBlob: vi.fn() });
+
+    await user.click(screen.getByRole('button', { name: 'Скачать ZIP' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Имена файлов совпадают: kamilovs-room-205. Переименуйте комнаты.');
+  });
+
+  it('keeps a live region mounted and locks per-room downloads while verifying', async () => {
+    const user = userEvent.setup();
+    let resolveVerify: ((url: string) => void) | undefined;
+    const verifyQr = vi.fn(() => new Promise<string>((resolve) => { resolveVerify = resolve; }));
+    renderAssetGenerator({ rooms: [room205], generated: [asset205], verifyQr });
+
+    expect(document.querySelector('.admin-asset-generator [aria-live="polite"]')).not.toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Проверить QR 205' }));
+    expect(screen.getByRole('button', { name: 'Скачать PNG 205' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Скачать PDF 205' })).toBeDisabled();
+
+    resolveVerify?.(asset205.url);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Скачать PNG 205' })).toBeEnabled());
+  });
+
   it('resets generated assets and revokes the preview', async () => {
     const user = userEvent.setup();
     const { objectUrls } = renderAssetGenerator({ rooms: [room205], generated: [asset205] });

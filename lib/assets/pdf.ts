@@ -4,7 +4,8 @@ import { PDFDocument, type PDFImage } from 'pdf-lib';
 export const A5_WIDTH_PT = 419.527559;
 export const A5_HEIGHT_PT = 595.275591;
 
-export type RoomPdfPage = { label: string; png: Uint8Array };
+/** PNG bytes, or a loader so large sets can materialize one page at a time. */
+export type RoomPdfPage = { label: string; png: Uint8Array | (() => Promise<Uint8Array>) };
 
 async function embedPng(document: PDFDocument, png: Uint8Array, label: string): Promise<PDFImage> {
   try {
@@ -40,7 +41,8 @@ export async function buildHotelPdf(pages: RoomPdfPage[]): Promise<Uint8Array> {
   if (pages.length === 0) throw new Error('No rooms selected');
   const document = withMetadata(await PDFDocument.create(), 'MehmonGo room plaques');
   for (const page of pages) {
-    addA5Page(document, await embedPng(document, page.png, page.label));
+    const png = typeof page.png === 'function' ? await page.png() : page.png;
+    addA5Page(document, await embedPng(document, png, page.label));
   }
   return document.save();
 }

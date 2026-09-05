@@ -8,7 +8,7 @@ import { buildHotelPdf as buildHotelPdfDefault, buildRoomPdf } from '@/lib/asset
 import { createRoomQrDataUrl, decodeQrPng } from '@/lib/assets/qr';
 import { svgToPngBlob } from '@/lib/assets/rasterize';
 import { buildGuestRoomUrl, buildRoomPlaqueSvg, roomAssetBaseName, type RoomAssetInput } from '@/lib/assets/room-plaque';
-import { buildHotelAssetZip as buildHotelAssetZipDefault, type RoomGeneratedAsset } from '@/lib/assets/zip';
+import { DuplicateAssetNameError, buildHotelAssetZip as buildHotelAssetZipDefault, type RoomGeneratedAsset } from '@/lib/assets/zip';
 
 export type GeneratedRoomAsset = RoomGeneratedAsset & {
   roomId: string;
@@ -33,6 +33,15 @@ export function createRoomAssetGenerator(roomId: string): RoomAssetGenerator {
 
 type ObjectUrls = { create: (blob: Blob) => string; revoke: (url: string) => void };
 
+// Module-level so the default never changes identity between renders.
+const browserObjectUrls: ObjectUrls = {
+  create: (blob) => URL.createObjectURL(blob),
+  revoke: (url) => URL.revokeObjectURL(url),
+};
+
+/** Upper bound for one generation run; keeps the in-memory PNG/PDF set around 25 MB. */
+export const maxRoomsPerRun = 50;
+
 type AssetGeneratorProps = {
   hotel: Hotel;
   /** Selected active rooms, as owned by the room editor. */
@@ -52,9 +61,16 @@ type Progress = { done: number; total: number } | null;
 const messages = {
   noRooms: 'Выберите активные комнаты в списке выше',
   noSiteUrl: 'Гостевой адрес сайта не настроен (VITE_SITE_URL)',
+  tooMany: `За один раз можно создать материалы не больше чем для ${maxRoomsPerRun} комнат`,
   combinedFailed: 'Не удалось собрать общий файл. Повторите попытку.',
   downloadFailed: 'Не удалось начать скачивание. Повторите попытку.',
 };
+
+function combinedFailure(error: unknown): string {
+  return error instanceof DuplicateAssetNameError
+    ? `Имена файлов совпадают: ${error.baseName}. Переименуйте комнаты.`
+    : messages.combinedFailed;
+}
 
 function pdfBlob(bytes: Uint8Array): Blob {
   return new Blob([bytes as BlobPart], { type: 'application/pdf' });
@@ -70,7 +86,7 @@ export function AssetGenerator({
   buildHotelPdf = buildHotelPdfDefault,
   buildHotelAssetZip = buildHotelAssetZipDefault,
   verifyQr = (dataUrl) => decodeQrPng(dataUrl),
-  objectUrls = { create: (blob) => URL.createObjectURL(blob), revoke: (url) => URL.revokeObjectURL(url) },
+  objectUrls = browserObjectUrls,
 }: AssetGeneratorProps) {
   const [generated, setGenerated] = useState<GeneratedRoomAsset[]>(initialGenerated);
   const [progress, setProgress] = useState<Progress>(null);
@@ -88,13 +104,17 @@ export function AssetGenerator({
     setPreview(next);
   };
 
-  // Revoke the last preview URL on unmount only.
-  useEffect(() => () => { if (previewUrl.current) objectUrls.revoke(previewUrl.current); }, [objectUrls]);
+  // Revoke the last preview URL on unmount only; the adapter is read through a ref so
+  // a caller passing a fresh adapter object per render cannot retrigger the cleanup.
+  const objectUrlsRef = useRef(objectUrls);
+  useEffect(() => { objectUrlsRef.current = objectUrls; }, [objectUrls]);
+  useEffect(() => () => { if (previewUrl.current) objectUrlsRef.current.revoke(previewUrl.current); }, []);
 
   const generatedById = new Map(generated.map((asset) => [asset.roomId, asset]));
   const selectionReady = rooms.length > 0 && rooms.every((room) => generatedById.has(room.id));
   const combinedReady = selectionReady && failedLabel === null && !generating;
-  const canGenerate = rooms.length > 0 && Boolean(siteUrl) && !generating;
+  const tooMany = rooms.length > maxRoomsPerRun;
+  const canGenerate = rooms.length > 0 && !tooMany && Boolean(siteUrl) && !generating;
 
   const generateAll = async () => {
     if (!siteUrl) return;
@@ -145,15 +165,15 @@ export function AssetGenerator({
     setBusy('pdf');
     setError(null);
     try {
-      const pages = [];
-      for (const room of rooms) {
+      // PNG bytes are materialized one room at a time while pdf-lib embeds them.
+      const pages = rooms.map((room) => {
         const asset = generatedById.get(room.id);
         if (!asset) throw new Error('Selection changed');
-        pages.push({ label: asset.label, png: new Uint8Array(await asset.png.arrayBuffer()) });
-      }
+        return { label: asset.label, png: async () => new Uint8Array(await asset.png.arrayBuffer()) };
+      });
       download(pdfBlob(await buildHotelPdf(pages)), `${hotel.slug}-all-rooms-a5.pdf`);
-    } catch {
-      setError(messages.combinedFailed);
+    } catch (caught) {
+      setError(combinedFailure(caught));
     } finally {
       setBusy(null);
     }
@@ -165,8 +185,8 @@ export function AssetGenerator({
     try {
       const assets = rooms.map((room) => generatedById.get(room.id)).filter((asset): asset is GeneratedRoomAsset => Boolean(asset));
       download(await buildHotelAssetZip(assets), `${hotel.slug}-room-assets.zip`);
-    } catch {
-      setError(messages.combinedFailed);
+    } catch (caught) {
+      setError(combinedFailure(caught));
     } finally {
       setBusy(null);
     }
@@ -199,7 +219,7 @@ export function AssetGenerator({
     setError(null);
   };
 
-  const hint = rooms.length === 0 ? messages.noRooms : !siteUrl ? messages.noSiteUrl : null;
+  const hint = rooms.length === 0 ? messages.noRooms : tooMany ? messages.tooMany : !siteUrl ? messages.noSiteUrl : null;
 
   return (
     <div className="admin-asset-generator">
@@ -224,12 +244,15 @@ export function AssetGenerator({
         </div>
       </div>
 
-      {progress ? (
-        <p className="admin-asset-progress" aria-live="polite">
-          <progress value={progress.done} max={progress.total} aria-label="Готовность материалов" />
-          <span>{progress.done} из {progress.total}</span>
-        </p>
-      ) : null}
+      {/* Always mounted so screen readers announce progress from the first update. */}
+      <p className="admin-asset-progress admin-live" aria-live="polite">
+        {progress ? (
+          <>
+            <progress value={progress.done} max={progress.total} aria-label="Готовность материалов" />
+            <span>{progress.done} из {progress.total}</span>
+          </>
+        ) : null}
+      </p>
       {error ? <p role="alert" className="admin-form-error">{error}</p> : null}
       {notice ? <output className="admin-form-success">{notice}</output> : null}
 
@@ -240,15 +263,16 @@ export function AssetGenerator({
               <strong>Комната {asset.label}</strong>
               <span className="admin-actions">
                 <button type="button" className="admin-button admin-button-secondary" aria-label={`Предпросмотр ${asset.label}`}
+                  disabled={busy !== null}
                   onClick={() => setPreviewUrl({ roomId: asset.roomId, label: asset.label, url: objectUrls.create(asset.png) })}>
                   Предпросмотр
                 </button>
                 <button type="button" className="admin-button admin-button-secondary" aria-label={`Скачать PNG ${asset.label}`}
-                  onClick={() => download(asset.png, `${asset.baseName}.png`)}>
+                  disabled={busy !== null} onClick={() => download(asset.png, `${asset.baseName}.png`)}>
                   Скачать PNG
                 </button>
                 <button type="button" className="admin-button admin-button-secondary" aria-label={`Скачать PDF ${asset.label}`}
-                  onClick={() => download(pdfBlob(asset.pdf), `${asset.baseName}.pdf`)}>
+                  disabled={busy !== null} onClick={() => download(pdfBlob(asset.pdf), `${asset.baseName}.pdf`)}>
                   Скачать PDF
                 </button>
                 <button type="button" className="admin-button admin-button-secondary" aria-label={`Проверить QR ${asset.label}`}

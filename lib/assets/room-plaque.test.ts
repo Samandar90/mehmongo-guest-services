@@ -57,6 +57,24 @@ describe('room plaque template', () => {
     expect(svg).toContain('ROOM A/1');
   });
 
+  it('sizes the room badge from the visible label and keeps it clear of the wordmark', () => {
+    const badge = (svg: string) => {
+      const match = /<rect x="(-?\d+)" y="130" width="(\d+)" height="98"/.exec(svg);
+      if (!match) throw new Error('badge rect not found');
+      return { x: Number(match[1]), width: Number(match[2]) };
+    };
+
+    // Escaping must not inflate the badge: "A & B" renders five glyphs, not nine.
+    expect(badge(buildRoomPlaqueSvg({ ...fixture, roomLabel: 'A & B' }, QR_DATA_URL))).toEqual({ x: 1274, width: 348 });
+    expect(badge(buildRoomPlaqueSvg(fixture, QR_DATA_URL))).toEqual({ x: 1274, width: 348 });
+
+    // The longest allowed label (40 characters) still starts right of the wordmark.
+    const longest = badge(buildRoomPlaqueSvg({ ...fixture, roomLabel: 'x'.repeat(40) }, QR_DATA_URL));
+    expect(longest.x).toBeGreaterThanOrEqual(820);
+    expect(longest.x + longest.width).toBe(1622);
+    expect(buildRoomPlaqueSvg({ ...fixture, roomLabel: 'x'.repeat(40) }, QR_DATA_URL)).toMatch(/font-size="(2\d|1\d)" font-weight="700" fill="#102B4E">ROOM x{40}</);
+  });
+
   it('rejects a QR that is not a PNG data URL', () => {
     expect(() => buildRoomPlaqueSvg(fixture, 'javascript:alert(1)')).toThrow('Invalid QR data URL');
   });

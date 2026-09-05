@@ -8,15 +8,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import QRCode from 'qrcode';
 import sharpModule from 'sharp';
 import jsQR from 'jsqr';
+import { createRoomQrDataUrl, pngBytesFromDataUrl } from '../lib/assets/qr';
 import { buildGuestRoomUrl, buildRoomPlaqueSvg, type RoomAssetInput } from '../lib/assets/room-plaque';
 
-// The root tsconfig mixes DOM, Cloudflare Workers and Node globals (see CLAUDE.md,
-// "root tsc" note): under it sharp's default export resolves to `unknown` and
-// Node's Buffer methods lose their signatures. This script only needs a tiny
-// slice of sharp, so it is typed explicitly here instead of weakening the app config.
+// The root tsconfig mixes DOM, Cloudflare Workers and Node globals; under it
+// sharp's default export resolves to `unknown` (its ESM types do not line up with
+// moduleResolution "bundler"). This script only needs a tiny slice of sharp, so
+// it is typed explicitly here instead of weakening the app config.
 type SharpPipeline = {
   ensureAlpha(): SharpPipeline;
   raw(): SharpPipeline;
@@ -25,7 +25,6 @@ type SharpPipeline = {
   toFile(path: string): Promise<unknown>;
 };
 const sharp = sharpModule as unknown as (input: Uint8Array) => SharpPipeline;
-const toBase64 = (bytes: Uint8Array): string => Buffer.from(bytes).toString('base64');
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const projectDir = path.dirname(scriptDir);
@@ -38,26 +37,28 @@ if (!siteUrlArgument) {
 
 const SAMPLE_ROOM_TOKEN = '4c5f9a10-1111-4222-8333-abcdefabcdef';
 
+let siteUrl: string;
+try {
+  siteUrl = new URL(siteUrlArgument).origin;
+} catch {
+  throw new Error(`The site URL must be absolute, received "${siteUrlArgument}"`);
+}
+
 const input: RoomAssetInput = {
   hotelSlug: 'kamilovs',
   hotelName: 'Kamilovs Hotel',
   roomLabel: '205',
   roomToken: tokenArgument ?? SAMPLE_ROOM_TOKEN,
-  siteUrl: new URL(siteUrlArgument).origin,
+  siteUrl,
 };
 const targetUrl = buildGuestRoomUrl(input);
 
 await fs.mkdir(artifactsDir, { recursive: true });
 
-const qrBuffer = await QRCode.toBuffer(targetUrl, {
-  errorCorrectionLevel: 'H',
-  margin: 4,
-  width: 1024,
-  color: { dark: '#102B4EFF', light: '#FFFFFFFF' },
-});
-
+// Same QR module as the admin, so the reference cannot drift from production output.
+const qrDataUrl = await createRoomQrDataUrl(targetUrl);
+const qrBuffer = pngBytesFromDataUrl(qrDataUrl);
 await fs.writeFile(path.join(artifactsDir, 'mehmongo-room-205-qr.png'), qrBuffer);
-await fs.writeFile(path.join(artifactsDir, 'mehmongo-room-205-qr-check.png'), qrBuffer);
 
 const { data, info } = await sharp(qrBuffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
 const decoded = jsQR(new Uint8ClampedArray(data), info.width, info.height);
@@ -65,7 +66,7 @@ if (!decoded || decoded.data !== targetUrl) {
   throw new Error(`QR verification failed. Expected ${targetUrl}, received ${decoded?.data ?? 'nothing'}`);
 }
 
-const plaqueSvg = buildRoomPlaqueSvg(input, `data:image/png;base64,${toBase64(qrBuffer)}`);
+const plaqueSvg = buildRoomPlaqueSvg(input, qrDataUrl);
 const svgPath = path.join(artifactsDir, 'mehmongo-room-205-plaque.svg');
 const pngPath = path.join(artifactsDir, 'mehmongo-room-205-plaque.png');
 await fs.writeFile(svgPath, plaqueSvg, 'utf8');
