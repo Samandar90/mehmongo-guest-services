@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AdminHotelPage from './page';
 import { getHotel, updateHotel, type Hotel } from '@/lib/admin/hotels';
+import { createRooms, listRooms, type Room } from '@/lib/admin/rooms';
 
 const paramsState = vi.hoisted(() => ({ current: { id: 'hotel-1' } as { id?: string } }));
 
@@ -16,6 +17,13 @@ vi.mock('@/lib/admin/hotels', async (importOriginal) => ({
   updateHotel: vi.fn(),
 }));
 
+vi.mock('@/lib/admin/rooms', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/admin/rooms')>()),
+  listRooms: vi.fn(),
+  createRooms: vi.fn(),
+  setRoomActive: vi.fn(),
+}));
+
 const kamilovsHotel: Hotel = {
   id: 'hotel-1',
   name: 'Kamilovs Hotel',
@@ -27,11 +35,56 @@ const kamilovsHotel: Hotel = {
   updatedAt: '2026-09-02T10:00:00.000Z',
 };
 
+const room205: Room = {
+  id: 'room-205',
+  hotelId: 'hotel-1',
+  label: '205',
+  publicToken: '9c6f6f5e-2b6d-4c0f-9a7d-1f2e3d4c5b6a',
+  active: true,
+  createdAt: '2026-09-01T10:00:00.000Z',
+  updatedAt: '2026-09-02T10:00:00.000Z',
+};
+
 describe('AdminHotelPage', () => {
   beforeEach(() => {
     paramsState.current = { id: 'hotel-1' };
     vi.mocked(getHotel).mockReset();
     vi.mocked(updateHotel).mockReset();
+    vi.mocked(listRooms).mockReset().mockResolvedValue([]);
+    vi.mocked(createRooms).mockReset();
+  });
+
+  it('loads the rooms of the hotel into the editor and refreshes them after adding', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getHotel).mockResolvedValue(kamilovsHotel);
+    vi.mocked(listRooms).mockResolvedValueOnce([]).mockResolvedValueOnce([room205]);
+    vi.mocked(createRooms).mockResolvedValue([room205]);
+    render(<AdminHotelPage />);
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Комнаты' })).toBeInTheDocument();
+    expect(await screen.findByText('Комнат пока нет')).toBeInTheDocument();
+    expect(listRooms).toHaveBeenCalledWith('hotel-1');
+
+    await user.type(screen.getByLabelText('Список комнат'), '205');
+    await user.click(screen.getByRole('button', { name: 'Добавить комнаты' }));
+
+    expect(createRooms).toHaveBeenCalledWith('hotel-1', ['205']);
+    expect(await screen.findByRole('checkbox', { name: 'Выбрать комнату 205' })).toBeInTheDocument();
+    expect(listRooms).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports a rooms loading failure without hiding the hotel form', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getHotel).mockResolvedValue(kamilovsHotel);
+    vi.mocked(listRooms).mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce([room205]);
+    render(<AdminHotelPage />);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить комнаты.');
+    expect(screen.getByLabelText('Название')).toHaveValue('Kamilovs Hotel');
+
+    await user.click(screen.getByRole('button', { name: 'Повторить загрузку комнат' }));
+
+    expect(await screen.findByRole('checkbox', { name: 'Выбрать комнату 205' })).toBeInTheDocument();
   });
 
   it('treats a missing route id as a missing hotel without querying', async () => {

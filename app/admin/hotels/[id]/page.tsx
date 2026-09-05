@@ -4,13 +4,26 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { HotelForm } from '@/components/admin/hotel-form';
+import { RoomEditor } from '@/components/admin/room-editor';
 import { getHotel, type Hotel } from '@/lib/admin/hotels';
+import { listRooms, type Room } from '@/lib/admin/rooms';
+import { getPublicSiteUrl } from '@/lib/site-url';
 
 type LoadState =
   | { status: 'loading' }
   | { status: 'ready'; hotel: Hotel }
   | { status: 'missing' }
   | { status: 'error' };
+
+type RoomsState = { status: 'loading' | 'ready' | 'error'; rooms: Room[] };
+
+function resolveSiteUrl(): string | null {
+  try {
+    return getPublicSiteUrl();
+  } catch {
+    return null;
+  }
+}
 
 export default function AdminHotelPage() {
   const params = useParams<{ id: string }>();
@@ -37,6 +50,31 @@ export default function AdminHotelPage() {
   const load = useCallback(() => {
     setState({ status: 'loading' });
     setLoadAttempt((attempt) => attempt + 1);
+  }, []);
+
+  // Rooms load and refresh independently so the hotel form and editor state survive a room mutation.
+  const [roomsState, setRoomsState] = useState<RoomsState>({ status: 'loading', rooms: [] });
+  const [roomsAttempt, setRoomsAttempt] = useState(0);
+  const [siteUrl] = useState(resolveSiteUrl);
+
+  useEffect(() => {
+    if (!hotelId) return;
+    let cancelled = false;
+    const run = async () => {
+      try {
+        const rooms = await listRooms(hotelId);
+        if (!cancelled) setRoomsState({ status: 'ready', rooms });
+      } catch {
+        if (!cancelled) setRoomsState((current) => ({ status: 'error', rooms: current.rooms }));
+      }
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [hotelId, roomsAttempt]);
+
+  const reloadRooms = useCallback(() => {
+    setRoomsState((current) => ({ status: 'loading', rooms: current.rooms }));
+    setRoomsAttempt((attempt) => attempt + 1);
   }, []);
 
   return (
@@ -76,7 +114,25 @@ export default function AdminHotelPage() {
 
           <section className="admin-card" aria-labelledby="hotel-rooms-heading">
             <h2 id="hotel-rooms-heading">Комнаты</h2>
-            <p className="admin-empty">Управление комнатами появится на следующем шаге.</p>
+            {roomsState.status === 'error' ? (
+              <div role="alert" className="admin-form-error">
+                <p>Не удалось загрузить комнаты.</p>
+                <button type="button" className="admin-button admin-button-secondary" onClick={reloadRooms}>
+                  Повторить загрузку комнат
+                </button>
+              </div>
+            ) : null}
+            {roomsState.status === 'loading' && roomsState.rooms.length === 0 ? (
+              <p className="admin-empty" aria-live="polite">Загрузка комнат…</p>
+            ) : null}
+            {roomsState.status === 'ready' || roomsState.rooms.length > 0 ? (
+              <RoomEditor
+                hotelId={state.hotel.id}
+                rooms={roomsState.rooms}
+                reload={reloadRooms}
+                siteUrl={siteUrl}
+              />
+            ) : null}
           </section>
         </>
       ) : null}

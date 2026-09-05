@@ -159,3 +159,15 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
   .admin-nav .admin-nav-brand { display: none; }
   .admin-nav a, .admin-nav button { padding: 0 10px; font-size: 13px; }
 }
+.admin-mode { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; padding: 0; border: 0; }
+.admin-mode legend { margin-bottom: 8px; font-size: 13px; font-weight: 680; }
+.admin-mode label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; cursor: pointer; }
+.admin-mode input, .admin-table input[type='checkbox'] { width: 20px; height: 20px; margin: 0; accent-color: var(--navy); }
+.admin-hint { color: var(--ink-soft); font-size: 12px; }
+.admin-room-form .admin-field { grid-column: 1 / -1; }
+.admin-room-form .admin-mode { grid-column: 1 / -1; }
+.admin-room-editor { display: grid; gap: 20px; }
+@media (max-width: 719px) {
+  .admin-table td[data-label='Выбор'] { display: flex; align-items: center; gap: 10px; }
+  .admin-table td[data-label='Выбор']::before { margin: 0; }
+}
