@@ -1,11 +1,13 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdminShell } from './admin-shell';
 import type { AdminIdentity } from '@/lib/admin/auth';
 
+const pathnameState = vi.hoisted(() => ({ current: '/admin' }));
+
 vi.mock('next/navigation', () => ({
-  usePathname: () => '/admin',
+  usePathname: () => pathnameState.current,
   useRouter: () => ({ replace: vi.fn() }),
 }));
 
@@ -21,7 +23,9 @@ function renderAdminShell({
   signOut?: () => Promise<void>;
 }) {
   const router = { replace: vi.fn() };
-  render(
+  // A fresh element on every render: reusing one element reference lets React
+  // bail out of re-rendering, which would hide pathname changes from the shell.
+  const element = () => (
     <AdminShell
       getIdentity={getIdentity}
       subscribeToAuthChanges={subscribeToAuthChanges}
@@ -29,12 +33,17 @@ function renderAdminShell({
       router={router}
     >
       <h1>Защищённая страница</h1>
-    </AdminShell>,
+    </AdminShell>
   );
-  return router;
+  const { rerender } = render(element());
+  return Object.assign(router, { rerender: () => rerender(element()) });
 }
 
 describe('AdminShell', () => {
+  beforeEach(() => {
+    pathnameState.current = '/admin';
+  });
+
   it('redirects anonymous users to admin login without rendering protected content', async () => {
     const router = renderAdminShell({ identity: null });
 
@@ -95,5 +104,22 @@ describe('AdminShell', () => {
     expect(screen.queryByText('Защищённая страница')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Отели' })).not.toBeInTheDocument();
     resolveSignOut?.();
+  });
+  it('protects the admin again after a completed sign-out and a new login', async () => {
+    const user = userEvent.setup();
+    const identity = { userId: 'user-1', role: 'super_admin' } as const;
+    const getIdentity = vi.fn().mockResolvedValue(identity);
+    const router = renderAdminShell({ identity, getIdentity, signOut: vi.fn().mockResolvedValue(undefined) });
+
+    await user.click(await screen.findByRole('button', { name: 'Выйти' }));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin/login'));
+
+    pathnameState.current = '/admin/login';
+    router.rerender();
+    pathnameState.current = '/admin';
+    router.rerender();
+
+    expect(await screen.findByText('Защищённая страница')).toBeInTheDocument();
+    expect(getIdentity).toHaveBeenCalledTimes(2);
   });
 });

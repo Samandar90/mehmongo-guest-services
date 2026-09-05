@@ -39,6 +39,9 @@ export function AdminShell({
 
   useEffect(() => {
     if (isLoginRoute) {
+      // Reaching the login route completes any sign-out; a later login must
+      // be able to resolve identity again for protected routes.
+      signOutInProgress.current = false;
       recheckIdentity.current = () => undefined;
       return;
     }
