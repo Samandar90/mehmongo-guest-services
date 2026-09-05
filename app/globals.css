@@ -316,3 +316,5 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 
 .visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .catalog-filters { border: 0; padding: 0; margin: 0 0 18px; }
+
+.guest-footer a { min-height: 44px; display: inline-flex; align-items: center; padding-inline: 8px; }

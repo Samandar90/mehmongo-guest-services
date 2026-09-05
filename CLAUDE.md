@@ -23,6 +23,7 @@ The user's messages should be answered in Russian. Guest-facing website copy sta
 3. `docs/superpowers/plans/2026-08-31-mehmongo-a5-assets-implementation.md`
 4. `docs/operations/supabase-pilot-runbook.md`
 5. `docs/operations/a5-print-checklist.md`
+6. The guest-catalogue brief delivered on the Desktop as `MehmonGo-Claude-Catalog-Final\CLAUDE-TASK.md`. Its `internal/PRICING-RU.md` is confidential: purchase prices, hotel payouts and the bonus formula must never reach the site, the bundle or GitHub.
 
 The implementation plans use checkboxes but progress is tracked in the ignored ledgers under `.superpowers/sdd/`. Trust Git history and these ledgers rather than redoing completed tasks.
 
@@ -34,6 +35,7 @@ The implementation plans use checkboxes but progress is tracked in the ignored l
 - Schema additions since the handoff: `updated_at` trigger (`private.set_updated_at`), `create_rooms_batch`, `service_requests_created_idx`. pgTAP suites: 44 assertions across four files.
 - `npm run typecheck` (`tsc -p tsconfig.typecheck.json`) is a clean gate; it extends the root config and excludes `supabase/functions`, which is Deno code verified by `functions:test`/`functions:lint`. Do not add that exclusion to the root `tsconfig.json`: Deno 2 reads it, and excluding the functions there strips their DOM lib types and breaks `deno test`.
 - Public guest origin for admin links and QR codes comes from `VITE_SITE_URL` (`lib/site-url.ts`); keep it identical to `SITE_URL`.
+- Guest catalogue (Tashkent): `content/catalog.en.json` is the only source of guest copy and published starting prices. `scripts/build-catalog-data.mjs` regenerates `supabase/functions/_shared/catalog.data.ts`; `lib/catalog.test.ts` fails if they drift. A hotel sees the catalogue only when the owner sets the guest catalogue in the hotel form; otherwise the previous guest form stays. Requests store `offer_id` and a server-built, trigger-frozen `offer_snapshot`; Telegram and the admin show that snapshot, never today's price.
 
 Important recent commits (newest first): `b11987a` asset generator hardening, `d60d408` typecheck gate, `2ce3d71` A5 verifier, `e1dbb2c` asset generator, `7e1645d` dashboard fix, `e74ec2f` requests screen fix, `f814886` room editor fix, `cee6af3` room batches fix, `a218cbf` hotel screens fix, `6c2e46b` updated_at trigger.
 
@@ -66,6 +68,14 @@ npm run supabase:test
 npx supabase db lint --local --schema public,private --fail-on error
 npm run assets:generate -- <site-url> kamilovs "Kamilovs Hotel" 205:<token> 206:<token>
 npm run assets:verify -- outputs/a5-verification/manifest.json
+node scripts/build-catalog-data.mjs
+node scripts/build-catalog-images.mjs
+```
+
+Local Edge Functions need the import map and a local secrets file:
+
+```powershell
+npx supabase functions serve --env-file supabase/.env.local --import-map deno.json
 ```
 
 Local Supabase uses API port `56321` and database port `56322`. Do not reset Docker or delete volumes. If `supabase test db` is interrupted it can leave the `pgtap` extension in `public`, which makes `db lint` report pgTAP internals; `drop extension pgtap` on the local database fixes it. The local database has seeded Kamilovs rooms `205` and `206` with deterministic tokens `20000000-0000-4000-8000-000000000205/206`.
