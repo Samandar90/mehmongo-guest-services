@@ -52,14 +52,14 @@ select throws_ok(
 );
 
 select ok(
-  to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text)') is not null,
+  to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb)') is not null,
   'atomic submit function exists'
 );
 
 select ok(
   has_function_privilege(
     'service_role',
-    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text)'),
+    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb)'),
     'EXECUTE'
   ),
   'service_role can execute atomic submit function'
@@ -68,7 +68,7 @@ select ok(
 select ok(
   not has_function_privilege(
     'anon',
-    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text)'),
+    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb)'),
     'EXECUTE'
   ),
   'anon cannot execute atomic submit function'
@@ -77,14 +77,14 @@ select ok(
 select ok(
   not has_function_privilege(
     'authenticated',
-    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text)'),
+    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb)'),
     'EXECUTE'
   ),
   'authenticated cannot execute atomic submit function'
 );
 
 select ok(
-  pg_get_functiondef(to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text)'))
+  pg_get_functiondef(to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb)'))
     like '%pg_advisory_xact_lock%',
   'atomic submit function takes an advisory transaction lock'
 );
