@@ -64,18 +64,16 @@ Keep `verify_jwt = false` scoped to `room-context` and `submit-request`. `retry-
 
 ## Owner and pilot rooms
 
-Create the owner account and its super-admin role in one step. Point the script at the production project and let it prompt for the password, which it reads without echoing and never writes to disk:
+Create the owner account and its super-admin role in one step. Put the project secret key (Supabase → Settings → API) into `SUPABASE_SECRET_KEY` in the ignored `.env.production.local`, then let the script prompt for the password, which it reads without echoing and never writes to disk:
 
 ```powershell
-$env:SUPABASE_URL = "https://$env:MEHMONGO_PROJECT_REF.supabase.co"
-$env:SUPABASE_SECRET_KEY = "<project secret key, paste privately>"
-node scripts/create-admin.mjs owner@example.com
-node scripts/create-admin.mjs --list
+node scripts/create-admin.mjs --production owner@example.com
+node scripts/create-admin.mjs --production --list
 ```
 
-Clear both variables from the session afterwards. Disable public sign-up for this owner-only administration app.
+Disable public sign-up for this owner-only administration app.
 
-The same script removes an account created with the wrong address (`--remove owner@example.com`); it refuses to remove the last active administrator. To grant the role by hand instead, bind the verified Auth user UUID in a parameterized insert:
+The same script removes an account created with the wrong address (`--production --remove owner@example.com`); it refuses to remove the last active administrator. To grant the role by hand instead, bind the verified Auth user UUID in a parameterized insert:
 
 ```sql
 insert into public.admin_users(user_id, role, active)

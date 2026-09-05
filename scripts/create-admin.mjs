@@ -6,16 +6,19 @@
  *   node scripts/create-admin.mjs --list                     # who can sign in today
  *   node scripts/create-admin.mjs owner@example.com          # create, password typed by you
  *   node scripts/create-admin.mjs --remove old@example.com   # delete one administrator
+ *   node scripts/create-admin.mjs --production owner@example.com   # any of the above, on production
  *
  * The password is read from your terminal with the echo turned off. It is sent
  * only to your own Supabase project and is never printed, stored in a file or
  * written to the repository.
  *
  * Target project: SUPABASE_URL plus SUPABASE_SECRET_KEY (or
- * SUPABASE_SERVICE_ROLE_KEY) when they are set, otherwise the local stack this
- * repository runs with `supabase start`.
+ * SUPABASE_SERVICE_ROLE_KEY) when they are set; with --production the same two
+ * values are read from the ignored .env.production.local; otherwise the local
+ * stack this repository runs with `supabase start`.
  */
 import { exec } from 'node:child_process';
+import { readFile } from 'node:fs/promises';
 import { createInterface } from 'node:readline';
 import { promisify } from 'node:util';
 import { createClient } from '@supabase/supabase-js';
@@ -25,6 +28,7 @@ const args = process.argv.slice(2);
 const checkOnly = args.includes('--check');
 const listOnly = args.includes('--list');
 const removing = args.includes('--remove');
+const production = args.includes('--production');
 const email = args.find((argument) => argument.includes('@'));
 
 async function localCredentials() {
@@ -35,10 +39,34 @@ async function localCredentials() {
   return { url: status.API_URL, key: status.SERVICE_ROLE_KEY };
 }
 
+/** Reads the production project from the ignored env file, never from the repository. */
+async function productionCredentials() {
+  const envPath = new URL('../.env.production.local', import.meta.url);
+  let text;
+  try {
+    text = await readFile(envPath, 'utf8');
+  } catch {
+    throw new Error('.env.production.local is missing. Create it from .env.example with the production values.');
+  }
+  const values = {};
+  for (const line of text.split(/\r?\n/)) {
+    const match = /^([A-Z0-9_]+)\s*=\s*(.*)$/.exec(line.trim());
+    if (match) values[match[1]] = match[2].replace(/^["']|["']$/g, '').trim();
+  }
+  return { url: values.SUPABASE_URL || values.VITE_SUPABASE_URL, key: values.SUPABASE_SECRET_KEY };
+}
+
 async function credentials() {
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (url && key) return { url, key, where: url };
+  if (production) {
+    const file = await productionCredentials();
+    if (!file.url || !file.key) {
+      throw new Error('.env.production.local needs VITE_SUPABASE_URL and a non-empty SUPABASE_SECRET_KEY (project secret key from Supabase → Settings → API).');
+    }
+    return { ...file, where: `${file.url} (production, from .env.production.local)` };
+  }
   const local = await localCredentials();
   if (!local.url || !local.key) throw new Error('No Supabase project found. Start the local stack or set SUPABASE_URL and SUPABASE_SECRET_KEY.');
   return { ...local, where: `${local.url} (local stack)` };
