@@ -94,10 +94,19 @@ function assertBatch(labels: string[]): void {
   if (labels.length > roomBatchMaxSize) {
     throw new RoomValidationError(`За один раз можно добавить не больше ${roomBatchMaxSize} комнат`);
   }
-  const parsed = parseRoomLabels(labels.join('\n'));
-  if (parsed.tooLong) throw new RoomValidationError(`Название комнаты не длиннее ${roomLabelMaxLength} символов`);
-  if (parsed.duplicates.length > 0) throw new RoomValidationError(`Повторяется: ${parsed.duplicates.join(', ')}`);
-  if (parsed.labels.length !== labels.length) throw new RoomValidationError('Пустые названия комнат недопустимы');
+  const seen = new Set<string>();
+  const duplicates: string[] = [];
+  for (const raw of labels) {
+    const label = raw.trim();
+    if (!label || /[\r\n]/.test(label)) throw new RoomValidationError('Каждая комната — одна непустая строка');
+    if (label.length > roomLabelMaxLength) {
+      throw new RoomValidationError(`Название комнаты не длиннее ${roomLabelMaxLength} символов`);
+    }
+    const key = label.toLowerCase();
+    if (seen.has(key)) duplicates.push(label);
+    seen.add(key);
+  }
+  if (duplicates.length > 0) throw new RoomValidationError(`Повторяется: ${duplicates.join(', ')}`);
 }
 
 export async function createRooms(
@@ -114,7 +123,8 @@ export async function createRooms(
 
 export async function listRooms(hotelId: string, client: SupabaseClient = getSupabaseBrowserClient()): Promise<Room[]> {
   const rows = unwrap<RoomRow[]>(
-    await client.from('rooms').select(roomColumns).eq('hotel_id', hotelId).order('label', { ascending: true }),
+    // Creation order matches the order the admin pasted; lexical label order would put "2" after "199".
+    await client.from('rooms').select(roomColumns).eq('hotel_id', hotelId).order('created_at', { ascending: true }),
   );
   return (rows ?? []).map(toRoom);
 }

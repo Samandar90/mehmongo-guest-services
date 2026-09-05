@@ -91,13 +91,13 @@ describe('createRooms', () => {
 });
 
 describe('room queries', () => {
-  it('lists rooms for one hotel ordered by label', async () => {
+  it('lists rooms for one hotel in creation order', async () => {
     const { client, from, builder } = createRoomsClient();
 
     await expect(listRooms('hotel-1', client)).resolves.toEqual([room205]);
     expect(from).toHaveBeenCalledWith('rooms');
     expect(builder.eq).toHaveBeenCalledWith('hotel_id', 'hotel-1');
-    expect(builder.order).toHaveBeenCalledWith('label', { ascending: true });
+    expect(builder.order).toHaveBeenCalledWith('created_at', { ascending: true });
   });
 
   it('toggles a room by id and returns the updated room', async () => {

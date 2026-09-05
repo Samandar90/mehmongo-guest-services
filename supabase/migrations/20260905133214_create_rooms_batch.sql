@@ -3,8 +3,9 @@
 -- security invoker: RLS on public.rooms still applies to the caller; the
 -- explicit is_super_admin() check only turns a silent policy denial into a
 -- clear 42501 for the admin UI.
+-- Limits mirror roomLabelMaxLength (40) and roomBatchMaxSize (300) in lib/admin/rooms.ts.
 
-create function public.create_rooms_batch(target_hotel_id uuid, room_labels text[])
+create or replace function public.create_rooms_batch(target_hotel_id uuid, room_labels text[])
 returns setof public.rooms
 language plpgsql
 security invoker
@@ -32,14 +33,14 @@ begin
     select 1
     from unnest(room_labels) as raw(label)
     where raw.label is null
-       or char_length(btrim(raw.label)) not between 1 and 40
+       or char_length(btrim(raw.label, E' \t\r\n')) not between 1 and 40
   ) then
     raise exception 'each room label must be 1 to 40 characters after trimming'
       using errcode = '22023';
   end if;
 
   if (
-    select count(*) - count(distinct lower(btrim(raw.label)))
+    select count(*) - count(distinct lower(btrim(raw.label, E' \t\r\n')))
     from unnest(room_labels) as raw(label)
   ) > 0 then
     raise exception 'room_labels contains duplicate labels'
@@ -53,7 +54,7 @@ begin
 
   return query
     insert into public.rooms (hotel_id, label)
-    select target_hotel_id, btrim(raw.label)
+    select target_hotel_id, btrim(raw.label, E' \t\r\n')
     from unnest(room_labels) as raw(label)
     returning *;
 end;
@@ -61,4 +62,5 @@ $$;
 
 revoke all on function public.create_rooms_batch(uuid, text[]) from public;
 revoke all on function public.create_rooms_batch(uuid, text[]) from anon;
-grant execute on function public.create_rooms_batch(uuid, text[]) to authenticated, service_role;
+-- service_role has no auth.uid(), so it could never pass the admin check; only authenticated callers get execute.
+grant execute on function public.create_rooms_batch(uuid, text[]) to authenticated;
