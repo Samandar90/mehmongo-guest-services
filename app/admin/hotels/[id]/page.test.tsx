@@ -73,6 +73,22 @@ describe('AdminHotelPage', () => {
     expect(listRooms).toHaveBeenCalledTimes(2);
   });
 
+  it('never shows the previous hotel rooms while a different hotel loads', async () => {
+    vi.mocked(getHotel).mockResolvedValue(kamilovsHotel);
+    vi.mocked(listRooms).mockResolvedValueOnce([room205]).mockReturnValueOnce(new Promise(() => undefined));
+    const view = render(<AdminHotelPage />);
+    expect(await screen.findByRole('checkbox', { name: 'Выбрать комнату 205' })).toBeInTheDocument();
+
+    paramsState.current = { id: 'hotel-2' };
+    vi.mocked(getHotel).mockResolvedValue({ ...kamilovsHotel, id: 'hotel-2', name: 'Silk Road Inn', slug: 'silk-road' });
+    view.rerender(<AdminHotelPage />);
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Silk Road Inn' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: 'Выбрать комнату 205' })).not.toBeInTheDocument();
+    expect(screen.getByText('Загрузка комнат…')).toBeInTheDocument();
+    expect(listRooms).toHaveBeenLastCalledWith('hotel-2');
+  });
+
   it('reports a rooms loading failure without hiding the hotel form', async () => {
     const user = userEvent.setup();
     vi.mocked(getHotel).mockResolvedValue(kamilovsHotel);

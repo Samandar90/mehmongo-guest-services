@@ -62,7 +62,10 @@ export function RoomEditor({
   copyText = defaultCopyText,
 }: RoomEditorProps) {
   const [mode, setMode] = useState<Mode>('list');
-  const [draft, setDraft] = useState('');
+  // One draft per mode: a text input silently drops newlines, so a pasted list must not leak into single mode.
+  const [drafts, setDrafts] = useState<Record<Mode, string>>({ single: '', list: '' });
+  const draft = drafts[mode];
+  const setDraft = (value: string) => setDrafts((current) => ({ ...current, [mode]: value }));
   const [draftError, setDraftError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -91,6 +94,7 @@ export function RoomEditor({
   }, [onSelectionChange, selectedActive, selectionKey]);
 
   const allActiveSelected = activeIds.length > 0 && activeIds.every((id) => selectedActive.includes(id));
+  const someActiveSelected = selectedActive.length > 0 && !allActiveSelected;
 
   const toggleAll = () => {
     setSelected(allActiveSelected ? [] : activeIds);
@@ -156,12 +160,15 @@ export function RoomEditor({
     try {
       await setRoomActive(room.id, active);
       changed = true;
-    } catch {
-      setFormError(messages.statusFailed);
+    } catch (error) {
+      const code = errorCode(error);
+      // PGRST116: .single() saw zero rows, which under RLS means the caller may not touch this room.
+      setFormError(code === '42501' || code === 'PGRST116' ? messages.forbidden : messages.statusFailed);
     } finally {
       setPendingId(null);
     }
     if (!changed) return;
+    if (!active) setSelected((current) => current.filter((id) => id !== room.id));
     setNotice(`Комната ${room.label} ${active ? 'включена' : 'отключена'}`);
     await swallowReload(reload);
   };
@@ -244,13 +251,16 @@ export function RoomEditor({
             <thead>
               <tr>
                 <th scope="col">
-                  <input
-                    type="checkbox"
-                    aria-label="Выбрать все активные комнаты"
-                    checked={allActiveSelected}
-                    disabled={activeIds.length === 0}
-                    onChange={toggleAll}
-                  />
+                  <label className="admin-check">
+                    <input
+                      type="checkbox"
+                      aria-label="Выбрать все активные комнаты"
+                      checked={allActiveSelected}
+                      ref={(element) => { if (element) element.indeterminate = someActiveSelected; }}
+                      disabled={activeIds.length === 0}
+                      onChange={toggleAll}
+                    />
+                  </label>
                 </th>
                 <th scope="col">Комната</th>
                 <th scope="col">Токен</th>
@@ -265,13 +275,15 @@ export function RoomEditor({
                 return (
                   <tr key={room.id} data-active={room.active}>
                     <td data-label="Выбор">
-                      <input
-                        type="checkbox"
-                        aria-label={`Выбрать комнату ${room.label}`}
-                        checked={room.active && selected.includes(room.id)}
-                        disabled={!room.active}
-                        onChange={() => toggleRoom(room.id)}
-                      />
+                      <label className="admin-check">
+                        <input
+                          type="checkbox"
+                          aria-label={`Выбрать комнату ${room.label}`}
+                          checked={room.active && selected.includes(room.id)}
+                          disabled={!room.active}
+                          onChange={() => toggleRoom(room.id)}
+                        />
+                      </label>
                     </td>
                     <td data-label="Комната"><strong>{room.label}</strong></td>
                     <td data-label="Токен"><code>{`${room.publicToken.slice(0, 8)}…`}</code></td>

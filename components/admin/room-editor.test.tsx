@@ -168,6 +168,76 @@ describe('RoomEditor', () => {
 
     expect(onSelectionChange).toHaveBeenLastCalledWith(['room-205']);
     expect(screen.getByRole('checkbox', { name: 'Выбрать комнату 206' })).toBeDisabled();
+    // Every checkbox sits inside a label so the tap target is the 44px label, not the 20px box.
+    for (const checkbox of screen.getAllByRole('checkbox')) {
+      expect(checkbox.closest('label')).toHaveClass('admin-check');
+    }
+  });
+
+  it('marks the select-all checkbox as indeterminate for a partial selection', async () => {
+    const user = userEvent.setup();
+    renderRoomEditor({ rooms: [room205Fixture, room206Fixture] });
+
+    await user.click(screen.getByRole('checkbox', { name: 'Выбрать комнату 205' }));
+
+    const selectAll = screen.getByRole('checkbox', { name: 'Выбрать все активные комнаты' }) as HTMLInputElement;
+    expect(selectAll.indeterminate).toBe(true);
+    expect(selectAll).not.toBeChecked();
+  });
+
+  it('removes a room from the selection when the admin disables it', async () => {
+    const user = userEvent.setup();
+    const onSelectionChange = vi.fn();
+    const setRoomActive = vi.fn().mockResolvedValue({ ...room205Fixture, active: false });
+    renderRoomEditor({ rooms: [room205Fixture, room206Fixture], onSelectionChange, setRoomActive });
+
+    await user.click(screen.getByRole('checkbox', { name: 'Выбрать все активные комнаты' }));
+    await user.click(screen.getByRole('button', { name: 'Отключить комнату 205' }));
+    await user.click(screen.getByRole('button', { name: 'Подтвердить отключение 205' }));
+
+    await waitFor(() => expect(onSelectionChange).toHaveBeenLastCalledWith(['room-206']));
+  });
+
+  it('keeps separate drafts for the single and list modes', async () => {
+    const user = userEvent.setup();
+    const createRooms = vi.fn().mockResolvedValue([room205Fixture]);
+    renderRoomEditor({ createRooms, rooms: [] });
+
+    await user.type(screen.getByLabelText('Список комнат'), '205\n206');
+    await user.click(screen.getByRole('radio', { name: 'Добавить одну комнату' }));
+    expect(screen.getByLabelText('Название комнаты')).toHaveValue('');
+
+    await user.type(screen.getByLabelText('Название комнаты'), '207');
+    await user.click(screen.getByRole('button', { name: 'Добавить комнату' }));
+    expect(createRooms).toHaveBeenCalledWith('hotel-1', ['207']);
+
+    await user.click(screen.getByRole('radio', { name: 'Вставить список' }));
+    expect(screen.getByLabelText('Список комнат')).toHaveValue('205\n206');
+  });
+
+  it('explains a permission failure instead of suggesting a retry', async () => {
+    const user = userEvent.setup();
+    const setRoomActive = vi.fn().mockRejectedValue({ code: '42501', message: 'permission denied' });
+    const createRooms = vi.fn().mockRejectedValue({ code: '42501', message: 'permission denied' });
+    renderRoomEditor({ rooms: [room205Fixture], setRoomActive, createRooms });
+
+    await user.click(screen.getByRole('button', { name: 'Отключить комнату 205' }));
+    await user.click(screen.getByRole('button', { name: 'Подтвердить отключение 205' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Нет прав на изменение комнат. Войдите заново.');
+
+    await user.type(screen.getByLabelText('Список комнат'), '206');
+    await user.click(screen.getByRole('button', { name: 'Добавить комнаты' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Нет прав на изменение комнат. Войдите заново.');
+  });
+
+  it('reports a clipboard failure', async () => {
+    const user = userEvent.setup();
+    const copyText = vi.fn().mockRejectedValue(new Error('denied'));
+    renderRoomEditor({ rooms: [room205Fixture], siteUrl: 'https://mehmongo.example', copyText });
+
+    await user.click(screen.getByRole('button', { name: 'Скопировать ссылку для 205' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось скопировать ссылку. Повторите попытку.');
   });
 
   it('drops a room from the selection once it is disabled', async () => {

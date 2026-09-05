@@ -171,3 +171,6 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
   .admin-table td[data-label='Выбор'] { display: flex; align-items: center; gap: 10px; }
   .admin-table td[data-label='Выбор']::before { margin: 0; }
 }
+.admin-check { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; margin: -12px 0; cursor: pointer; }
+.admin-check:has(input:disabled) { cursor: default; }
+.admin-field textarea[aria-invalid='true'] { border-color: #b42318; }

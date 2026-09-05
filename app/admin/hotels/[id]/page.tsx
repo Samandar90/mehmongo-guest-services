@@ -15,7 +15,9 @@ type LoadState =
   | { status: 'missing' }
   | { status: 'error' };
 
-type RoomsState = { status: 'loading' | 'ready' | 'error'; rooms: Room[] };
+type RoomsState = { hotelId: string; status: 'loading' | 'ready' | 'error'; rooms: Room[] };
+
+const noRooms = (hotelId: string): RoomsState => ({ hotelId, status: 'loading', rooms: [] });
 
 function resolveSiteUrl(): string | null {
   try {
@@ -53,9 +55,11 @@ export default function AdminHotelPage() {
   }, []);
 
   // Rooms load and refresh independently so the hotel form and editor state survive a room mutation.
-  const [roomsState, setRoomsState] = useState<RoomsState>({ status: 'loading', rooms: [] });
+  const [storedRooms, setRoomsState] = useState<RoomsState>(() => noRooms(hotelId));
   const [roomsAttempt, setRoomsAttempt] = useState(0);
   const [siteUrl] = useState(resolveSiteUrl);
+  // Rooms are keyed by hotel id so a route change never shows the previous hotel's rooms.
+  const roomsState = storedRooms.hotelId === hotelId ? storedRooms : noRooms(hotelId);
 
   useEffect(() => {
     if (!hotelId) return;
@@ -63,9 +67,11 @@ export default function AdminHotelPage() {
     const run = async () => {
       try {
         const rooms = await listRooms(hotelId);
-        if (!cancelled) setRoomsState({ status: 'ready', rooms });
+        if (!cancelled) setRoomsState({ hotelId, status: 'ready', rooms });
       } catch {
-        if (!cancelled) setRoomsState((current) => ({ status: 'error', rooms: current.rooms }));
+        if (!cancelled) {
+          setRoomsState((current) => ({ hotelId, status: 'error', rooms: current.hotelId === hotelId ? current.rooms : [] }));
+        }
       }
     };
     void run();
@@ -73,7 +79,7 @@ export default function AdminHotelPage() {
   }, [hotelId, roomsAttempt]);
 
   const reloadRooms = useCallback(() => {
-    setRoomsState((current) => ({ status: 'loading', rooms: current.rooms }));
+    setRoomsState((current) => ({ ...current, status: 'loading' }));
     setRoomsAttempt((attempt) => attempt + 1);
   }, []);
 
@@ -127,6 +133,7 @@ export default function AdminHotelPage() {
             ) : null}
             {roomsState.status === 'ready' || roomsState.rooms.length > 0 ? (
               <RoomEditor
+                key={state.hotel.id}
                 hotelId={state.hotel.id}
                 rooms={roomsState.rooms}
                 reload={reloadRooms}
