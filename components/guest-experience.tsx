@@ -6,6 +6,7 @@ import { RequestForm } from '@/components/request-form';
 import { RequestSuccess } from '@/components/request-success';
 import { ServiceGrid } from '@/components/service-grid';
 import type { GuestContext, ServiceId } from '@/lib/guest-request';
+import { submitGuestRequest } from '@/lib/requests/api';
 
 export function GuestExperience({ context }: { context: GuestContext }) {
   const [service, setService] = useState<ServiceId | null>(null);
@@ -18,7 +19,18 @@ export function GuestExperience({ context }: { context: GuestContext }) {
       <header className="site-header"><BrandLockup /><span className="language-pill">EN</span></header>
 
       {reference ? <RequestSuccess context={context} reference={reference} onRestart={restart} /> : service ? (
-        <RequestForm service={service} onBack={() => setService(null)} onComplete={setReference} />
+        <RequestForm
+          service={service}
+          onBack={() => setService(null)}
+          onComplete={setReference}
+          onSubmit={(fields, idempotencyKey) => submitGuestRequest({
+            roomToken: context.roomToken,
+            idempotencyKey,
+            service,
+            fields,
+            website: '',
+          })}
+        />
       ) : (
         <>
           <section className="welcome-panel">
