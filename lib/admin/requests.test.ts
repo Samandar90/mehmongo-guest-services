@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AdminRequestError, listRequests, retryTelegram } from './requests';
+import { AdminRequestError, getDashboardMetrics, listRequests, retryTelegram } from './requests';
 
 const requestRowFixture = {
   id: 'request-1',
@@ -133,6 +133,49 @@ describe('listRequests', () => {
     const { client } = requestQueryClient([], { code: '42501', message: 'permission denied' });
 
     await expect(listRequests({}, client)).rejects.toMatchObject({ code: '42501' });
+  });
+});
+
+describe('getDashboardMetrics', () => {
+  type CountCall = { table: string; filter: [string, unknown] | null; head: boolean };
+
+  function countClient(counts: Record<string, number | null>, error: unknown = null) {
+    const calls: CountCall[] = [];
+    const client = {
+      from: vi.fn((table: string) => {
+        const call: CountCall = { table, filter: null, head: false };
+        calls.push(call);
+        const result = Promise.resolve({ count: counts[table] ?? null, error, data: null });
+        const builder = {
+          select: vi.fn((_columns: string, options?: { count?: string; head?: boolean }) => {
+            call.head = options?.head === true && options.count === 'exact';
+            return builder;
+          }),
+          eq: vi.fn((column: string, value: unknown) => { call.filter = [column, value]; return result; }),
+        };
+        return builder;
+      }),
+    };
+    return { client: client as never, calls };
+  }
+
+  it('counts only active hotels and rooms and new requests', async () => {
+    const { client, calls } = countClient({ hotels: 1, rooms: 24, service_requests: 7 });
+
+    await expect(getDashboardMetrics(client)).resolves.toEqual({ activeHotels: 1, activeRooms: 24, newRequests: 7 });
+
+    expect(calls).toEqual(expect.arrayContaining([
+      { table: 'hotels', filter: ['active', true], head: true },
+      { table: 'rooms', filter: ['active', true], head: true },
+      { table: 'service_requests', filter: ['status', 'new'], head: true },
+    ]));
+  });
+
+  it('treats a missing count as zero and propagates database errors', async () => {
+    await expect(getDashboardMetrics(countClient({ hotels: null, rooms: null, service_requests: null }).client))
+      .resolves.toEqual({ activeHotels: 0, activeRooms: 0, newRequests: 0 });
+    await expect(getDashboardMetrics(countClient({}, { code: '42501', message: 'permission denied' }).client))
+      .rejects.toMatchObject({ code: '42501' });
   });
 });
 

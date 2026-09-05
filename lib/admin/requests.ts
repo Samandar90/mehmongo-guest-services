@@ -177,6 +177,29 @@ export async function listRequests(
   };
 }
 
+export type DashboardMetrics = { activeHotels: number; activeRooms: number; newRequests: number };
+
+async function exactCount(
+  client: SupabaseClient,
+  table: 'hotels' | 'rooms' | 'service_requests',
+  column: string,
+  value: unknown,
+): Promise<number> {
+  const { count, error } = await client.from(table).select('id', { count: 'exact', head: true }).eq(column, value);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+/** Three exact-count queries under RLS; no financial figures by design. */
+export async function getDashboardMetrics(client: SupabaseClient = getSupabaseBrowserClient()): Promise<DashboardMetrics> {
+  const [activeHotels, activeRooms, newRequests] = await Promise.all([
+    exactCount(client, 'hotels', 'active', true),
+    exactCount(client, 'rooms', 'active', true),
+    exactCount(client, 'service_requests', 'status', 'new'),
+  ]);
+  return { activeHotels, activeRooms, newRequests };
+}
+
 async function functionErrorBody(error: unknown): Promise<{ status: number; body: Record<string, unknown> } | null> {
   const context = typeof error === 'object' && error !== null ? (error as { context?: unknown }).context : undefined;
   if (!(context instanceof Response)) return null;

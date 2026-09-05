@@ -198,3 +198,9 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
   .admin-table tr:has(+ .admin-request-details-row) { border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
   .admin-request-details-row td::before { content: none; }
 }
+.admin-metrics { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.admin-metric { gap: 10px; }
+.admin-metric h2 { font-size: 14px; color: var(--ink-soft); font-weight: 650; text-transform: uppercase; letter-spacing: .08em; }
+.admin-metric-value { margin: 0; font-size: clamp(36px, 8vw, 52px); line-height: 1; font-weight: 790; letter-spacing: -.04em; }
+.admin-metric .admin-button { justify-self: start; }
+@media (min-width: 720px) { .admin-metrics { grid-template-columns: repeat(3, 1fr); } }
