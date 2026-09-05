@@ -38,3 +38,6 @@ next-env.d.ts
 /outputs/
 /work/
 .worktrees/
+
+# TypeScript incremental cache
+*.tsbuildinfo
