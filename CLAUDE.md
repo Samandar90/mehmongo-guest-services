@@ -45,7 +45,7 @@ Important recent commits (newest first): `b11987a` asset generator hardening, `d
 
 1. Remaining owner-only admin clicks (Claude cannot hold an admin session; injecting one is blocked): create a hotel through the form with the guest catalogue set, paste rooms `205` and `206` into the parser, toggle a room off from the room editor, and generate materials for a selection. Owner login and the Telegram retry are already confirmed by hand, and the guest side of a disabled room is verified end to end.
 2. Production Supabase project: the owner creates it, then follow `docs/operations/supabase-pilot-runbook.md` — link, `db push`, Edge secrets, function deploy, `node scripts/create-admin.mjs` for the owner, `SITE_URL` = `VITE_SITE_URL`, then `docs/operations/a5-print-checklist.md`.
-3. Guest hosting decision: `vinext build` emits a Cloudflare Worker (`dist/server/wrangler.json`), so OpenAI Sites hosting or Cloudflare Workers serve it unchanged and Vercel does not. Telegram stays on the same bot and group as the local checks.
+3. Guest hosting: Cloudflare Workers, chosen by the owner because they have no domain and did not want the platform name in the URL. `vinext build` already emits the Worker as `mehmongo`, so the origin is `https://mehmongo.<workers.dev subdomain>.workers.dev`; that subdomain must be known before the first build because `VITE_SITE_URL` is compiled in. Telegram stays on the same bot and group as the local checks.
 
 Do not add financial analytics. This MVP only stores hotel commission as integer basis points. Do not add hotel staff accounts, online payments, Telegram assignment buttons, or separate Telegram groups.
 

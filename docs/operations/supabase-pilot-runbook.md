@@ -100,14 +100,19 @@ Set the agreed commission separately; zero above is a bootstrap value, not a neg
 
 ## Guest hosting and smoke test
 
-`vinext build` emits a Cloudflare Worker: `dist/server/wrangler.json` with `dist/client` as its asset directory. Two hosts can serve that output without changing the build.
+`vinext build` emits a Cloudflare Worker: `dist/server/wrangler.json`, named `mehmongo` in `vite.config.ts`, with `dist/client` as its asset directory.
 
-- **OpenAI Sites hosting.** The project this repository was created from, recorded in `.openai/hosting.json`, and where the current public demo runs. Publish through that workflow.
-- **Cloudflare Workers**, with your own account: `npx wrangler deploy --config dist/server/wrangler.json` after `npm run build`.
+**Cloudflare Workers is the chosen host.** The guest origin is `https://mehmongo.<workers.dev subdomain>.workers.dev` until a custom domain is bought. Confirm that subdomain before the first build, because the origin is compiled into the client bundle.
 
-Vercel needs a different build target and is not supported by this configuration; moving there means replacing the Cloudflare Vite plugin and revalidating the whole build.
+```powershell
+npx wrangler login
+npm run build
+npx wrangler deploy --config dist/server/wrangler.json
+```
 
-Set four build-time variables in the chosen host: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and `SITE_URL` with `VITE_SITE_URL` both holding the final guest origin. `SITE_URL` feeds page metadata; `VITE_SITE_URL` feeds the guest links and QR codes the admin generates, so a mismatch prints plaques that point at the wrong host. Never put the Supabase secret key, the Telegram token or `REQUEST_HASH_SECRET` in guest hosting: those belong only in Edge Function secrets. The URL must be stable before printing room plaques.
+OpenAI Sites hosting serves the same output through the workflow recorded in `.openai/hosting.json`, but its hostname carries that platform's name. Vercel needs a different build target: `output: 'standalone'` in `next.config.ts` does produce a working `dist/standalone/server.js`, verified on 2026-09-06, but Vercel runs no long-lived Node process and vinext exports no serverless handler, so it would need a hand-written adapter. A plain Node host can run that standalone server directly; free tiers there sleep, and a guest scanning a room code will not wait through a cold start.
+
+The four build-time variables live in `.env.production.local` for a local build, or in the host's build settings: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and `SITE_URL` with `VITE_SITE_URL` both holding the final guest origin. `SITE_URL` feeds page metadata; `VITE_SITE_URL` feeds the guest links and QR codes the admin generates, so a mismatch prints plaques that point at the wrong host. Never put the Supabase secret key, the Telegram token or `REQUEST_HASH_SECRET` in guest hosting: those belong only in Edge Function secrets. The URL must be stable before printing room plaques.
 
 Open room 205 through its real QR link. Send clearly marked test transport data and confirm the same reference in the guest confirmation, exactly one request row, its delivery row, and the Russian Telegram group message. Replay the same idempotency UUID and confirm no new request or notification. Test inactive room rejection, anonymous retry rejection, and failed-delivery recovery with the owner account. Do not claim live Telegram verification from mocked unit tests.
 
