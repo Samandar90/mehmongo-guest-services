@@ -6,7 +6,7 @@ Choose the MehmonGo project explicitly before running remote commands. Do not re
 ## Prerequisites
 
 - Reviewed application commit and passing application/SQL checks.
-- Dedicated Supabase project reference, database password and CLI login.
+- Dedicated Supabase project reference, database password and CLI login. Create the project named for MehmonGo alone, in the region closest to the guests, and keep its database password in a password manager: Supabase shows it once and the CLI asks for it on every link.
 - Telegram bot added to the agreed group with permission to send messages.
 - Bot token and group chat ID supplied privately through Edge Function secrets.
 - Owner Auth account and the final guest site origin.
@@ -62,7 +62,18 @@ Keep `verify_jwt = false` scoped to `room-context` and `submit-request`. `retry-
 
 ## Owner and pilot rooms
 
-Create the owner's email/password account in Supabase Authentication using the dashboard. Disable public sign-up for this owner-only administration app. Copy the resulting Auth user UUID into a parameterized administrative insert:
+Create the owner account and its super-admin role in one step. Point the script at the production project and let it prompt for the password, which it reads without echoing and never writes to disk:
+
+```powershell
+$env:SUPABASE_URL = "https://$env:MEHMONGO_PROJECT_REF.supabase.co"
+$env:SUPABASE_SECRET_KEY = "<project secret key, paste privately>"
+node scripts/create-admin.mjs owner@example.com
+node scripts/create-admin.mjs --list
+```
+
+Clear both variables from the session afterwards. Disable public sign-up for this owner-only administration app.
+
+The same script removes an account created with the wrong address (`--remove owner@example.com`); it refuses to remove the last active administrator. To grant the role by hand instead, bind the verified Auth user UUID in a parameterized insert:
 
 ```sql
 insert into public.admin_users(user_id, role, active)
@@ -89,7 +100,14 @@ Set the agreed commission separately; zero above is a bootstrap value, not a neg
 
 ## Guest hosting and smoke test
 
-Set only `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` in guest hosting build settings. Deploy the reviewed commit using the existing Sites hosting workflow. The URL must be stable before printing room plaques.
+`vinext build` emits a Cloudflare Worker: `dist/server/wrangler.json` with `dist/client` as its asset directory. Two hosts can serve that output without changing the build.
+
+- **OpenAI Sites hosting.** The project this repository was created from, recorded in `.openai/hosting.json`, and where the current public demo runs. Publish through that workflow.
+- **Cloudflare Workers**, with your own account: `npx wrangler deploy --config dist/server/wrangler.json` after `npm run build`.
+
+Vercel needs a different build target and is not supported by this configuration; moving there means replacing the Cloudflare Vite plugin and revalidating the whole build.
+
+Set four build-time variables in the chosen host: `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, and `SITE_URL` with `VITE_SITE_URL` both holding the final guest origin. `SITE_URL` feeds page metadata; `VITE_SITE_URL` feeds the guest links and QR codes the admin generates, so a mismatch prints plaques that point at the wrong host. Never put the Supabase secret key, the Telegram token or `REQUEST_HASH_SECRET` in guest hosting: those belong only in Edge Function secrets. The URL must be stable before printing room plaques.
 
 Open room 205 through its real QR link. Send clearly marked test transport data and confirm the same reference in the guest confirmation, exactly one request row, its delivery row, and the Russian Telegram group message. Replay the same idempotency UUID and confirm no new request or notification. Test inactive room rejection, anonymous retry rejection, and failed-delivery recovery with the owner account. Do not claim live Telegram verification from mocked unit tests.
 
