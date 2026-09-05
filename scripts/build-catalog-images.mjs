@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 /**
- * Builds the web variants of the catalogue photos.
+ * Builds the web variants of the catalogue photos listed in
+ * content/photo-sources.json.
  *
- *   node scripts/build-catalog-images.mjs [source-directory]
+ *   node scripts/build-catalog-images.mjs [package-assets-directory]
  *
- * Source: the delivered package folder site-content/assets (defaults to
- * MehmonGo-Claude-Catalog-Final on the Desktop). The originals are large and
- * stay out of the repository; only the resized WebP/JPEG variants used by the
- * site are committed, and docs/photo credits record the conversion.
+ * Wikimedia Commons photos are downloaded from their source page; the vehicle
+ * examples come from the delivered package folder (defaults to
+ * MehmonGo-Claude-Catalog-Final on the Desktop). Originals stay out of the
+ * repository: only the resized WebP/JPEG variants the site serves are
+ * committed, and /photo-credits records author, licence and this conversion.
  *
  * Place photos are cropped to 3:2. Vehicle photos keep their own aspect ratio
  * so a car never becomes an unrecognisable fragment.
@@ -17,54 +19,67 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharpModule from 'sharp';
 
-const sharp = /** @type {(input: Buffer) => any} */ (sharpModule);
+const sharp = /** @type {(input: Buffer | Uint8Array) => any} */ (sharpModule);
 
+const USER_AGENT = 'MehmonGo-site/1.0 (https://mehmongo.uz; samandarup88@gmail.com)';
 const projectDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const sourceDir = process.argv[2]
+const packageDir = process.argv[2]
   ?? 'C:/Users/user/Desktop/MehmonGo-Claude-Catalog-Final/site-content/assets';
 const outputDir = path.join(projectDir, 'public', 'catalog');
 
 /** Card widths: one for phones, one for the desktop grid and retina phones. */
 const WIDTHS = [480, 960];
 
-const images = [
-  { file: 'tashkent-chorsu.jpg', fit: 'cover' },
-  { file: 'charvak.jpg', fit: 'cover' },
-  { file: 'samarkand-registan.jpg', fit: 'cover' },
-  { file: 'airport-sedan.jpg', fit: 'contain' },
-  { file: 'family-minivan.jpg', fit: 'contain' },
-];
+const { photos } = JSON.parse(await readFile(path.join(projectDir, 'content', 'photo-sources.json'), 'utf8'));
+
+async function commonsBytes(commonsFile) {
+  const url = new URL('https://commons.wikimedia.org/w/api.php');
+  url.search = new URLSearchParams({
+    action: 'query', format: 'json', formatversion: '2',
+    titles: commonsFile, prop: 'imageinfo', iiprop: 'url',
+  }).toString();
+
+  const info = await (await fetch(url, { headers: { 'user-agent': USER_AGENT } })).json();
+  const source = info.query?.pages?.[0]?.imageinfo?.[0]?.url;
+  if (!source) throw new Error(`Commons file not found: ${commonsFile}`);
+
+  const response = await fetch(source, { headers: { 'user-agent': USER_AGENT } });
+  if (!response.ok) throw new Error(`${response.status} downloading ${source}`);
+  return Buffer.from(await response.arrayBuffer());
+}
 
 await mkdir(outputDir, { recursive: true });
 
 const manifest = {};
 
-for (const image of images) {
-  const name = path.basename(image.file, path.extname(image.file));
-  const source = await readFile(path.join(sourceDir, image.file));
+for (const photo of photos) {
+  const source = photo.commonsFile
+    ? await commonsBytes(photo.commonsFile)
+    : await readFile(path.join(packageDir, photo.packageFile));
   const variants = [];
 
   for (const width of WIDTHS) {
-    const pipeline = image.fit === 'cover'
-      ? sharp(source).resize(width, Math.round(width * 2 / 3), { fit: 'cover', position: 'attention' })
+    const pipeline = photo.fit === 'cover'
+      ? sharp(source).resize(width, Math.round(width * 2 / 3), { fit: 'cover', position: photo.crop ?? 'attention' })
       : sharp(source).resize(width, Math.round(width * 2 / 3), { fit: 'inside', withoutEnlargement: true });
 
     const webp = await pipeline.clone().webp({ quality: 78 }).toBuffer({ resolveWithObject: true });
     const jpeg = await pipeline.clone().jpeg({ quality: 80, mozjpeg: true }).toBuffer({ resolveWithObject: true });
 
-    await writeFile(path.join(outputDir, `${name}-${width}.webp`), webp.data);
-    await writeFile(path.join(outputDir, `${name}-${width}.jpg`), jpeg.data);
-    variants.push({ width: webp.info.width, height: webp.info.height, bytes: webp.data.length });
+    await writeFile(path.join(outputDir, `${photo.name}-${width}.webp`), webp.data);
+    await writeFile(path.join(outputDir, `${photo.name}-${width}.jpg`), jpeg.data);
+    variants.push({ width: webp.info.width, height: webp.info.height });
   }
 
   const largest = variants[variants.length - 1];
-  manifest[name] = { fit: image.fit, width: largest.width, height: largest.height, widths: WIDTHS };
-  console.log(`${name}: ${variants.map((variant) => `${variant.width}x${variant.height}`).join(', ')}`);
+  manifest[photo.name] = { fit: photo.fit, width: largest.width, height: largest.height, widths: WIDTHS };
+  console.log(`${photo.name}: ${variants.map((variant) => `${variant.width}x${variant.height}`).join(', ')} (${photo.license})`);
 }
 
 const generated = `// Generated by scripts/build-catalog-images.mjs.
 // Intrinsic sizes of the committed catalogue photos, so cards reserve space
-// before the image loads. Sources and licences: /photo-credits.
+// before the image loads. Sources and licences: content/photo-sources.json
+// and the /photo-credits page.
 
 export type CatalogImageVariant = {
   fit: 'cover' | 'contain';

@@ -1,0 +1,81 @@
+{
+  "note": "Sources of the guest catalogue photos. scripts/build-catalog-images.mjs downloads and resizes them; app/photo-credits/page.tsx renders the credits from this file, so attribution can never drift from what the site serves. 'crop' picks the part of a place photo that stays in the 3:2 card.",
+  "photos": [
+    {
+      "name": "tashkent-hazrati-imam",
+      "title": "Hazrati Imam complex, Tashkent",
+      "fit": "cover",
+      "author": "Muxriddin Azimov",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Hazrati_Imom_majmuasi_1.jpg",
+      "commonsFile": "File:Hazrati Imom majmuasi 1.jpg",
+      "shareAlike": true,
+      "note": "Downloaded unchanged, then resized and converted to WebP and JPEG for this website; the page may crop its display to fit the layout.",
+      "crop": "north"
+    },
+    {
+      "name": "tashkent-chorsu-market",
+      "title": "Chorsu Bazaar, Tashkent",
+      "fit": "cover",
+      "author": "Alexey Komarov",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chorsu_Bazaar,_Tashkent,_Uzbekistan_-_2019-06-01_2.jpg",
+      "commonsFile": "File:Chorsu Bazaar, Tashkent, Uzbekistan - 2019-06-01 2.jpg",
+      "shareAlike": true,
+      "note": "Downloaded unchanged, then resized and converted to WebP and JPEG for this website; the page may crop its display to fit the layout.",
+      "crop": "attention"
+    },
+    {
+      "name": "charvak-lake",
+      "title": "Charvak Reservoir, Tashkent region",
+      "fit": "cover",
+      "author": "26D",
+      "license": "CC BY-SA 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Clouds_over_the_Charvak_Reservoir.jpg",
+      "commonsFile": "File:Clouds over the Charvak Reservoir.jpg",
+      "shareAlike": true,
+      "note": "Downloaded unchanged, then resized and converted to WebP and JPEG for this website; the page may crop its display to fit the layout.",
+      "crop": "south"
+    },
+    {
+      "name": "samarkand-registan-square",
+      "title": "Registan, Samarkand",
+      "fit": "cover",
+      "author": "Francisco Anzola",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:The_Registan_Ensemble_(220363335).jpeg",
+      "commonsFile": "File:The Registan Ensemble (220363335).jpeg",
+      "shareAlike": false,
+      "note": "Downloaded unchanged, then resized and converted to WebP and JPEG for this website; the page may crop its display to fit the layout.",
+      "crop": "attention"
+    },
+    {
+      "name": "airport-sedan",
+      "title": "Sedan example",
+      "fit": "contain",
+      "author": "Service provider catalogue",
+      "license": "All rights reserved",
+      "licenseUrl": null,
+      "sourcePage": null,
+      "packageFile": "airport-sedan.jpg",
+      "shareAlike": false,
+      "note": "Supplied in the service provider's catalogue and used as an illustrative example, not under a Creative Commons licence. The assigned vehicle, model and capacity are confirmed separately."
+    },
+    {
+      "name": "family-minivan",
+      "title": "Minivan example",
+      "fit": "contain",
+      "author": "Service provider catalogue",
+      "license": "All rights reserved",
+      "licenseUrl": null,
+      "sourcePage": null,
+      "packageFile": "family-minivan.jpg",
+      "shareAlike": false,
+      "note": "Supplied in the service provider's catalogue and used as an illustrative example, not under a Creative Commons licence. The assigned vehicle, model and capacity are confirmed separately."
+    }
+  ]
+}

@@ -1,62 +1,28 @@
 import Link from 'next/link';
+import photoSources from '@/content/photo-sources.json';
 
 export const metadata = {
   title: 'Photo credits · MehmonGo',
   description: 'Sources and licences of the photos used on the MehmonGo guest site.',
 };
 
-type Credit = {
+type PhotoSource = {
+  name: string;
   title: string;
-  body: React.ReactNode;
+  author: string;
+  license: string;
+  licenseUrl: string | null;
+  sourcePage: string | null;
+  shareAlike: boolean;
+  note: string;
 };
 
-const credits: Credit[] = [
-  {
-    title: 'Chorsu Bazaar, Tashkent',
-    body: (
-      <>
-        Photo: Chris Shervey.{' '}
-        <a href="https://commons.wikimedia.org/wiki/File:Chorsu_Bazaar,_Tashkent.jpg">Original and source information</a>.
-        Licensed under <a href="https://creativecommons.org/licenses/by/2.0/">CC BY 2.0</a>. File: <code>tashkent-chorsu.jpg</code>.
-        Downloaded unchanged, then resized and converted to WebP and JPEG for this website; the page may crop its display to fit the layout.
-      </>
-    ),
-  },
-  {
-    title: 'Charvak Reservoir',
-    body: (
-      <>
-        Photo: J.Doniyorovich.{' '}
-        <a href="https://commons.wikimedia.org/wiki/File:Charvak_Reservoir.jpg">Original and source information</a>.
-        Available under <a href="https://creativecommons.org/publicdomain/zero/1.0/">CC0 1.0</a>. File: <code>charvak.jpg</code>.
-        Downloaded unchanged, then resized and converted to WebP and JPEG for this website; the page may crop its display to fit the layout.
-      </>
-    ),
-  },
-  {
-    title: 'Registan, Samarkand',
-    body: (
-      <>
-        Photo: Euyasik.{' '}
-        <a href="https://commons.wikimedia.org/wiki/File:Registan_Samarkand.jpg">Original and source information</a>.
-        Used under <a href="https://creativecommons.org/licenses/by-sa/3.0/">CC BY-SA 3.0</a>. File: <code>samarkand-registan.jpg</code>.
-        Downloaded unchanged, then resized and converted to WebP and JPEG for this website; the page may crop its display to fit the layout.
-        These adaptations are shared under the same licence. Sightseeing and admission are not included in the intercity transfer.
-      </>
-    ),
-  },
-  {
-    title: 'Vehicle examples and brand mark',
-    body: (
-      <>
-        Vehicle pictures were supplied in the service provider&apos;s catalogue and are used as illustrative examples:{' '}
-        <code>airport-sedan.jpg</code> and <code>family-minivan.jpg</code>. They are not offered under a Creative Commons licence.
-        The assigned vehicle, model and capacity are confirmed separately. The MehmonGo brand mark is an existing project asset.
-      </>
-    ),
-  },
-];
+const photos = photoSources.photos as PhotoSource[];
 
+/**
+ * Credits are rendered from content/photo-sources.json, the same file the image
+ * build reads, so the attribution always matches the photos the site serves.
+ */
 export default function PhotoCreditsPage() {
   return (
     <main className="credits-page">
@@ -65,12 +31,35 @@ export default function PhotoCreditsPage() {
         Destination photos illustrate the places mentioned. They do not promise particular stops, admission or a specific vehicle.
         The photographers do not endorse MehmonGo.
       </p>
-      {credits.map((credit) => (
-        <article key={credit.title}>
-          <h2>{credit.title}</h2>
-          <p>{credit.body}</p>
+
+      {photos.map((photo) => (
+        <article key={photo.name}>
+          <h2>{photo.title}</h2>
+          <p>
+            Photo: {photo.author}.{' '}
+            {photo.sourcePage ? (
+              <>
+                <a href={photo.sourcePage} rel="noreferrer">Original and source information</a>.{' '}
+              </>
+            ) : null}
+            {photo.licenseUrl ? (
+              <>
+                Licensed under <a href={photo.licenseUrl} rel="noreferrer">{photo.license}</a>.{' '}
+              </>
+            ) : (
+              <>{photo.license}. </>
+            )}
+            File: <code>{photo.name}.jpg</code>. {photo.note}
+            {photo.shareAlike ? ' These adaptations are shared under the same licence.' : ''}
+          </p>
         </article>
       ))}
+
+      <article>
+        <h2>Brand mark</h2>
+        <p>The MehmonGo brand mark is an existing project asset.</p>
+      </article>
+
       <p><Link href="/">Back to MehmonGo</Link></p>
     </main>
   );

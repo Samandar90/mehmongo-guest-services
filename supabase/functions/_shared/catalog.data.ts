@@ -79,8 +79,8 @@ export const catalogData = {
         "unit": "per agreed excursion",
         "billingUnit": "excursion"
       },
-      "image": "assets/tashkent-chorsu.jpg",
-      "imageAlt": "Colourful covered stalls at Chorsu Bazaar in Tashkent",
+      "image": "assets/tashkent-hazrati-imam.jpg",
+      "imageAlt": "Turquoise domes and minarets of the Hazrati Imam complex in Tashkent",
       "imageFit": "cover",
       "imageCaption": "Tashkent inspiration. Your route is agreed separately.",
       "facts": [
@@ -117,8 +117,8 @@ export const catalogData = {
         "unit": "per vehicle · agreed day-trip route",
         "billingUnit": "vehicle_route"
       },
-      "image": "assets/charvak.jpg",
-      "imageAlt": "Charvak reservoir surrounded by mountains in the Tashkent region",
+      "image": "assets/charvak-lake.jpg",
+      "imageAlt": "Turquoise Charvak reservoir below the mountains near Tashkent",
       "imageFit": "cover",
       "imageCaption": "Charvak inspiration. Stops depend on your confirmed route.",
       "facts": [
@@ -156,8 +156,8 @@ export const catalogData = {
         "unit": "per vehicle · 09:00–18:00",
         "billingUnit": "vehicle_day"
       },
-      "image": "assets/tashkent-chorsu.jpg",
-      "imageAlt": "Chorsu Bazaar in Tashkent, an example of a city sight",
+      "image": "assets/tashkent-chorsu-market.jpg",
+      "imageAlt": "Dried fruit and nut stalls under the dome of Chorsu Bazaar in Tashkent",
       "imageFit": "cover",
       "imageCaption": "City inspiration. Stops are agreed before confirmation.",
       "facts": [
@@ -274,8 +274,8 @@ export const catalogData = {
         "unit": "per vehicle · one way",
         "billingUnit": "vehicle_one_way"
       },
-      "image": "assets/samarkand-registan.jpg",
-      "imageAlt": "Registan square in Samarkand, the destination city",
+      "image": "assets/samarkand-registan-square.jpg",
+      "imageAlt": "The three madrasahs of Registan square in Samarkand under a clear sky",
       "imageFit": "cover",
       "imageCaption": "Destination inspiration. Registan entry and sightseeing are not included.",
       "facts": [
