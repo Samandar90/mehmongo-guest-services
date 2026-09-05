@@ -250,4 +250,10 @@ async function main() {
 }
 
 // Set the exit code instead of calling process.exit, so pending handles close cleanly.
-process.exitCode = await main();
+try {
+  process.exitCode = await main();
+} catch (error) {
+  // Configuration problems are expected outcomes for the owner, not crashes.
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exitCode = 1;
+}
