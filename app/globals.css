@@ -204,3 +204,13 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .admin-metric-value { margin: 0; font-size: clamp(36px, 8vw, 52px); line-height: 1; font-weight: 790; letter-spacing: -.04em; }
 .admin-metric .admin-button { justify-self: start; }
 @media (min-width: 720px) { .admin-metrics { grid-template-columns: repeat(3, 1fr); } }
+.admin-asset-generator { display: grid; gap: 14px; }
+.admin-asset-toolbar { display: grid; gap: 10px; }
+.admin-asset-progress { margin: 0; display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 650; }
+.admin-asset-progress progress { flex: 1; height: 10px; accent-color: var(--magenta); }
+.admin-asset-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.admin-asset-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,253,250,.85); }
+.admin-asset-preview { margin: 0; display: grid; gap: 8px; justify-items: center; }
+.admin-asset-preview img { width: min(100%, 420px); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 32px rgba(16,43,78,.12); }
+.admin-asset-preview figcaption { color: var(--ink-soft); font-size: 12px; }
+.admin-asset-count { margin: 0; font-size: 14px; font-weight: 650; }

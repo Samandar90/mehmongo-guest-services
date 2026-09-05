@@ -89,6 +89,20 @@ describe('AdminHotelPage', () => {
     expect(listRooms).toHaveBeenLastCalledWith('hotel-2');
   });
 
+  it('feeds the selected active rooms into the asset generator', async () => {
+    const user = userEvent.setup();
+    vi.mocked(getHotel).mockResolvedValue(kamilovsHotel);
+    vi.mocked(listRooms).mockResolvedValue([room205, { ...room205, id: 'room-206', label: '206', active: false }]);
+    render(<AdminHotelPage />);
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Материалы для печати' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Создать материалы' })).toBeDisabled();
+
+    await user.click(screen.getByRole('checkbox', { name: 'Выбрать все активные комнаты' }));
+
+    expect(screen.getByText('Выбрано комнат: 1')).toBeInTheDocument();
+  });
+
   it('reports a rooms loading failure without hiding the hotel form', async () => {
     const user = userEvent.setup();
     vi.mocked(getHotel).mockResolvedValue(kamilovsHotel);

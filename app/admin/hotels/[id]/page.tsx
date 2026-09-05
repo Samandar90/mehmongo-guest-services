@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { AssetGenerator } from '@/components/admin/asset-generator';
 import { HotelForm } from '@/components/admin/hotel-form';
 import { RoomEditor } from '@/components/admin/room-editor';
 import { getHotel, type Hotel } from '@/lib/admin/hotels';
@@ -83,6 +84,10 @@ export default function AdminHotelPage() {
     setRoomsAttempt((attempt) => attempt + 1);
   }, []);
 
+  // The room editor owns the selection; the generator only ever sees active rooms of this hotel.
+  const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>([]);
+  const selectedRooms = roomsState.rooms.filter((room) => room.active && selectedRoomIds.includes(room.id));
+
   return (
     <main className="admin-page">
       <Link href="/admin/hotels" className="admin-back">К списку отелей</Link>
@@ -138,8 +143,14 @@ export default function AdminHotelPage() {
                 rooms={roomsState.rooms}
                 reload={reloadRooms}
                 siteUrl={siteUrl}
+                onSelectionChange={setSelectedRoomIds}
               />
             ) : null}
+          </section>
+
+          <section className="admin-card" aria-labelledby="hotel-assets-heading">
+            <h2 id="hotel-assets-heading">Материалы для печати</h2>
+            <AssetGenerator key={state.hotel.id} hotel={state.hotel} rooms={selectedRooms} siteUrl={siteUrl} />
           </section>
         </>
       ) : null}
