@@ -31,8 +31,22 @@ describe('AdminDashboardPage', () => {
     render(<AdminDashboardPage />);
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить показатели.');
+    expect(screen.getByRole('article', { name: 'Новые заявки' })).not.toHaveAttribute('aria-busy');
+    expect(screen.getAllByText('—')).toHaveLength(3);
+
     await user.click(screen.getByRole('button', { name: 'Повторить' }));
 
     expect(await screen.findByText('40')).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'Новые заявки' })).not.toHaveAttribute('aria-busy');
+  });
+
+  it('announces loading through a persistent live region', async () => {
+    vi.mocked(getDashboardMetrics).mockResolvedValue({ activeHotels: 1, activeRooms: 24, newRequests: 7 });
+    render(<AdminDashboardPage />);
+
+    const live = screen.getByText('Загрузка показателей…');
+    expect(live).toHaveAttribute('aria-live', 'polite');
+    await screen.findByText('24');
+    expect(live).toBeEmptyDOMElement();
   });
 });

@@ -46,7 +46,10 @@ export default function AdminDashboardPage() {
         </div>
       ) : null}
 
-      <DashboardCards metrics={state.metrics} />
+      {/* Always mounted so screen readers get the loading announcement when the text appears. */}
+      <p className="admin-empty admin-live" aria-live="polite">{state.status === 'loading' ? 'Загрузка показателей…' : ''}</p>
+
+      <DashboardCards metrics={state.metrics} busy={state.status === 'loading'} />
     </main>
   );
 }
