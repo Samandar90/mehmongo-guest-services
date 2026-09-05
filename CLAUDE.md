@@ -35,15 +35,17 @@ The implementation plans use checkboxes but progress is tracked in the ignored l
 - Schema additions since the handoff: `updated_at` trigger (`private.set_updated_at`), `create_rooms_batch`, `service_requests_created_idx`. pgTAP suites: 44 assertions across four files.
 - `npm run typecheck` (`tsc -p tsconfig.typecheck.json`) is a clean gate; it extends the root config and excludes `supabase/functions`, which is Deno code verified by `functions:test`/`functions:lint`. Do not add that exclusion to the root `tsconfig.json`: Deno 2 reads it, and excluding the functions there strips their DOM lib types and breaks `deno test`.
 - Public guest origin for admin links and QR codes comes from `VITE_SITE_URL` (`lib/site-url.ts`); keep it identical to `SITE_URL`.
+- `components/guest-notice.tsx` renders the two dead-end guest screens: the site root and a room code that is no longer active. Both were bare unstyled sentences before.
+- `scripts/create-admin.mjs` (`npm run admin:create`) creates, lists and removes super admins against `SUPABASE_URL` plus the secret key, or the local stack. It reads the password in raw mode without echoing and refuses to remove the last active administrator.
 - Guest catalogue (Tashkent): `content/catalog.en.json` is the only source of guest copy and published starting prices. `scripts/build-catalog-data.mjs` regenerates `supabase/functions/_shared/catalog.data.ts`; `lib/catalog.test.ts` fails if they drift. A hotel sees the catalogue only when the owner sets the guest catalogue in the hotel form; otherwise the previous guest form stays. Requests store `offer_id` and a server-built, trigger-frozen `offer_snapshot`; Telegram and the admin show that snapshot, never today's price.
 
 Important recent commits (newest first): `b11987a` asset generator hardening, `d60d408` typecheck gate, `2ce3d71` A5 verifier, `e1dbb2c` asset generator, `7e1645d` dashboard fix, `e74ec2f` requests screen fix, `f814886` room editor fix, `cee6af3` room batches fix, `a218cbf` hotel screens fix, `6c2e46b` updated_at trigger.
 
 ## Exact next work
 
-1. User-only manual scenario (Claude does not enter passwords): with the disposable ignored local owner, log in at `/admin/login`, create a hotel, paste rooms `205` and `206`, disable `206` and confirm its guest route returns unavailable, generate materials for the selected rooms, and retry a failed Telegram delivery from `/admin/requests`.
-2. User decides merge/push: the branch is ready for review; nothing has been pushed or merged.
-3. Production remains undeployed: select or create a dedicated MehmonGo Supabase project, configure Telegram bot token, group chat ID, request-hash secret, owner account, `SITE_URL` and `VITE_SITE_URL`, then follow `docs/operations/supabase-pilot-runbook.md` and `docs/operations/a5-print-checklist.md`.
+1. Remaining owner-only admin clicks (Claude cannot hold an admin session; injecting one is blocked): create a hotel through the form with the guest catalogue set, paste rooms `205` and `206` into the parser, toggle a room off from the room editor, and generate materials for a selection. Owner login and the Telegram retry are already confirmed by hand, and the guest side of a disabled room is verified end to end.
+2. Production Supabase project: the owner creates it, then follow `docs/operations/supabase-pilot-runbook.md` — link, `db push`, Edge secrets, function deploy, `node scripts/create-admin.mjs` for the owner, `SITE_URL` = `VITE_SITE_URL`, then `docs/operations/a5-print-checklist.md`.
+3. Guest hosting decision: `vinext build` emits a Cloudflare Worker (`dist/server/wrangler.json`), so OpenAI Sites hosting or Cloudflare Workers serve it unchanged and Vercel does not. Telegram stays on the same bot and group as the local checks.
 
 Do not add financial analytics. This MVP only stores hotel commission as integer basis points. Do not add hotel staff accounts, online payments, Telegram assignment buttons, or separate Telegram groups.
 
@@ -83,5 +85,7 @@ Local Supabase uses API port `56321` and database port `56322`. Do not reset Doc
 ## Production state
 
 No new backend has been deployed. The connected Supabase projects previously visible were Tishim and two unrelated inactive projects; none was identified as MehmonGo. Do not modify those projects.
+
+`codex/mehmongo-platform-mvp` is pushed to `origin` and tracks it. The remote repository is public and the two supplier vehicle photos are recorded as "All rights reserved"; the owner was told and chose to push anyway.
 
 The existing public demo is still the older hosted site. Do not claim the new Supabase/Telegram/admin system is live until real deployment and end-to-end verification succeed.
