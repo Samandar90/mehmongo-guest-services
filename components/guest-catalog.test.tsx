@@ -249,7 +249,7 @@ describe('idempotency across services', () => {
       .mockRejectedValueOnce(new Error('REQUEST_FAILED'))
       .mockResolvedValue({ reference: 'MG-ABCDEFGH', telegramStatus: 'sent' });
 
-    let details = await openDetails(user, 'Plan my mountain day');
+    const details = await openDetails(user, 'Plan my mountain day');
     await user.click(within(details).getByRole('button', { name: 'Plan my mountain day' }));
     await user.selectOptions(screen.getByLabelText('Where would you like to go?'), 'Charvak');
     await user.type(screen.getByLabelText('Preferred date'), '2099-12-31');
