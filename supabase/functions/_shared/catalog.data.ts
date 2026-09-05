@@ -79,8 +79,8 @@ export const catalogData = {
         "unit": "per agreed excursion",
         "billingUnit": "excursion"
       },
-      "image": "assets/tashkent-barakhan-madrasah.jpg",
-      "imageAlt": "Tiled portal and turquoise domes of the Barakhan Madrasah in Tashkent",
+      "image": "assets/tashkent-tv-tower.jpg",
+      "imageAlt": "Tashkent seen from above at sunset, with the television tower above the city",
       "imageFit": "cover",
       "imageCaption": "Tashkent inspiration. Your route is agreed separately.",
       "facts": [
@@ -156,8 +156,8 @@ export const catalogData = {
         "unit": "per vehicle · 09:00–18:00",
         "billingUnit": "vehicle_day"
       },
-      "image": "assets/tashkent-chorsu-dome.jpg",
-      "imageAlt": "The tiled dome of Chorsu Bazaar in Tashkent above its arched entrances",
+      "image": "assets/tashkent-chorsu-bazaar.jpg",
+      "imageAlt": "The blue tiled dome of Chorsu Bazaar in Tashkent with shoppers at the entrance",
       "imageFit": "cover",
       "imageCaption": "City inspiration. Stops are agreed before confirmation.",
       "facts": [

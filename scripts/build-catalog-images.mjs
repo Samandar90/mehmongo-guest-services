@@ -5,11 +5,12 @@
  *
  *   node scripts/build-catalog-images.mjs [package-assets-directory]
  *
- * Wikimedia Commons photos are downloaded from their source page; the vehicle
- * examples come from the delivered package folder (defaults to
- * MehmonGo-Claude-Catalog-Final on the Desktop). Originals stay out of the
- * repository: only the resized WebP/JPEG variants the site serves are
- * committed, and /photo-credits records author, licence and this conversion.
+ * Photos supplied by MehmonGo live in content/owner-photos; Wikimedia Commons
+ * photos are downloaded from their source page; the vehicle examples come from
+ * the delivered package folder (defaults to MehmonGo-Claude-Catalog-Final on
+ * the Desktop). Commons and supplier originals stay out of the repository: only
+ * the resized WebP/JPEG variants the site serves are committed, and
+ * /photo-credits records author, licence and this conversion.
  *
  * Place photos are cropped to 3:2. Vehicle photos keep their own aspect ratio
  * so a car never becomes an unrecognisable fragment.
@@ -55,7 +56,9 @@ const manifest = {};
 for (const photo of photos) {
   const source = photo.commonsFile
     ? await commonsBytes(photo.commonsFile)
-    : await readFile(path.join(packageDir, photo.packageFile));
+    : photo.ownerFile
+      ? await readFile(path.join(projectDir, 'content', 'owner-photos', photo.ownerFile))
+      : await readFile(path.join(packageDir, photo.packageFile));
   const variants = [];
 
   for (const width of WIDTHS) {

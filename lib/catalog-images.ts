@@ -11,7 +11,7 @@ export type CatalogImageVariant = {
 };
 
 export const catalogImages: Record<string, CatalogImageVariant> = {
-  "tashkent-barakhan-madrasah": {
+  "tashkent-tv-tower": {
     "fit": "cover",
     "width": 960,
     "height": 640,
@@ -20,7 +20,7 @@ export const catalogImages: Record<string, CatalogImageVariant> = {
       960
     ]
   },
-  "tashkent-chorsu-dome": {
+  "tashkent-chorsu-bazaar": {
     "fit": "cover",
     "width": 960,
     "height": 640,
