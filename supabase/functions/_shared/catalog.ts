@@ -151,6 +151,52 @@ export function isOfferAvailable(
   return hotel.services.includes(offer.category);
 }
 
+/** Choices the guest picks from; the same lists drive the form and the server check. */
+export const mountainPreferences = ['Chimgan', 'Charvak', 'Amirsoy', 'Help me choose'] as const;
+export const airportDirections = ['Airport → hotel', 'Hotel → airport'] as const;
+export const ticketModes = ['Flight', 'Train', 'Bus'] as const;
+export const arrivalDirection = 'Airport → hotel';
+
+type FieldRule =
+  | { use: 'unused' }
+  | { use: 'optional' }
+  | { use: 'required' }
+  | { use: 'required'; oneOf: readonly string[] }
+  | { use: 'fixed'; value: string };
+
+export type ProfileRules = {
+  /** What the shared `choice` column carries for this profile. */
+  choice: FieldRule;
+  pickup: FieldRule;
+  destination: FieldRule;
+  time: FieldRule;
+};
+
+/**
+ * Which of the existing request columns each offer profile fills. Fields a
+ * profile does not use stay empty rather than being filled with a placeholder.
+ */
+export const profileRules: Record<RequestProfile, ProfileRules> = {
+  guide: { choice: { use: 'optional' }, pickup: { use: 'unused' }, destination: { use: 'unused' }, time: { use: 'unused' } },
+  mountains: { choice: { use: 'required', oneOf: mountainPreferences }, pickup: { use: 'unused' }, destination: { use: 'unused' }, time: { use: 'unused' } },
+  city: { choice: { use: 'optional' }, pickup: { use: 'required' }, destination: { use: 'unused' }, time: { use: 'unused' } },
+  airport: { choice: { use: 'required', oneOf: airportDirections }, pickup: { use: 'unused' }, destination: { use: 'unused' }, time: { use: 'required' } },
+  airport_arrival: { choice: { use: 'fixed', value: arrivalDirection }, pickup: { use: 'unused' }, destination: { use: 'unused' }, time: { use: 'required' } },
+  intercity: { choice: { use: 'unused' }, pickup: { use: 'required' }, destination: { use: 'required' }, time: { use: 'required' } },
+  tickets: { choice: { use: 'required', oneOf: ticketModes }, pickup: { use: 'required' }, destination: { use: 'required' }, time: { use: 'unused' } },
+};
+
+export const offerIdPattern = /^[a-z0-9][a-z0-9-]{0,79}$/;
+
+/** Looks an offer up across every catalogue; hotel-level access is checked separately. */
+export function findOfferInAnyCatalog(offerId: string): CatalogOffer | null {
+  for (const catalogId of guestCatalogIds) {
+    const offer = findCatalogOffer(catalogId, offerId);
+    if (offer) return offer;
+  }
+  return null;
+}
+
 /** Immutable record of what the guest was shown, stored with the request. */
 export type OfferSnapshot = {
   offerId: string;
@@ -165,6 +211,29 @@ export type OfferSnapshot = {
   unit: string;
   capacityExceeded: boolean;
 };
+
+/** Reads a snapshot stored in the database back into its typed shape. */
+export function readOfferSnapshot(value: unknown): OfferSnapshot | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const snapshot = value as Record<string, unknown>;
+  const priceMode = snapshot.priceMode;
+  if (typeof snapshot.offerId !== 'string' || typeof snapshot.title !== 'string') return null;
+  if (priceMode !== 'from' && priceMode !== 'quote') return null;
+
+  return {
+    offerId: snapshot.offerId,
+    catalogId: isGuestCatalogId(snapshot.catalogId) ? snapshot.catalogId : 'tashkent-v1',
+    catalogVersion: typeof snapshot.catalogVersion === 'string' ? snapshot.catalogVersion : '',
+    title: snapshot.title,
+    category: snapshot.category as ServiceId,
+    requestProfile: snapshot.requestProfile as RequestProfile,
+    priceMode,
+    amount: typeof snapshot.amount === 'number' ? snapshot.amount : null,
+    currency: typeof snapshot.currency === 'string' ? snapshot.currency : null,
+    unit: typeof snapshot.unit === 'string' ? snapshot.unit : '',
+    capacityExceeded: snapshot.capacityExceeded === true,
+  };
+}
 
 export function exceedsOfferCapacity(offer: CatalogOffer, partySize: number): boolean {
   return offer.maxPassengers !== null && partySize > offer.maxPassengers;

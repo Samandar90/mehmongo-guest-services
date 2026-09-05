@@ -5,6 +5,7 @@ import type {
   SubmitRequestPayload,
   SubmitRequestResult,
 } from '../../supabase/functions/_shared/contracts';
+import { isGuestCatalogId } from '../../supabase/functions/_shared/catalog';
 
 const serviceIds: ServiceId[] = ['tours', 'transport', 'restaurants', 'tickets'];
 
@@ -21,7 +22,7 @@ function isSubmitRequestResult(value: unknown): value is SubmitRequestResult {
     && (result.telegramStatus === 'pending' || result.telegramStatus === 'sent' || result.telegramStatus === 'failed');
 }
 
-function isPublicRoomContext(value: unknown): value is PublicRoomContext {
+function isPublicRoomContext(value: unknown): value is Omit<PublicRoomContext, 'catalogId'> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
 
   const context = value as Record<string, unknown>;
@@ -31,6 +32,12 @@ function isPublicRoomContext(value: unknown): value is PublicRoomContext {
     && context.services.every((service) => (
       typeof service === 'string' && serviceIds.includes(service as ServiceId)
     ));
+}
+
+/** A response without the field, or with an unknown catalogue, keeps the previous guest form. */
+function readCatalogId(value: unknown): string | null {
+  const catalogId = value && typeof value === 'object' ? (value as { catalogId?: unknown }).catalogId : null;
+  return isGuestCatalogId(catalogId) ? catalogId : null;
 }
 
 function roomContextUrl(token: string): URL {
@@ -56,7 +63,7 @@ export async function fetchRoomContext(token: string): Promise<RoomContextResult
   const context: unknown = await response.json();
   if (!isPublicRoomContext(context)) throw new GuestApiError('Invalid room context response');
 
-  return { ...context, roomToken: token };
+  return { ...context, catalogId: readCatalogId(context), roomToken: token };
 }
 
 export async function submitGuestRequest(payload: SubmitRequestPayload): Promise<SubmitRequestResult> {

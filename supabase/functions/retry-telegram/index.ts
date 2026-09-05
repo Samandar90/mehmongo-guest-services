@@ -2,6 +2,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { emptyResponse, jsonResponse } from '../_shared/http.ts';
+import { readOfferSnapshot } from '../_shared/catalog.ts';
 import {
   formatTelegramRequest,
   sendTelegramMessage,
@@ -120,6 +121,8 @@ function readRequest(data: unknown): RetryRequest | null {
     guestName: request.guest_name,
     contact: request.guest_contact,
     note: request.note,
+    // The stored snapshot, not today's catalogue price.
+    offer: readOfferSnapshot(request.offer_snapshot),
   };
 }
 
@@ -166,7 +169,7 @@ function repositoryFor(client: RetryTelegramClient): RetryTelegramRepository {
     async findRequest(requestId) {
       const { data, error } = await client
         .from('service_requests')
-        .select('id, reference, service_type, choice, pickup, destination, requested_date, requested_time, party_size, guest_name, guest_contact, note, rooms!inner(label, hotels!inner(name))')
+        .select('id, reference, service_type, choice, pickup, destination, requested_date, requested_time, party_size, guest_name, guest_contact, note, offer_snapshot, rooms!inner(label, hotels!inner(name))')
         .eq('id', requestId)
         .maybeSingle();
       if (error) throw error;

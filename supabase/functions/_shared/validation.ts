@@ -3,6 +3,13 @@ import {
   type GuestRequestFields,
   type ServiceId,
 } from './contracts.ts';
+import {
+  findOfferInAnyCatalog,
+  offerIdPattern,
+  profileRules,
+  type CatalogOffer,
+  type ProfileRules,
+} from './catalog.ts';
 
 export type ValidatedRequest = {
   roomToken: string;
@@ -17,9 +24,11 @@ export type ValidatedRequest = {
   guestName: string;
   contact: string;
   note: string;
+  /** Catalogue offer the guest chose, or null for restaurant/custom/legacy requests. */
+  offerId: string | null;
 };
 
-const payloadKeys = ['roomToken', 'idempotencyKey', 'service', 'fields', 'website'] as const;
+const payloadKeys = ['roomToken', 'idempotencyKey', 'service', 'fields', 'website', 'offerId'] as const;
 const fieldKeys = ['choice', 'pickup', 'destination', 'date', 'time', 'count', 'guestName', 'contact', 'note'] as const;
 const services = new Set<ServiceId>(['tours', 'transport', 'restaurants', 'tickets']);
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -78,6 +87,55 @@ function validateFields(input: unknown): GuestRequestFields {
   };
 }
 
+/**
+ * Applies one profile field rule, returning the value to store. Fields a
+ * profile does not use are cleared instead of carrying stray text.
+ */
+function applyRule(rule: ProfileRules[keyof ProfileRules], value: string, name: string): string {
+  if (rule.use === 'unused') return '';
+  if (rule.use === 'fixed') {
+    if (value && value !== rule.value) fail(`${name} does not match this service`);
+    return rule.value;
+  }
+  if (rule.use === 'optional') return value;
+  required(value, name);
+  if ('oneOf' in rule && !rule.oneOf.includes(value)) fail(`${name} is not one of the offered choices`);
+  return value;
+}
+
+function validateOfferFields(offer: CatalogOffer, fields: GuestRequestFields) {
+  const rules = profileRules[offer.requestProfile];
+  const time = applyRule(rules.time, fields.time, 'fields.time');
+  if (time && !timePattern.test(time)) fail('fields.time must use 24-hour time');
+
+  return {
+    choice: applyRule(rules.choice, fields.choice, 'fields.choice'),
+    pickup: applyRule(rules.pickup, fields.pickup, 'fields.pickup'),
+    destination: applyRule(rules.destination, fields.destination, 'fields.destination'),
+    time,
+  };
+}
+
+function validateLegacyFields(service: ServiceId, fields: GuestRequestFields) {
+  if (fields.time && !timePattern.test(fields.time)) fail('fields.time must use 24-hour time');
+  if (service === 'transport') {
+    required(fields.pickup, 'fields.pickup');
+    required(fields.destination, 'fields.destination');
+  } else {
+    required(fields.choice, 'fields.choice');
+  }
+  if ((service === 'transport' || service === 'restaurants') && !fields.time) fail('fields.time is required');
+
+  return { choice: fields.choice, pickup: fields.pickup, destination: fields.destination, time: fields.time };
+}
+
+function validateOfferId(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  const offerId = string(value, 'offerId');
+  if (!offerIdPattern.test(offerId)) fail('offerId is invalid');
+  return offerId;
+}
+
 export function validateSubmitPayload(input: unknown): ValidatedRequest {
   const payload = record(input, 'payload');
   hasOnlyKeys(payload, payloadKeys, 'payload');
@@ -91,34 +149,35 @@ export function validateSubmitPayload(input: unknown): ValidatedRequest {
   if (!services.has(service as ServiceId)) fail('service is invalid');
   if (website !== '') fail('website must be empty');
 
+  const offerId = validateOfferId(payload.offerId);
+  const offer = offerId ? findOfferInAnyCatalog(offerId) : null;
+  if (offerId && !offer) fail('offerId is not part of the catalogue');
+  if (offer && offer.category !== service) fail('service does not match the offer');
+
   const fields = validateFields(payload.fields);
   if (!validDate(fields.date)) fail('fields.date must be an ISO date');
   if (fields.date < new Date().toISOString().slice(0, 10)) fail('fields.date cannot be in the past');
-  if (fields.time && !timePattern.test(fields.time)) fail('fields.time must use 24-hour time');
   if (!countPattern.test(fields.count)) fail('fields.count must be an integer from 1 to 50');
   required(fields.guestName, 'fields.guestName');
   required(fields.contact, 'fields.contact');
 
-  if (service === 'transport') {
-    required(fields.pickup, 'fields.pickup');
-    required(fields.destination, 'fields.destination');
-  } else {
-    required(fields.choice, 'fields.choice');
-  }
-  if ((service === 'transport' || service === 'restaurants') && !fields.time) fail('fields.time is required');
+  const routed = offer
+    ? validateOfferFields(offer, fields)
+    : validateLegacyFields(service as ServiceId, fields);
 
   return {
     roomToken,
     idempotencyKey,
     service: service as ServiceId,
-    choice: fields.choice,
-    pickup: fields.pickup,
-    destination: fields.destination,
+    choice: routed.choice,
+    pickup: routed.pickup,
+    destination: routed.destination,
     date: fields.date,
-    time: fields.time,
+    time: routed.time,
     partySize: Number(fields.count),
     guestName: fields.guestName,
     contact: fields.contact,
     note: fields.note,
+    offerId,
   };
 }

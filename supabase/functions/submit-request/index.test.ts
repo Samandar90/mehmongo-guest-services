@@ -16,6 +16,7 @@ const IDEMPOTENCY_KEY = '10000000-0000-4000-8000-000000000001';
 const ACTIVE_ROOM = {
   id: '30000000-0000-4000-8000-000000000003',
   hotelId: '30000000-0000-4000-8000-000000000001',
+  catalogId: null as string | null,
 };
 
 type DependencyOptions = {
@@ -333,6 +334,8 @@ Deno.test('production persistence reports failed until Telegram delivery exists'
     contact: '+998901234567',
     note: '',
     room: ACTIVE_ROOM,
+    offerId: null,
+    offerSnapshot: null,
     rateKey: 'hashed-rate-key',
     reference: 'MG-DURABLEA',
   });
@@ -357,6 +360,8 @@ Deno.test('production persistence reports failed until Telegram delivery exists'
     p_guest_name: 'Alex',
     p_guest_contact: '+998901234567',
     p_note: '',
+    p_offer_id: null,
+    p_offer_snapshot: null,
   });
 });
 
@@ -381,6 +386,8 @@ Deno.test('production persistence classifies a unique reference collision', asyn
     contact: '+998901234567',
     note: '',
     room: ACTIVE_ROOM,
+    offerId: null,
+    offerSnapshot: null,
     rateKey: 'hashed-rate-key',
     reference: 'MG-DURABLEA',
   });
@@ -419,6 +426,8 @@ Deno.test('production persistence resolves an atomic response without a request 
     contact: '+998901234567',
     note: '',
     room: ACTIVE_ROOM,
+    offerId: null,
+    offerSnapshot: null,
     rateKey: 'hashed-rate-key',
     reference: 'MG-DURABLEA',
   });
@@ -466,6 +475,8 @@ Deno.test('production persistence fetches the winner of an idempotency unique ra
     contact: '+998901234567',
     note: '',
     room: ACTIVE_ROOM,
+    offerId: null,
+    offerSnapshot: null,
     rateKey: 'hashed-rate-key',
     reference: 'MG-DURABLEA',
   });

@@ -17,6 +17,7 @@ const context: RoomContextResult = {
   roomLabel: '205',
   roomToken: '20000000-0000-4000-8000-000000000205',
   services: ['tours', 'transport', 'restaurants', 'tickets'],
+  catalogId: null,
 };
 
 afterEach(() => {

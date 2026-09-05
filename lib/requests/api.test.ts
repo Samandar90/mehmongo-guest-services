@@ -37,6 +37,7 @@ describe('fetchRoomContext', () => {
       hotelName: 'Kamilovs Hotel',
       roomLabel: '205',
       roomToken: ACTIVE_ROOM_TOKEN,
+      catalogId: null,
       services: ['transport'],
     });
   });
@@ -86,5 +87,26 @@ describe('submitGuestRequest', () => {
     await expect(submitGuestRequest(submitPayload)).rejects.toMatchObject({ message: 'RATE_LIMITED' });
     await expect(submitGuestRequest(submitPayload)).rejects.toMatchObject({ message: 'REQUEST_FAILED' });
     await expect(submitGuestRequest(submitPayload)).rejects.toMatchObject({ message: 'REQUEST_FAILED' });
+  });
+});
+
+describe('room catalogue', () => {
+  it('reports the catalogue enabled for the hotel', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ hotelName: 'Kamilovs Hotel', roomLabel: '205', services: ['tours'], catalogId: 'tashkent-v1' }),
+      { status: 200, headers: { 'content-type': 'application/json' } },
+    )));
+
+    await expect(fetchRoomContext('20000000-0000-4000-8000-000000000205')).resolves.toMatchObject({ catalogId: 'tashkent-v1' });
+  });
+
+  it('falls back to no catalogue when the field is missing or unknown', async () => {
+    const room = { hotelName: 'Kamilovs Hotel', roomLabel: '205', services: ['tours'] };
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(room), { status: 200, headers: { 'content-type': 'application/json' } }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ ...room, catalogId: 'moon-base-v9' }), { status: 200, headers: { 'content-type': 'application/json' } })));
+
+    await expect(fetchRoomContext('20000000-0000-4000-8000-000000000205')).resolves.toMatchObject({ catalogId: null });
+    await expect(fetchRoomContext('20000000-0000-4000-8000-000000000205')).resolves.toMatchObject({ catalogId: null });
   });
 });

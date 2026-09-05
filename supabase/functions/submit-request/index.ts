@@ -6,6 +6,14 @@ import { validateSubmitPayload } from '../_shared/validation.ts';
 import { emptyResponse, jsonResponse } from '../_shared/http.ts';
 import { createRateLimitKey, createReference } from '../_shared/security.ts';
 import {
+  buildOfferSnapshot,
+  findOfferInAnyCatalog,
+  isOfferAvailable,
+  readOfferSnapshot,
+  type OfferSnapshot,
+} from '../_shared/catalog.ts';
+import { GUEST_SERVICE_IDS } from '../_shared/contracts.ts';
+import {
   formatTelegramRequest,
   sendTelegramMessage,
   TelegramDeliveryError,
@@ -18,6 +26,8 @@ const POST_ALLOWED_METHODS = 'POST, OPTIONS';
 export type ActiveRoom = {
   id: string;
   hotelId: string;
+  /** Catalogue enabled for the hotel, or null when it keeps the previous form. */
+  catalogId: string | null;
 };
 
 export type TelegramStatus = 'pending' | 'sent' | 'failed';
@@ -46,6 +56,8 @@ export type InsertRequest = ValidatedRequest & {
   room: ActiveRoom;
   rateKey: string;
   reference: string;
+  /** Built on the server from the catalogue; never taken from the client. */
+  offerSnapshot: OfferSnapshot | null;
 };
 
 export type InsertResult =
@@ -105,9 +117,11 @@ function submitJson(body: unknown, status = 200): Response {
 
 function readActiveRoom(data: unknown): ActiveRoom | null {
   if (!data || typeof data !== 'object') return null;
-  const room = data as { id?: unknown; hotel_id?: unknown };
+  const room = data as { id?: unknown; hotel_id?: unknown; hotels?: unknown };
   if (typeof room.id !== 'string' || typeof room.hotel_id !== 'string') return null;
-  return { id: room.id, hotelId: room.hotel_id };
+  const hotel = relation(room.hotels);
+  const catalogId = hotel && typeof hotel.guest_catalog_id === 'string' ? hotel.guest_catalog_id : null;
+  return { id: room.id, hotelId: room.hotel_id, catalogId };
 }
 
 function readStoredRequest(data: unknown): StoredRequest | null {
@@ -161,6 +175,7 @@ function readDeliveryRequest(data: unknown): DeliveryRequest | null {
     guestName: request.guest_name,
     contact: request.guest_contact,
     note: request.note,
+    offer: readOfferSnapshot(request.offer_snapshot),
   };
 }
 
@@ -259,7 +274,7 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
     async findActiveRoom(roomToken) {
       const { data, error } = await client
         .from('rooms')
-        .select('id, hotel_id, hotels!inner(id)')
+        .select('id, hotel_id, hotels!inner(id, guest_catalog_id)')
         .eq('public_token', roomToken)
         .eq('active', true)
         .eq('hotels.active', true)
@@ -284,6 +299,8 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
         p_guest_name: request.guestName,
         p_guest_contact: request.contact,
         p_note: request.note,
+        p_offer_id: request.offerId,
+        p_offer_snapshot: request.offerSnapshot,
       });
       const conflict = uniqueConflict(error);
       if (conflict === 'reference_conflict') return { kind: conflict };
@@ -304,7 +321,7 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
     async findByReference(reference) {
       const { data, error } = await client
         .from('service_requests')
-        .select('id, reference, service_type, choice, pickup, destination, requested_date, requested_time, party_size, guest_name, guest_contact, note, rooms!inner(label, hotels!inner(name))')
+        .select('id, reference, service_type, choice, pickup, destination, requested_date, requested_time, party_size, guest_name, guest_contact, note, offer_snapshot, rooms!inner(label, hotels!inner(name))')
         .eq('reference', reference)
         .maybeSingle();
       if (error) throw error;
@@ -459,11 +476,22 @@ export async function handler(request: Request, context?: HandlerContext): Promi
     const room = await dependencies.repository.findActiveRoom(validated.roomToken);
     if (!room) return submitJson({ code: 'ROOM_UNAVAILABLE' }, 404);
 
+    // The offer must belong to the catalogue this hotel is attached to, and the
+    // snapshot is built here so a client can never send its own price.
+    let offerSnapshot: OfferSnapshot | null = null;
+    if (validated.offerId) {
+      const offer = findOfferInAnyCatalog(validated.offerId);
+      if (!offer || !isOfferAvailable(offer, { catalogId: room.catalogId, services: GUEST_SERVICE_IDS })) {
+        return submitJson({ code: 'OFFER_UNAVAILABLE' }, 409);
+      }
+      offerSnapshot = buildOfferSnapshot(offer, validated.partySize);
+    }
+
     const rateKey = await createRateLimitKey(dependencies.requestHashSecret, room.id, validated.contact);
 
     for (let attempt = 0; attempt < REFERENCE_INSERT_ATTEMPTS; attempt += 1) {
       const reference = dependencies.referenceFactory?.() ?? nextReference();
-      const result = await dependencies.repository.submitAtomically({ ...validated, room, rateKey, reference });
+      const result = await dependencies.repository.submitAtomically({ ...validated, room, rateKey, reference, offerSnapshot });
       if (result.kind === 'created') {
         const stored = await dependencies.repository.findByReference(result.request.reference);
         if (!stored) throw new Error('Created request is unavailable for delivery');

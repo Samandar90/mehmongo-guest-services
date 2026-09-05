@@ -1,3 +1,4 @@
+import type { OfferSnapshot } from './catalog.ts';
 import type { ServiceId } from './contracts.ts';
 
 const TELEGRAM_PARSE_MODE = 'HTML';
@@ -17,6 +18,8 @@ export type TelegramRequest = {
   guestName: string;
   contact: string;
   note: string;
+  /** Snapshot stored with the request; retries reuse it instead of today's catalogue. */
+  offer?: OfferSnapshot | null;
 };
 
 export type TelegramFetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -53,6 +56,21 @@ function formatDate(value: string | null, timeZone: string): string | null {
   return new Intl.DateTimeFormat('ru-RU', { dateStyle: 'long', timeZone }).format(date);
 }
 
+/**
+ * The starting price the guest saw, never a confirmed total. Built from the
+ * stored snapshot so a later catalogue change cannot rewrite an old message.
+ */
+export function formatOfferEstimate(offer: OfferSnapshot): string {
+  if (offer.priceMode === 'quote') {
+    return offer.capacityExceeded
+      ? 'индивидуальный расчёт (группа больше опубликованной вместимости)'
+      : 'индивидуальный расчёт';
+  }
+  const amount = offer.amount === null ? '' : `от ${offer.amount}${offer.currency ? ` ${offer.currency}` : ''}`;
+  const unit = offer.unit ? ` (${offer.unit})` : '';
+  return `${amount}${unit}. Цена не подтверждена`;
+}
+
 export function formatTelegramRequest(request: TelegramRequest, timeZone: string): string {
   const lines = [
     `<b>🆕 Новая заявка ${escapeHtml(request.reference)}</b>`,
@@ -61,12 +79,16 @@ export function formatTelegramRequest(request: TelegramRequest, timeZone: string
     `🧭 Услуга: ${serviceLabel(request.service)}`,
   ];
 
-  if (request.service === 'transport') {
-    lines.push(`📍 Откуда: ${escapeHtml(request.pickup)}`);
-    lines.push(`➡️ Куда: ${escapeHtml(request.destination)}`);
-  } else {
-    lines.push(`🔎 Выбор: ${escapeHtml(request.choice)}`);
+  if (request.offer) {
+    lines.push(`🧾 Предложение: ${escapeHtml(request.offer.title)}`);
+    lines.push(`💵 Ориентир: ${escapeHtml(formatOfferEstimate(request.offer))}`);
   }
+
+  // Catalogue profiles fill only the columns they use, so each line is printed
+  // when it carries a value instead of being assumed from the category.
+  if (request.pickup) lines.push(`📍 Откуда: ${escapeHtml(request.pickup)}`);
+  if (request.destination) lines.push(`➡️ Куда: ${escapeHtml(request.destination)}`);
+  if (request.choice) lines.push(`🔎 Выбор: ${escapeHtml(request.choice)}`);
 
   const date = formatDate(request.requestedDate, timeZone);
   if (date) lines.push(`📅 Дата: ${escapeHtml(date)}`);

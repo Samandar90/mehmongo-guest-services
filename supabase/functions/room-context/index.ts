@@ -1,13 +1,13 @@
 /// <reference lib="deno.ns" />
 
 import { createClient } from '@supabase/supabase-js';
-import type { PublicRoomContext, ServiceId } from '../_shared/contracts.ts';
+import type { PublicRoomContext } from '../_shared/contracts.ts';
+import { GUEST_SERVICE_IDS } from '../_shared/contracts.ts';
+import { isGuestCatalogId } from '../_shared/catalog.ts';
 import { emptyResponse, jsonResponse } from '../_shared/http.ts';
-
-const services: ServiceId[] = ['tours', 'transport', 'restaurants', 'tickets'];
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type ActiveRoomContext = Pick<PublicRoomContext, 'hotelName' | 'roomLabel'>;
+type ActiveRoomContext = Pick<PublicRoomContext, 'hotelName' | 'roomLabel' | 'catalogId'>;
 
 export type RoomContextRepository = {
   findActiveRoom: (token: string) => Promise<ActiveRoomContext | null>;
@@ -42,8 +42,10 @@ function readRoomContext(data: unknown): ActiveRoomContext | null {
   if (!hotel || typeof hotel !== 'object') return null;
 
   const hotelName = (hotel as { name?: unknown }).name;
+  const catalogId = (hotel as { guest_catalog_id?: unknown }).guest_catalog_id;
   if (typeof room.label !== 'string' || typeof hotelName !== 'string') return null;
-  return { hotelName, roomLabel: room.label };
+  // Only a catalogue this build knows about is announced to the guest.
+  return { hotelName, roomLabel: room.label, catalogId: isGuestCatalogId(catalogId) ? catalogId : null };
 }
 
 function getServerSecretKey(): string | undefined {
@@ -79,7 +81,7 @@ function repositoryFor(client: RoomContextClient): RoomContextRepository {
     async findActiveRoom(token) {
       const { data, error } = await client
         .from('rooms')
-        .select('label, hotels!inner(name)')
+        .select('label, hotels!inner(name, guest_catalog_id)')
         .eq('public_token', token)
         .eq('active', true)
         .eq('hotels.active', true)
@@ -110,7 +112,7 @@ export async function handler(
     const room = await repository.findActiveRoom(token);
     if (!room) return jsonResponse({ error: 'Room not found' }, 404);
 
-    return jsonResponse({ ...room, services });
+    return jsonResponse({ ...room, services: GUEST_SERVICE_IDS });
   } catch {
     return jsonResponse({ error: 'Unable to resolve room context' }, 500);
   }
