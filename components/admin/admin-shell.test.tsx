@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { AdminShell } from './admin-shell';
 import type { AdminIdentity } from '@/lib/admin/auth';
@@ -8,11 +9,23 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }));
 
-function renderAdminShell({ identity }: { identity: AdminIdentity | null }) {
+function renderAdminShell({
+  identity,
+  getIdentity = vi.fn().mockResolvedValue(identity),
+  subscribeToAuthChanges = () => () => undefined,
+  signOut,
+}: {
+  identity: AdminIdentity | null;
+  getIdentity?: () => Promise<AdminIdentity | null>;
+  subscribeToAuthChanges?: (listener: () => void) => () => void;
+  signOut?: () => Promise<void>;
+}) {
   const router = { replace: vi.fn() };
   render(
     <AdminShell
-      getIdentity={vi.fn().mockResolvedValue(identity)}
+      getIdentity={getIdentity}
+      subscribeToAuthChanges={subscribeToAuthChanges}
+      signOut={signOut}
       router={router}
     >
       <h1>Защищённая страница</h1>
@@ -35,5 +48,52 @@ describe('AdminShell', () => {
 
     expect(await screen.findByRole('link', { name: 'Отели' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Заявки' })).toBeInTheDocument();
+  });
+
+  it('rechecks access and offers a retry when sign-out fails', async () => {
+    const user = userEvent.setup();
+    const identity = { userId: 'user-1', role: 'super_admin' } as const;
+    const getIdentity = vi.fn().mockResolvedValue(identity);
+    renderAdminShell({
+      identity,
+      getIdentity,
+      signOut: vi.fn().mockRejectedValue(new Error('network unavailable')),
+    });
+
+    await screen.findByRole('button', { name: 'Выйти' });
+    await user.click(screen.getByRole('button', { name: 'Выйти' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось выйти. Повторите попытку.');
+    expect(screen.getByRole('button', { name: 'Повторить выход' })).toBeInTheDocument();
+    expect(screen.getByText('Защищённая страница')).toBeInTheDocument();
+    expect(getIdentity).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps protected content hidden when a stale identity check resolves during sign-out', async () => {
+    const user = userEvent.setup();
+    const identity = { userId: 'user-1', role: 'super_admin' } as const;
+    let onAuthChange: (() => void) | undefined;
+    let resolveSignOut: (() => void) | undefined;
+    const signOut = vi.fn().mockReturnValue(new Promise<void>((resolve) => { resolveSignOut = resolve; }));
+    const subscribeToAuthChanges = vi.fn((listener: () => void) => {
+      onAuthChange = listener;
+      return () => undefined;
+    });
+
+    renderAdminShell({
+      identity,
+      getIdentity: vi.fn().mockResolvedValue(identity),
+      signOut,
+      subscribeToAuthChanges,
+    });
+
+    await screen.findByRole('button', { name: 'Выйти' });
+    await user.click(screen.getByRole('button', { name: 'Выйти' }));
+    onAuthChange?.();
+
+    await waitFor(() => expect(signOut).toHaveBeenCalledOnce());
+    expect(screen.queryByText('Защищённая страница')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Отели' })).not.toBeInTheDocument();
+    resolveSignOut?.();
   });
 });

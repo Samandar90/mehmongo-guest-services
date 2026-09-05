@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -32,14 +32,21 @@ export function AdminShell({
   const router = routerOverride ?? appRouter;
   const isLoginRoute = pathname === '/admin/login';
   const [status, setStatus] = useState<'loading' | 'allowed' | 'denied'>('loading');
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+  const identityGeneration = useRef(0);
+  const signOutInProgress = useRef(false);
+  const recheckIdentity = useRef<() => void>(() => undefined);
 
   useEffect(() => {
-    if (isLoginRoute) return;
+    if (isLoginRoute) {
+      recheckIdentity.current = () => undefined;
+      return;
+    }
 
     let cancelled = false;
-    let requestId = 0;
     const resolveIdentity = async () => {
-      const currentRequestId = ++requestId;
+      if (signOutInProgress.current) return;
+      const currentGeneration = ++identityGeneration.current;
       setStatus('loading');
       let identity: AdminIdentity | null = null;
       try {
@@ -47,7 +54,7 @@ export function AdminShell({
       } catch {
         identity = null;
       }
-      if (cancelled || currentRequestId !== requestId) return;
+      if (cancelled || signOutInProgress.current || currentGeneration !== identityGeneration.current) return;
 
       if (identity) {
         setStatus('allowed');
@@ -58,10 +65,13 @@ export function AdminShell({
       router.replace('/admin/login');
     };
 
+    recheckIdentity.current = () => { void resolveIdentity(); };
     void resolveIdentity();
-    const unsubscribe = subscribeToAuthChanges(() => { void resolveIdentity(); });
+    const unsubscribe = subscribeToAuthChanges(recheckIdentity.current);
     return () => {
       cancelled = true;
+      identityGeneration.current += 1;
+      recheckIdentity.current = () => undefined;
       unsubscribe();
     };
   }, [getIdentity, isLoginRoute, router, subscribeToAuthChanges]);
@@ -72,12 +82,17 @@ export function AdminShell({
   }
 
   const handleSignOut = async () => {
+    identityGeneration.current += 1;
+    signOutInProgress.current = true;
     setStatus('loading');
+    setSignOutError(null);
     try {
       await signOut();
       router.replace('/admin/login');
     } catch {
-      setStatus('denied');
+      signOutInProgress.current = false;
+      setSignOutError('Не удалось выйти. Повторите попытку.');
+      recheckIdentity.current();
     }
   };
 
@@ -89,6 +104,12 @@ export function AdminShell({
         <Link href="/admin/requests">Заявки</Link>
         <button type="button" onClick={handleSignOut}>Выйти</button>
       </nav>
+      {signOutError ? (
+        <div role="alert">
+          <p>{signOutError}</p>
+          <button type="button" onClick={handleSignOut}>Повторить выход</button>
+        </div>
+      ) : null}
       {children}
     </div>
   );
