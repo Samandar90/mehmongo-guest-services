@@ -7,6 +7,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./', import.meta.url)),
+      'next/link': fileURLToPath(new URL('./node_modules/vinext/dist/shims/link.js', import.meta.url)),
+      'next/navigation': fileURLToPath(new URL('./node_modules/vinext/dist/shims/navigation.js', import.meta.url)),
     },
   },
   test: {
