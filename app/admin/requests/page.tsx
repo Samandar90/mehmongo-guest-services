@@ -17,7 +17,8 @@ export default function AdminRequestsPage() {
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [state, setState] = useState<RequestsState>({ status: 'loading', items: [], hasMore: false });
   const [hotels, setHotels] = useState<Hotel[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
+  // Rooms are keyed by hotel so the room filter never offers the previous hotel's rooms.
+  const [roomsFor, setRoomsFor] = useState<{ hotelId: string; rooms: Room[] } | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,9 +45,12 @@ export default function AdminRequestsPage() {
   useEffect(() => {
     if (!hotelId) return;
     let cancelled = false;
-    listRooms(hotelId).then((loaded) => { if (!cancelled) setRooms(loaded); }).catch(() => undefined);
+    listRooms(hotelId)
+      .then((loaded) => { if (!cancelled) setRoomsFor({ hotelId, rooms: loaded }); })
+      .catch(() => { if (!cancelled) setRoomsFor({ hotelId, rooms: [] }); });
     return () => { cancelled = true; };
   }, [hotelId]);
+  const rooms = hotelId ? (roomsFor?.hotelId === hotelId ? roomsFor.rooms : null) : [];
 
   const changeFilters = useCallback((next: RequestFilters) => {
     setState((current) => ({ ...current, status: 'loading' }));
@@ -67,7 +71,7 @@ export default function AdminRequestsPage() {
 
       <section className="admin-card" aria-labelledby="request-filters-heading">
         <h2 id="request-filters-heading">Фильтры</h2>
-        <RequestFilterBar filters={filters} hotels={hotels} rooms={hotelId ? rooms : []} onChange={changeFilters} />
+        <RequestFilterBar filters={filters} hotels={hotels} rooms={rooms} onChange={changeFilters} />
       </section>
 
       <section className="admin-card" aria-labelledby="request-list-heading">
@@ -78,7 +82,8 @@ export default function AdminRequestsPage() {
             <button type="button" className="admin-button admin-button-secondary" onClick={reload}>Повторить</button>
           </div>
         ) : null}
-        {state.status === 'loading' ? <p className="admin-empty" aria-live="polite">Загрузка заявок…</p> : null}
+        {/* Always mounted so screen readers get the loading announcement when the text appears. */}
+        <p className="admin-empty admin-live" aria-live="polite">{state.status === 'loading' ? 'Загрузка заявок…' : ''}</p>
         {state.hasMore ? (
           <p className="admin-hint">Показаны первые {requestPageSize} заявок. Сузьте фильтры, чтобы увидеть остальные.</p>
         ) : null}

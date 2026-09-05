@@ -21,8 +21,8 @@ const requestRowFixture = {
   hotels: { name: 'Kamilovs Hotel' },
   rooms: { label: '205' },
   telegram_deliveries: [
-    { attempt: 1, status: 'failed', error_code: 'TELEGRAM_TIMEOUT', completed_at: '2026-08-19T09:15:05.000Z' },
-    { attempt: 2, status: 'failed', error_code: 'TELEGRAM_API_ERROR', completed_at: '2026-08-19T09:20:05.000Z' },
+    { attempt: 1, status: 'failed', error_code: 'TELEGRAM_TIMEOUT' },
+    { attempt: 2, status: 'failed', error_code: 'TELEGRAM_API_ERROR' },
   ],
 };
 
@@ -64,11 +64,12 @@ describe('listRequests', () => {
 
     await listRequests({ hotelId: 'hotel-1', serviceType: 'transport', dateFrom: '2026-08-01', dateTo: '2026-08-31' }, client);
 
+    // Day boundaries follow Asia/Tashkent (+05:00, no DST), the zone every admin timestamp is shown in.
     expect(filters).toEqual(expect.arrayContaining([
       ['eq', 'hotel_id', 'hotel-1'],
       ['eq', 'service_type', 'transport'],
-      ['gte', 'created_at', '2026-08-01T00:00:00.000Z'],
-      ['lt', 'created_at', '2026-09-01T00:00:00.000Z'],
+      ['gte', 'created_at', '2026-07-31T19:00:00.000Z'],
+      ['lt', 'created_at', '2026-08-31T19:00:00.000Z'],
     ]));
     expect(filters.some(([, column]) => column === 'room_id' || column === 'status')).toBe(false);
   });

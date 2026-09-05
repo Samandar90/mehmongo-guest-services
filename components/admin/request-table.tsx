@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import {
   retryTelegram as retryTelegramDefault,
   type AdminRequestRow,
@@ -34,9 +34,10 @@ const retryMessages = {
   failed: 'Не удалось выполнить повтор. Повторите попытку.',
 };
 
+/** Shows at most the first and last four characters, and only when at least four stay hidden. */
 export function maskContact(contact: string): string {
   const compact = contact.trim();
-  if (compact.length <= 6) return `${compact.slice(0, 1)}…`;
+  if (compact.length < 12) return `${compact.slice(0, 1)}…`;
   return `${compact.slice(0, 4)}…${compact.slice(-4)}`;
 }
 
@@ -56,7 +57,7 @@ function formatRequestedAt(row: AdminRequestRow): string {
 }
 
 function describeWhat(row: AdminRequestRow): string {
-  if (row.serviceType === 'transport') return `${row.pickup} → ${row.destination}`;
+  if (row.serviceType === 'transport') return row.pickup || row.destination ? `${row.pickup} → ${row.destination}` : '—';
   return row.choice || '—';
 }
 
@@ -71,7 +72,7 @@ type RequestTableProps = {
 
 export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: RequestTableProps) {
   const [overrides, setOverrides] = useState<Record<string, TelegramStatus>>({});
-  const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +82,7 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
   }
 
   const retry = async (row: AdminRequestRow) => {
-    setRetryingId(row.id);
+    setRetrying((current) => [...current, row.id]);
     setNotice(null);
     setError(null);
     try {
@@ -106,7 +107,7 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
             : retryMessages.failed
       }`);
     } finally {
-      setRetryingId(null);
+      setRetrying((current) => current.filter((id) => id !== row.id));
     }
   };
 
@@ -127,13 +128,14 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
         </thead>
         <tbody>
           {rows.map((row) => {
-            const telegramStatus = overrides[row.id] ?? row.telegramStatus;
-            const retrying = retryingId === row.id;
+            const override = overrides[row.id];
+            const telegramStatus = override ?? row.telegramStatus;
+            const inFlight = retrying.includes(row.id);
             const expanded = expandedId === row.id;
             const detailsId = `request-details-${row.id}`;
             return (
-              <RowGroup key={row.id}>
-                <tr data-telegram={telegramStatus}>
+              <Fragment key={row.id}>
+                <tr>
                   <td data-label="Заявка">
                     <strong>{row.reference}</strong>
                     <small>{formatDateTime(row.createdAt)}</small>
@@ -165,7 +167,7 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
                       {expanded ? 'Скрыть' : 'Подробнее'}
                     </button>
                     {telegramStatus === 'failed' ? (
-                      retrying ? (
+                      inFlight ? (
                         <button type="button" className="admin-button admin-button-secondary" disabled>Отправка…</button>
                       ) : (
                         <button type="button" className="admin-button" onClick={() => { void retry(row); }}>
@@ -188,9 +190,11 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
                           <div>
                             <dt>Telegram</dt>
                             <dd>
-                              {row.telegramErrorCode
-                                ? `${row.telegramErrorCode} (попытка ${row.telegramAttempt})`
-                                : row.telegramAttempt > 0 ? `попытка ${row.telegramAttempt}` : '—'}
+                              {override
+                                ? `${telegramLabels[override]} после повтора`
+                                : row.telegramErrorCode
+                                  ? `${row.telegramErrorCode} (попытка ${row.telegramAttempt})`
+                                  : row.telegramAttempt > 0 ? `попытка ${row.telegramAttempt}` : '—'}
                             </dd>
                           </div>
                         </dl>
@@ -198,7 +202,7 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
                     </td>
                   </tr>
                 ) : null}
-              </RowGroup>
+              </Fragment>
             );
           })}
         </tbody>
@@ -207,14 +211,11 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
   );
 }
 
-function RowGroup({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
-}
-
 type RequestFilterBarProps = {
   filters: RequestFilters;
   hotels: Hotel[];
-  rooms: Room[];
+  /** Rooms of the currently selected hotel; pass null while they are still loading. */
+  rooms: Room[] | null;
   onChange: (filters: RequestFilters) => void;
   disabled?: boolean;
 };
@@ -245,11 +246,11 @@ export function RequestFilterBar({ filters, hotels, rooms, onChange, disabled = 
         <select
           id="filter-room"
           value={filters.roomId ?? ''}
-          disabled={disabled || !filters.hotelId}
+          disabled={disabled || !filters.hotelId || rooms === null}
           onChange={(event) => update({ roomId: event.target.value || undefined })}
         >
           <option value="">Все комнаты</option>
-          {rooms.map((room) => <option key={room.id} value={room.id}>{room.label}</option>)}
+          {(rooms ?? []).map((room) => <option key={room.id} value={room.id}>{room.label}</option>)}
         </select>
       </div>
       <div className="admin-field">

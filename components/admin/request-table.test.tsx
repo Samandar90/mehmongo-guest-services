@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { RequestFilterBar, RequestTable } from './request-table';
+import { RequestFilterBar, RequestTable, maskContact } from './request-table';
 import type { AdminRequestRow, RequestFilters, RetryResult } from '@/lib/admin/requests';
 import type { Hotel } from '@/lib/admin/hotels';
 import type { Room } from '@/lib/admin/rooms';
@@ -162,6 +162,53 @@ describe('RequestTable', () => {
     renderRequestTable({ rows: [] });
 
     expect(screen.getByText('Заявок не найдено')).toBeInTheDocument();
+  });
+
+  it('keeps every in-flight retry pending independently', async () => {
+    const user = userEvent.setup();
+    const resolvers: Array<(result: RetryResult) => void> = [];
+    const retryTelegram = vi.fn().mockImplementation(() => new Promise<RetryResult>((resolve) => { resolvers.push(resolve); }));
+    renderRequestTable({
+      rows: [adminRequestFixture, { ...adminRequestFixture, id: 'request-2', reference: 'MG-SECONDSE' }],
+      retryTelegram,
+    });
+
+    const [first, second] = screen.getAllByRole('button', { name: 'Повторить Telegram' });
+    await user.click(first);
+    await user.click(second);
+    expect(screen.getAllByRole('button', { name: 'Отправка…' })).toHaveLength(2);
+
+    resolvers[0]({ status: 'sent' });
+    await screen.findByText('Отправлено');
+    expect(screen.getAllByRole('button', { name: 'Отправка…' })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: 'Повторить Telegram' })).not.toBeInTheDocument();
+
+    resolvers[1]({ status: 'sent' });
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Отправка…' })).not.toBeInTheDocument());
+  });
+
+  it('reports the retried delivery in the details instead of the stale error', async () => {
+    const user = userEvent.setup();
+    renderRequestTable({ rows: [adminRequestFixture], retryTelegram: vi.fn().mockResolvedValue({ status: 'sent' }) });
+
+    await user.click(screen.getByRole('button', { name: 'Повторить Telegram' }));
+    await screen.findByText('Отправлено');
+    await user.click(screen.getByRole('button', { name: 'Подробнее MG-ABCDEFGH' }));
+
+    const details = screen.getByRole('region', { name: 'Детали заявки MG-ABCDEFGH' });
+    expect(within(details).getByText('Отправлено после повтора')).toBeInTheDocument();
+    expect(within(details).queryByText(/TELEGRAM_API_ERROR/)).not.toBeInTheDocument();
+  });
+});
+
+describe('maskContact', () => {
+  it('never reveals the whole contact', () => {
+    expect(maskContact('+998901234567')).toBe('+998…4567');
+    expect(maskContact('user@mail.co')).toBe('user…l.co');
+    expect(maskContact('@sardor1')).toBe('@…');
+    expect(maskContact('@ivanov')).toBe('@…');
+    expect(maskContact('12345')).toBe('1…');
+    expect(maskContact('')).toBe('…');
   });
 });
 

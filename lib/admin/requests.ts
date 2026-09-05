@@ -65,10 +65,10 @@ const requestColumns = [
   'requested_date', 'requested_time', 'party_size', 'guest_name', 'guest_contact', 'note',
   'hotel_id', 'room_id', 'created_at',
   'hotels!inner(name)', 'rooms!inner(label)',
-  'telegram_deliveries(attempt, status, error_code, completed_at)',
+  'telegram_deliveries(attempt, status, error_code)',
 ].join(', ');
 
-type DeliveryRow = { attempt: number; status: TelegramStatus; error_code: string | null; completed_at: string | null };
+type DeliveryRow = { attempt: number; status: TelegramStatus; error_code: string | null };
 
 type RequestRow = {
   id: string;
@@ -94,10 +94,18 @@ type RequestRow = {
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
-function utcMidnight(date: string, plusDays = 0): string {
+/**
+ * Admin timestamps, Telegram messages and the pilot hotel all live in
+ * Asia/Tashkent, which has a fixed +05:00 offset and no DST. Day filters use
+ * the same boundary so a request shown as 01.08 is found by dateFrom=01.08.
+ */
+export const requestTimeZoneOffset = '+05:00';
+
+function localMidnight(date: string, plusDays = 0): string {
   if (!datePattern.test(date)) throw new AdminRequestError('VALIDATION_ERROR', 'Invalid date filter');
-  const parsed = new Date(`${date}T00:00:00.000Z`);
-  if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+  const parsed = new Date(`${date}T00:00:00.000${requestTimeZoneOffset}`);
+  const roundTrip = new Date(`${date}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime()) || roundTrip.toISOString().slice(0, 10) !== date) {
     throw new AdminRequestError('VALIDATION_ERROR', 'Invalid date filter');
   }
   parsed.setUTCDate(parsed.getUTCDate() + plusDays);
@@ -147,8 +155,8 @@ export async function listRequests(
   client: SupabaseClient = getSupabaseBrowserClient(),
 ): Promise<RequestPage> {
   // Validate before touching the network so a bad filter never becomes a 400 from PostgREST.
-  const from = filters.dateFrom ? utcMidnight(filters.dateFrom) : null;
-  const to = filters.dateTo ? utcMidnight(filters.dateTo, 1) : null;
+  const from = filters.dateFrom ? localMidnight(filters.dateFrom) : null;
+  const to = filters.dateTo ? localMidnight(filters.dateTo, 1) : null;
 
   let query = client.from('service_requests').select(requestColumns);
   if (filters.hotelId) query = query.eq('hotel_id', filters.hotelId);

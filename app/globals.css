@@ -183,6 +183,7 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .admin-badge-pending { background: #fff0d3; color: #76521a; }
 .admin-badge-none { background: var(--muted); color: var(--navy); }
 .admin-request-details-row td { padding-top: 0; border-top: 0; }
+.admin-live:empty { margin: 0; }
 .admin-request-details { padding: 12px 14px; border-radius: 14px; background: var(--muted); }
 .admin-request-details dl { margin: 0; display: grid; grid-template-columns: 1fr; gap: 8px 16px; }
 .admin-request-details dl div { display: grid; gap: 2px; }
@@ -193,6 +194,7 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
   .admin-request-details dl { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 719px) {
-  .admin-request-details-row { padding-top: 0; }
+  .admin-table tr.admin-request-details-row { margin-top: 0; padding-top: 0; border-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+  .admin-table tr:has(+ .admin-request-details-row) { border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
   .admin-request-details-row td::before { content: none; }
 }

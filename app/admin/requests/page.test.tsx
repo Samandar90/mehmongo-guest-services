@@ -76,6 +76,27 @@ describe('AdminRequestsPage', () => {
     expect(listRooms).toHaveBeenCalledWith('hotel-1');
   });
 
+  it('never offers the previous hotel rooms after the hotel filter changes', async () => {
+    const user = userEvent.setup();
+    const silkRoad: Hotel = { ...kamilovsHotel, id: 'hotel-2', name: 'Silk Road Inn', slug: 'silk-road' };
+    vi.mocked(listHotels).mockResolvedValue([kamilovsHotel, silkRoad]);
+    vi.mocked(listRooms)
+      .mockResolvedValueOnce([room205])
+      .mockReturnValueOnce(new Promise(() => undefined));
+    vi.mocked(listRequests).mockResolvedValue({ items: [], hasMore: false });
+    render(<AdminRequestsPage />);
+
+    await screen.findByRole('option', { name: 'Silk Road Inn' });
+    await user.selectOptions(screen.getByLabelText('Отель'), 'hotel-1');
+    expect(await screen.findByRole('option', { name: '205' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Комната')).toBeEnabled();
+
+    await user.selectOptions(screen.getByLabelText('Отель'), 'hotel-2');
+
+    expect(screen.queryByRole('option', { name: '205' })).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Комната')).toBeDisabled();
+  });
+
   it('tells the admin when the page is capped at 100 rows', async () => {
     vi.mocked(listRequests).mockResolvedValue({ items: [requestRow], hasMore: true });
     render(<AdminRequestsPage />);
