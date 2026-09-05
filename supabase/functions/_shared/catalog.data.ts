@@ -156,8 +156,8 @@ export const catalogData = {
         "unit": "per vehicle · 09:00–18:00",
         "billingUnit": "vehicle_day"
       },
-      "image": "assets/tashkent-chorsu-hall.jpg",
-      "imageAlt": "Traders and produce stalls under the domed hall of Chorsu Bazaar in Tashkent",
+      "image": "assets/tashkent-chorsu-dome.jpg",
+      "imageAlt": "The tiled dome of Chorsu Bazaar in Tashkent above its arched entrances",
       "imageFit": "cover",
       "imageCaption": "City inspiration. Stops are agreed before confirmation.",
       "facts": [

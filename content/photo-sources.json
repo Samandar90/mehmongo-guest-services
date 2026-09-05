@@ -15,17 +15,17 @@
       "crop": "centre"
     },
     {
-      "name": "tashkent-chorsu-hall",
-      "title": "Chorsu Bazaar, Tashkent",
+      "name": "tashkent-chorsu-dome",
+      "title": "Chorsu Bazaar dome, Tashkent",
       "fit": "cover",
-      "author": "Dan Lundberg",
-      "license": "CC BY-SA 2.0",
-      "licenseUrl": "https://creativecommons.org/licenses/by-sa/2.0/",
-      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chorsu_Bazaar_20141003_Uzbekistan_0840_Tashkent_(16257413122).jpg",
-      "commonsFile": "File:Chorsu Bazaar 20141003 Uzbekistan 0840 Tashkent (16257413122).jpg",
-      "shareAlike": true,
+      "author": "Francisco Anzola",
+      "license": "CC BY 3.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "sourcePage": "https://commons.wikimedia.org/wiki/File:Chorsu_Bazar_(220708343).jpeg",
+      "commonsFile": "File:Chorsu Bazar (220708343).jpeg",
+      "shareAlike": false,
       "note": "Downloaded unchanged, then resized and converted to WebP and JPEG for this website; the page may crop its display to fit the layout.",
-      "crop": "centre"
+      "crop": "attention"
     },
     {
       "name": "charvak-lake",
