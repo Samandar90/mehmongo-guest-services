@@ -214,3 +214,105 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .admin-asset-preview img { width: min(100%, 420px); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 10px 32px rgba(16,43,78,.12); }
 .admin-asset-preview figcaption { color: var(--ink-soft); font-size: 12px; }
 .admin-asset-count { margin: 0; font-size: 14px; font-weight: 650; }
+
+/* Guest service catalogue. Existing guest styles above are unchanged. */
+.catalog-shell { width: min(100%, 1080px); }
+.catalog-hero { padding: 34px 0 26px; position: relative; z-index: 1; }
+.catalog-hero .eyebrow { margin: 22px 0 10px; }
+.catalog-hero h1 { max-width: 700px; font-size: clamp(34px, 8.5vw, 60px); line-height: 1.02; letter-spacing: -.045em; }
+.catalog-hero .intro { max-width: 560px; }
+.catalog-primary-cta { display: inline-flex; align-items: center; min-height: 48px; margin-top: 22px; padding: 0 22px; border-radius: 16px; background: var(--navy); color: #fff; font-size: 15px; font-weight: 700; text-decoration: none; }
+.catalog-primary-cta:hover { background: #173d6b; }
+.catalog-trust { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 20px 0 0; padding: 0; list-style: none; color: var(--ink-soft); font-size: 13px; }
+.catalog-trust li { display: inline-flex; align-items: center; gap: 7px; }
+.catalog-trust li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #2ca47a; }
+.catalog-services { position: relative; z-index: 1; padding-bottom: 8px; }
+.catalog-services .section-heading { flex-direction: column; align-items: flex-start; gap: 4px; margin-bottom: 16px; }
+.catalog-services .section-heading h2 { font-size: clamp(21px, 5vw, 27px); }
+.catalog-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+.catalog-filter { min-height: 44px; padding: 0 16px; border: 1px solid var(--line); border-radius: 999px; background: rgba(255,255,255,.7); color: var(--navy); font-size: 14px; font-weight: 650; cursor: pointer; }
+.catalog-filter[aria-pressed="true"] { border-color: var(--navy); background: var(--navy); color: #fff; }
+.catalog-empty { margin: 12px 0; color: var(--ink-soft); font-size: 15px; }
+.offer-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.offer-card { display: flex; flex-direction: column; overflow: hidden; border: 1px solid rgba(16,43,78,.09); border-radius: 22px; background: rgba(255,253,250,.96); box-shadow: 0 10px 32px rgba(16,43,78,.055); }
+.offer-media { display: block; background: #ece5da; }
+.offer-media img { display: block; width: 100%; height: 210px; object-fit: cover; }
+.offer-media[data-fit="contain"] { background: #fff; }
+.offer-media[data-fit="contain"] img { height: 210px; object-fit: contain; padding: 10px; }
+.offer-body { display: grid; gap: 8px; padding: 18px; }
+.offer-eyebrow { margin: 0; color: var(--magenta); font-size: 11px; font-weight: 780; letter-spacing: .12em; text-transform: uppercase; }
+.offer-card h3, .ticket-block h3, .side-card h3 { margin: 0; font-size: 20px; line-height: 1.2; letter-spacing: -.02em; }
+.offer-summary { margin: 0; color: var(--ink-soft); font-size: 14px; line-height: 1.5; }
+.offer-price { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 2px 0 0; }
+.offer-price strong { font-size: 20px; letter-spacing: -.02em; }
+.offer-price span { color: var(--ink-soft); font-size: 12px; }
+.offer-cta { min-height: 48px; margin-top: 6px; padding: 0 18px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--navy); border-radius: 14px; background: var(--navy); color: #fff; font-size: 15px; font-weight: 680; cursor: pointer; }
+.offer-cta:hover { background: #173d6b; }
+.offer-cta svg { width: 17px; }
+.ticket-block { display: grid; gap: 14px; margin-top: 16px; padding: 20px; border: 1px solid rgba(16,43,78,.12); border-radius: 22px; background: linear-gradient(180deg, rgba(36,76,78,.08), rgba(255,253,250,.96)); }
+.ticket-icon, .side-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #dff1ec; color: #257666; }
+.ticket-icon svg, .side-icon svg { width: 24px; }
+.ticket-facts { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 0; padding: 0; list-style: none; color: var(--ink-soft); font-size: 13px; }
+.ticket-facts li::before { content: "\2022 "; color: var(--magenta); }
+.side-card { display: grid; gap: 12px; margin-top: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,253,250,.85); }
+.side-card p { margin: 6px 0 0; color: var(--ink-soft); font-size: 14px; line-height: 1.5; }
+.catalog-note { margin: 14px 0 0; color: var(--ink-soft); font-size: 12px; line-height: 1.55; }
+.catalog-steps, .catalog-faq { position: relative; z-index: 1; margin-top: 34px; }
+.catalog-steps h2, .catalog-faq h2 { margin: 0 0 14px; font-size: clamp(20px, 5vw, 25px); letter-spacing: -.025em; }
+.catalog-steps ol { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; counter-reset: step; }
+.catalog-steps li { display: grid; gap: 4px; padding: 16px 18px 16px 54px; position: relative; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,253,250,.85); }
+.catalog-steps li::before { counter-increment: step; content: counter(step); position: absolute; left: 16px; top: 16px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: var(--navy); color: #fff; font-size: 13px; font-weight: 700; }
+.catalog-steps strong { font-size: 15px; }
+.catalog-steps span { color: var(--ink-soft); font-size: 14px; line-height: 1.5; }
+.catalog-faq dl { display: grid; gap: 10px; margin: 0; }
+.catalog-faq div { padding: 16px 18px; border: 1px solid var(--line); border-radius: 18px; background: rgba(255,253,250,.85); }
+.catalog-faq dt { font-size: 15px; font-weight: 700; }
+.catalog-faq dd { margin: 6px 0 0; color: var(--ink-soft); font-size: 14px; line-height: 1.55; }
+.guest-footer { min-height: 44px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin-top: 30px; color: var(--ink-soft); font-size: 12px; }
+.guest-footer a { color: var(--ink-soft); }
+
+.offer-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: end center; padding: 0; }
+.offer-overlay-close { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: rgba(16,43,78,.45); cursor: pointer; }
+.offer-dialog { position: relative; width: min(100%, 640px); max-height: 92svh; overflow-y: auto; border-radius: 24px 24px 0 0; background: var(--paper); box-shadow: 0 -12px 40px rgba(16,43,78,.25); }
+.offer-dialog-dismiss { position: absolute; top: 12px; right: 12px; z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(255,255,255,.92); color: var(--navy); cursor: pointer; }
+.offer-dialog-dismiss svg { width: 20px; }
+.offer-dialog .offer-media img { height: 220px; }
+.offer-dialog-body { display: grid; gap: 10px; padding: 20px 20px 26px; }
+.offer-dialog-body h2 { margin: 0; font-size: clamp(24px, 6vw, 32px); line-height: 1.1; letter-spacing: -.03em; }
+.offer-dialog-body h3 { margin: 14px 0 0; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
+.offer-dialog-body ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
+.offer-description { margin: 4px 0 0; font-size: 15px; line-height: 1.6; }
+.offer-caption, .offer-timing { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
+.offer-dialog-cta { min-height: 52px; margin-top: 16px; border: 0; border-radius: 16px; background: var(--navy); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; }
+.offer-dialog-cta:hover { background: #173d6b; }
+
+.offer-form .offer-chosen { margin: 6px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -.02em; }
+.offer-price-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 6px 0 0; }
+.offer-price-note strong { font-size: 19px; }
+.offer-price-note span { color: var(--ink-soft); font-size: 12px; }
+.offer-capacity { margin: 10px 0 0; padding: 12px 14px; border-radius: 14px; background: #fff0d3; color: #76521a; font-size: 13px; line-height: 1.5; }
+.offer-fixed-field { display: grid; gap: 4px; margin: 0; }
+.offer-fixed-field span { font-size: 13px; font-weight: 680; }
+.offer-fixed-field strong { min-height: 50px; display: flex; align-items: center; padding-inline: 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(236,229,218,.5); font-weight: 600; }
+.form-select { min-height: 50px; width: 100%; padding-inline: 12px; border: 1px solid var(--input); border-radius: 14px; background: rgba(255,253,250,.85); color: var(--navy); font: inherit; }
+.form-legal { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
+
+.credits-page { width: min(100%, 780px); margin: 0 auto; padding: 40px 22px 60px; }
+.credits-page h1 { font-size: clamp(30px, 7vw, 44px); letter-spacing: -.04em; }
+.credits-page h2 { margin: 26px 0 6px; font-size: 19px; }
+.credits-page p { color: var(--ink-soft); font-size: 15px; line-height: 1.65; }
+.credits-page a { color: var(--magenta); }
+.credits-page code { overflow-wrap: anywhere; }
+
+@media (min-width: 720px) {
+  .offer-grid { grid-template-columns: 1fr 1fr; }
+  .ticket-block { grid-template-columns: 48px 1fr auto; align-items: center; }
+  .side-card { grid-template-columns: 48px 1fr auto; align-items: center; }
+  .side-card:not(:has(.side-icon)) { grid-template-columns: 1fr auto; }
+  .offer-overlay { place-items: center; padding: 24px; }
+  .offer-dialog { border-radius: 24px; max-height: 88svh; }
+  .catalog-steps ol { grid-template-columns: repeat(3, 1fr); }
+}
+
+.visually-hidden { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.catalog-filters { border: 0; padding: 0; margin: 0 0 18px; }
