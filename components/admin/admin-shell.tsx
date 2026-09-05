@@ -81,7 +81,7 @@ export function AdminShell({
 
   if (isLoginRoute) return children;
   if (status !== 'allowed') {
-    return <main aria-live="polite">{status === 'loading' ? 'Загрузка…' : 'Перенаправление…'}</main>;
+    return <main className="admin-gate" aria-live="polite">{status === 'loading' ? 'Загрузка…' : 'Перенаправление…'}</main>;
   }
 
   const handleSignOut = async () => {

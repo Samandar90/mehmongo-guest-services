@@ -38,11 +38,15 @@ export function LoginForm({
     <main className="admin-login">
       <h1>Вход в админку</h1>
       <form onSubmit={submit}>
-        <label htmlFor="admin-email">Email</label>
-        <input id="admin-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-        <label htmlFor="admin-password">Пароль</label>
-        <input id="admin-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-        {error ? <p role="alert">{error}</p> : null}
+        <div className="admin-field">
+          <label htmlFor="admin-email">Email</label>
+          <input id="admin-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+        </div>
+        <div className="admin-field">
+          <label htmlFor="admin-password">Пароль</label>
+          <input id="admin-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+        </div>
+        {error ? <p role="alert" className="admin-form-error">{error}</p> : null}
         <button type="submit" disabled={submitting}>{submitting ? 'Вход…' : 'Войти'}</button>
       </form>
     </main>
