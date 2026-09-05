@@ -84,7 +84,7 @@ Local Supabase uses API port `56321` and database port `56322`. Do not reset Doc
 
 ## Production state
 
-No new backend has been deployed. The connected Supabase projects previously visible were Tishim and two unrelated inactive projects; none was identified as MehmonGo. Do not modify those projects.
+Production Supabase project: `hraamyjvsnsgaezkolpl` (MehmonGo, eu-central-1, free tier), created on 2026-09-06 with the owner's blanket go-ahead. Schema and all three Edge Functions are deployed there through the Supabase connector (`room-context` and `submit-request` with `verify_jwt` off, `retry-telegram` on) and the migration history matches the seven local files. Not yet done there: Edge secrets (need `npx supabase login`, then `npx supabase secrets set --env-file .env.production.secrets --project-ref hraamyjvsnsgaezkolpl`; the ignored file is prepared with the Telegram values and a fresh `REQUEST_HASH_SECRET`), the owner account (`scripts/create-admin.mjs` with the project secret key in the ignored `.env.production.local`), the Cloudflare deploy (`npx wrangler login`, then the workers.dev subdomain goes into `SITE_URL`/`VITE_SITE_URL` before the first production build). The other projects in that organization (Tishim and two inactive ones) are unrelated; do not modify them.
 
 `codex/mehmongo-platform-mvp` is pushed to `origin` and tracks it. The remote repository is public and the two supplier vehicle photos are recorded as "All rights reserved"; the owner was told and chose to push anyway.
 
