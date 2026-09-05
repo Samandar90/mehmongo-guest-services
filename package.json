@@ -12,6 +12,7 @@
     "test": "vitest",
     "plaque": "tsx scripts/build-room-plaque.ts",
     "lint": "oxlint",
+    "typecheck": "tsc --noEmit",
     "format": "oxfmt",
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
