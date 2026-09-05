@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { readOfferSnapshot, type OfferSnapshot } from '@/supabase/functions/_shared/catalog';
 import type { ServiceId } from '@/supabase/functions/_shared/contracts';
 
 export type TelegramStatus = 'pending' | 'sent' | 'failed';
@@ -38,6 +39,14 @@ export type AdminRequestRow = {
   telegramStatus: TelegramStatus | 'none';
   telegramAttempt: number;
   telegramErrorCode: string | null;
+  /** Catalogue offer chosen by the guest, if any. */
+  offerId: string | null;
+  offerTitle: string | null;
+  /**
+   * Starting price the guest was shown, for reference only. It is not revenue
+   * and it is not a confirmed total.
+   */
+  offerEstimate: string | null;
 };
 
 export type RequestPage = { items: AdminRequestRow[]; hasMore: boolean };
@@ -63,7 +72,7 @@ export const requestPageSize = 100;
 const requestColumns = [
   'id', 'reference', 'service_type', 'status', 'choice', 'pickup', 'destination',
   'requested_date', 'requested_time', 'party_size', 'guest_name', 'guest_contact', 'note',
-  'hotel_id', 'room_id', 'created_at',
+  'hotel_id', 'room_id', 'created_at', 'offer_id', 'offer_snapshot',
   'hotels!inner(name)', 'rooms!inner(label)',
   'telegram_deliveries(attempt, status, error_code)',
 ].join(', ');
@@ -87,6 +96,8 @@ type RequestRow = {
   hotel_id: string;
   room_id: string;
   created_at: string;
+  offer_id: string | null;
+  offer_snapshot: unknown;
   hotels: { name: string } | { name: string }[] | null;
   rooms: { label: string } | { label: string }[] | null;
   telegram_deliveries: DeliveryRow[] | null;
@@ -123,8 +134,17 @@ function latestDelivery(deliveries: DeliveryRow[] | null): DeliveryRow | null {
   );
 }
 
+/** Russian, reference-only wording for the price the guest saw. */
+export function formatOfferEstimate(snapshot: OfferSnapshot): string {
+  if (snapshot.priceMode === 'quote' || snapshot.amount === null) return 'индивидуальный расчёт';
+  const currency = snapshot.currency ? ` ${snapshot.currency}` : '';
+  const unit = snapshot.unit ? ` · ${snapshot.unit}` : '';
+  return `от ${snapshot.amount}${currency}${unit}`;
+}
+
 function toRow(row: RequestRow): AdminRequestRow {
   const delivery = latestDelivery(row.telegram_deliveries);
+  const offer = readOfferSnapshot(row.offer_snapshot);
   return {
     id: row.id,
     reference: row.reference,
@@ -147,6 +167,9 @@ function toRow(row: RequestRow): AdminRequestRow {
     telegramStatus: delivery?.status ?? 'none',
     telegramAttempt: delivery?.attempt ?? 0,
     telegramErrorCode: delivery?.error_code ?? null,
+    offerId: row.offer_id ?? null,
+    offerTitle: offer?.title ?? null,
+    offerEstimate: offer ? formatOfferEstimate(offer) : null,
   };
 }
 

@@ -28,10 +28,13 @@ const adminRequestFixture: AdminRequestRow = {
   telegramStatus: 'failed',
   telegramAttempt: 2,
   telegramErrorCode: 'TELEGRAM_API_ERROR',
+  offerId: 'tashkent-airport-sedan',
+  offerTitle: 'Your airport ride, arranged',
+  offerEstimate: 'от 30 USD · per vehicle · one way',
 };
 
 const kamilovsHotel: Hotel = {
-  id: 'hotel-1', name: 'Kamilovs Hotel', slug: 'kamilovs', address: '', commissionBps: 1500, active: true, createdAt: '', updatedAt: '',
+  id: 'hotel-1', name: 'Kamilovs Hotel', slug: 'kamilovs', address: '', commissionBps: 1500, active: true, guestCatalogId: null, createdAt: '', updatedAt: '',
 };
 const room205: Room = {
   id: 'room-205', hotelId: 'hotel-1', label: '205', publicToken: '9c6f6f5e-2b6d-4c0f-9a7d-1f2e3d4c5b6a', active: true, createdAt: '', updatedAt: '',
@@ -255,5 +258,28 @@ describe('RequestFilterBar', () => {
     await user.click(screen.getByRole('button', { name: 'Сбросить фильтры' }));
 
     expect(onChange).toHaveBeenLastCalledWith({});
+  });
+});
+
+describe('catalogue offer in the request table', () => {
+  it('shows the chosen offer and its reference price without calling it revenue', async () => {
+    const user = userEvent.setup();
+    renderRequestTable({ rows: [adminRequestFixture] });
+
+    expect(screen.getByText('Your airport ride, arranged')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Подробнее MG-ABCDEFGH' }));
+    const details = screen.getByRole('region', { name: 'Детали заявки MG-ABCDEFGH' });
+
+    expect(within(details).getByText('Ориентировочная цена')).toBeInTheDocument();
+    expect(within(details).getByText('от 30 USD · per vehicle · one way')).toBeInTheDocument();
+    expect(within(details).getByText(/Не подтверждённая сумма/)).toBeInTheDocument();
+    expect(screen.queryByText(/Заработан/i)).not.toBeInTheDocument();
+  });
+
+  it('shows nothing extra for a request without an offer', () => {
+    renderRequestTable({ rows: [{ ...adminRequestFixture, offerId: null, offerTitle: null, offerEstimate: null }] });
+
+    expect(screen.queryByText('Your airport ride, arranged')).not.toBeInTheDocument();
   });
 });

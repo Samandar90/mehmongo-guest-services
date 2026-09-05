@@ -11,6 +11,7 @@ const kamilovsHotel: Hotel = {
   address: 'Samarkand',
   commissionBps: 1250,
   active: true,
+  guestCatalogId: null,
   createdAt: '2026-09-01T10:00:00.000Z',
   updatedAt: '2026-09-02T10:00:00.000Z',
 };
@@ -57,7 +58,7 @@ describe('HotelForm', () => {
     await fillHotelForm(user, { name: 'Kamilovs Hotel', slug: 'kamilovs', address: 'Samarkand', percentage: '15' });
     await user.click(screen.getByRole('button', { name: 'Создать отель' }));
 
-    expect(createHotel).toHaveBeenCalledWith({ name: 'Kamilovs Hotel', slug: 'kamilovs', address: 'Samarkand', commissionPercent: '15' });
+    expect(createHotel).toHaveBeenCalledWith({ name: 'Kamilovs Hotel', slug: 'kamilovs', address: 'Samarkand', commissionPercent: '15', guestCatalogId: '' });
     expect(await screen.findByRole('status')).toHaveTextContent('Отель создан');
     expect(screen.getByLabelText('Название')).toHaveValue('');
     expect(screen.getByLabelText('Slug')).toHaveValue('');
@@ -106,7 +107,7 @@ describe('HotelForm', () => {
     await fillField(user, 'Название', 'Kamilovs Boutique');
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
 
-    expect(updateHotel).toHaveBeenCalledWith('hotel-1', { name: 'Kamilovs Boutique', slug: 'kamilovs', address: 'Samarkand', commissionPercent: '12.5' });
+    expect(updateHotel).toHaveBeenCalledWith('hotel-1', { name: 'Kamilovs Boutique', slug: 'kamilovs', address: 'Samarkand', commissionPercent: '12.5', guestCatalogId: '' });
     expect(await screen.findByRole('status')).toHaveTextContent('Изменения сохранены');
     expect(screen.getByLabelText('Название')).toHaveValue('Kamilovs Boutique');
   });
@@ -179,5 +180,27 @@ describe('HotelForm', () => {
 
     expect(await screen.findByText('Такой slug уже используется')).toHaveAttribute('id', 'slug-error');
     expect(screen.getByLabelText('Slug')).toHaveValue('other-hotel');
+  });
+});
+
+describe('guest catalogue field', () => {
+  it('defaults to no catalogue and sends the owner choice', async () => {
+    const user = userEvent.setup();
+    const createHotel = vi.fn().mockResolvedValue(kamilovsHotel);
+    renderHotelForm({ createHotel });
+
+    expect(screen.getByLabelText('Гостевой каталог')).toHaveValue('');
+
+    await fillHotelForm(user, { name: 'Kamilovs Hotel', slug: 'kamilovs', address: '', percentage: '15' });
+    await user.selectOptions(screen.getByLabelText('Гостевой каталог'), 'tashkent-v1');
+    await user.click(screen.getByRole('button', { name: 'Создать отель' }));
+
+    expect(createHotel).toHaveBeenCalledWith(expect.objectContaining({ guestCatalogId: 'tashkent-v1' }));
+  });
+
+  it('shows the catalogue already attached to the hotel', () => {
+    renderHotelForm({ hotel: { ...kamilovsHotel, guestCatalogId: 'tashkent-v1' } });
+
+    expect(screen.getByLabelText('Гостевой каталог')).toHaveValue('tashkent-v1');
   });
 });

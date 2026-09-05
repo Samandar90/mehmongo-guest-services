@@ -20,6 +20,20 @@ const requestRowFixture = {
   created_at: '2026-08-19T09:15:00.000Z',
   hotels: { name: 'Kamilovs Hotel' },
   rooms: { label: '205' },
+  offer_id: 'tashkent-airport-sedan',
+  offer_snapshot: {
+    offerId: 'tashkent-airport-sedan',
+    catalogId: 'tashkent-v1',
+    catalogVersion: 'mehmongo-tashkent-2026-09-05-final',
+    title: 'Your airport ride, arranged',
+    category: 'transport',
+    requestProfile: 'airport',
+    priceMode: 'from',
+    amount: 30,
+    currency: 'USD',
+    unit: 'per vehicle · one way',
+    capacityExceeded: false,
+  },
   telegram_deliveries: [
     { attempt: 1, status: 'failed', error_code: 'TELEGRAM_TIMEOUT' },
     { attempt: 2, status: 'failed', error_code: 'TELEGRAM_API_ERROR' },
@@ -215,5 +229,36 @@ describe('retryTelegram', () => {
 
     const { client } = functionClient({ status: 200, body: { nope: true } });
     await expect(retryTelegram('request-1', client)).rejects.toMatchObject({ code: 'RETRY_FAILED' });
+  });
+});
+
+describe('catalogue offers in the admin list', () => {
+  it('reads the stored offer and its starting price', async () => {
+    const result = await listRequests({}, requestQueryClient([requestRowFixture]).client);
+
+    expect(result.items[0].offerId).toBe('tashkent-airport-sedan');
+    expect(result.items[0].offerTitle).toBe('Your airport ride, arranged');
+    expect(result.items[0].offerEstimate).toBe('от 30 USD · per vehicle · one way');
+  });
+
+  it('reports an individual quote instead of an amount', async () => {
+    const quoted = {
+      ...requestRowFixture,
+      offer_snapshot: { ...requestRowFixture.offer_snapshot, priceMode: 'quote', amount: null, currency: null, capacityExceeded: true },
+    };
+
+    const result = await listRequests({}, requestQueryClient([quoted]).client);
+
+    expect(result.items[0].offerEstimate).toBe('индивидуальный расчёт');
+  });
+
+  it('leaves a request without an offer empty', async () => {
+    const legacy = { ...requestRowFixture, offer_id: null, offer_snapshot: null };
+
+    const result = await listRequests({}, requestQueryClient([legacy]).client);
+
+    expect(result.items[0].offerId).toBeNull();
+    expect(result.items[0].offerTitle).toBeNull();
+    expect(result.items[0].offerEstimate).toBeNull();
   });
 });

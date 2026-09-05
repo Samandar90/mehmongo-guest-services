@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { guestCatalogIds, isGuestCatalogId } from '@/supabase/functions/_shared/catalog';
 
 export type Hotel = {
   id: string;
@@ -8,6 +9,8 @@ export type Hotel = {
   address: string;
   commissionBps: number;
   active: boolean;
+  /** Guest catalogue enabled by the owner, or null to keep the previous guest form. */
+  guestCatalogId: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -17,6 +20,8 @@ export type HotelInput = {
   slug: string;
   address: string;
   commissionPercent: string;
+  /** Empty string means no catalogue. */
+  guestCatalogId: string;
 };
 
 export type HotelFieldErrors = Partial<Record<keyof HotelInput, string>>;
@@ -26,6 +31,7 @@ type NormalizedHotelInput = {
   slug: string;
   address: string;
   commissionBps: number;
+  guestCatalogId: string | null;
 };
 
 export type HotelValidationResult =
@@ -46,6 +52,7 @@ export const hotelValidationMessages = {
   slug: 'Slug: строчные латинские буквы, цифры и дефисы',
   address: 'Адрес не длиннее 240 символов',
   commissionPercent: 'Введите процент от 0 до 100',
+  guestCatalogId: 'Выберите каталог из списка',
 } as const;
 
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -58,11 +65,18 @@ type HotelRow = {
   address: string;
   commission_bps: number;
   active: boolean;
+  guest_catalog_id: string | null;
   created_at: string;
   updated_at: string;
 };
 
-const hotelColumns = 'id, name, slug, address, commission_bps, active, created_at, updated_at';
+const hotelColumns = 'id, name, slug, address, commission_bps, active, guest_catalog_id, created_at, updated_at';
+
+/** Catalogues an owner may attach, plus the "no catalogue" option. */
+export const hotelCatalogOptions = [
+  { value: '', label: 'Без каталога (прежняя форма)' },
+  ...guestCatalogIds.map((id) => ({ value: id, label: id === 'tashkent-v1' ? 'Ташкент · услуги V1' : id })),
+];
 
 export function validateHotelInput(input: HotelInput): HotelValidationResult {
   const name = input.name.trim();
@@ -80,8 +94,11 @@ export function validateHotelInput(input: HotelInput): HotelValidationResult {
     errors.commissionPercent = hotelValidationMessages.commissionPercent;
   }
 
+  const catalogChoice = input.guestCatalogId.trim();
+  if (catalogChoice && !isGuestCatalogId(catalogChoice)) errors.guestCatalogId = hotelValidationMessages.guestCatalogId;
+
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  return { ok: true, value: { name, slug, address, commissionBps } };
+  return { ok: true, value: { name, slug, address, commissionBps, guestCatalogId: catalogChoice || null } };
 }
 
 /** Postgres unique_violation on hotels.slug (the only unique text column). */
@@ -101,6 +118,7 @@ function toHotel(row: HotelRow): Hotel {
     address: row.address,
     commissionBps: row.commission_bps,
     active: row.active,
+    guestCatalogId: row.guest_catalog_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -113,7 +131,13 @@ function normalizeOrThrow(input: HotelInput): NormalizedHotelInput {
 }
 
 function toRowPayload(value: NormalizedHotelInput) {
-  return { name: value.name, slug: value.slug, address: value.address, commission_bps: value.commissionBps };
+  return {
+    name: value.name,
+    slug: value.slug,
+    address: value.address,
+    commission_bps: value.commissionBps,
+    guest_catalog_id: value.guestCatalogId,
+  };
 }
 
 function unwrap<T>({ data, error }: { data: T | null; error: unknown }): T | null {

@@ -18,6 +18,7 @@ const hotelRow = {
   address: 'Samarkand',
   commission_bps: 1500,
   active: true,
+  guest_catalog_id: null,
   created_at: '2026-09-01T10:00:00.000Z',
   updated_at: '2026-09-02T10:00:00.000Z',
 };
@@ -29,6 +30,7 @@ const kamilovsHotel = {
   address: 'Samarkand',
   commissionBps: 1500,
   active: true,
+  guestCatalogId: null,
   createdAt: '2026-09-01T10:00:00.000Z',
   updatedAt: '2026-09-02T10:00:00.000Z',
 };
@@ -38,6 +40,7 @@ const validInput: HotelInput = {
   slug: 'kamilovs',
   address: 'Samarkand',
   commissionPercent: '15',
+  guestCatalogId: '',
 };
 
 function createHotelsClient(result: { data: unknown; error: unknown } = { data: hotelRow, error: null }) {
@@ -61,11 +64,12 @@ describe('hotel input validation', () => {
       slug: ' Kamilovs-Hotel ',
       address: ' Samarkand ',
       commissionPercent: ' 15 ',
+      guestCatalogId: '',
     });
 
     expect(result).toEqual({
       ok: true,
-      value: { name: 'Kamilovs Hotel', slug: 'kamilovs-hotel', address: 'Samarkand', commissionBps: 1500 },
+      value: { name: 'Kamilovs Hotel', slug: 'kamilovs-hotel', address: 'Samarkand', commissionBps: 1500, guestCatalogId: null },
     });
   });
 
@@ -81,6 +85,7 @@ describe('hotel input validation', () => {
       slug: 'Bad Slug',
       address: 'a'.repeat(241),
       commissionPercent: '101',
+      guestCatalogId: '',
     });
 
     expect(result).toEqual({
@@ -120,7 +125,7 @@ describe('hotel repository', () => {
     await expect(createHotel(validInput, client)).resolves.toEqual(kamilovsHotel);
 
     expect(from).toHaveBeenCalledWith('hotels');
-    expect(builder.insert).toHaveBeenCalledWith({ name: 'Kamilovs Hotel', slug: 'kamilovs', address: 'Samarkand', commission_bps: 1500 });
+    expect(builder.insert).toHaveBeenCalledWith({ name: 'Kamilovs Hotel', slug: 'kamilovs', address: 'Samarkand', commission_bps: 1500, guest_catalog_id: null });
     expect(builder.select).toHaveBeenCalled();
     expect(builder.single).toHaveBeenCalled();
   });
@@ -128,7 +133,7 @@ describe('hotel repository', () => {
   it('rejects malformed slug and commission before touching the database', async () => {
     const { client, from } = createHotelsClient();
 
-    await expect(createHotel({ name: 'X', slug: 'Bad Slug', address: '', commissionPercent: '101' }, client))
+    await expect(createHotel({ name: 'X', slug: 'Bad Slug', address: '', commissionPercent: '101', guestCatalogId: '' }, client))
       .rejects.toMatchObject({
         code: 'VALIDATION_ERROR',
         fields: { slug: 'Slug: строчные латинские буквы, цифры и дефисы', commissionPercent: 'Введите процент от 0 до 100' },
@@ -180,7 +185,7 @@ describe('hotel repository', () => {
     const { client, builder } = createHotelsClient();
 
     await expect(updateHotel('hotel-1', { ...validInput, commissionPercent: '12.5' }, client)).resolves.toEqual(kamilovsHotel);
-    expect(builder.update).toHaveBeenCalledWith({ name: 'Kamilovs Hotel', slug: 'kamilovs', address: 'Samarkand', commission_bps: 1250 });
+    expect(builder.update).toHaveBeenCalledWith({ name: 'Kamilovs Hotel', slug: 'kamilovs', address: 'Samarkand', commission_bps: 1250, guest_catalog_id: null });
     expect(builder.eq).toHaveBeenCalledWith('id', 'hotel-1');
   });
 
@@ -190,5 +195,25 @@ describe('hotel repository', () => {
     await expect(setHotelActive('hotel-1', false, client)).resolves.toEqual({ ...kamilovsHotel, active: false });
     expect(builder.update).toHaveBeenCalledWith({ active: false });
     expect(builder.eq).toHaveBeenCalledWith('id', 'hotel-1');
+  });
+});
+
+describe('guest catalogue attachment', () => {
+  it('stores the catalogue the owner selected and clears it when none is chosen', () => {
+    expect(validateHotelInput({ ...validInput, guestCatalogId: 'tashkent-v1' })).toMatchObject({ ok: true, value: { guestCatalogId: 'tashkent-v1' } });
+    expect(validateHotelInput({ ...validInput, guestCatalogId: '' })).toMatchObject({ ok: true, value: { guestCatalogId: null } });
+  });
+
+  it('rejects a catalogue that is not on the whitelist', () => {
+    expect(validateHotelInput({ ...validInput, guestCatalogId: 'moon-base-v9' })).toEqual({
+      ok: false,
+      errors: { guestCatalogId: 'Выберите каталог из списка' },
+    });
+  });
+
+  it('reads the attachment back with the hotel', async () => {
+    const { client } = createHotelsClient({ data: { ...hotelRow, guest_catalog_id: 'tashkent-v1' }, error: null });
+
+    await expect(getHotel('hotel-1', client)).resolves.toMatchObject({ guestCatalogId: 'tashkent-v1' });
   });
 });

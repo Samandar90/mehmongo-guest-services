@@ -146,7 +146,7 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
                   </td>
                   <td data-label="Категория">
                     <span>{serviceLabels[row.serviceType]}</span>
-                    <small>{requestStatusLabels[row.status]}</small>
+                    <small>{row.offerTitle ?? requestStatusLabels[row.status]}</small>
                   </td>
                   <td data-label="Гость">
                     <span>{row.guestName}</span>
@@ -187,6 +187,21 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
                           <div><dt>Гостей</dt><dd>{row.partySize ?? '—'}</dd></div>
                           <div><dt>Контакт</dt><dd>{row.contact}</dd></div>
                           <div><dt>Комментарий</dt><dd>{row.note || '—'}</dd></div>
+                          {row.offerTitle ? (
+                            <div>
+                              <dt>Предложение</dt>
+                              <dd>{row.offerTitle}</dd>
+                            </div>
+                          ) : null}
+                          {row.offerEstimate ? (
+                            <div>
+                              <dt>Ориентировочная цена</dt>
+                              <dd>
+                                {row.offerEstimate}
+                                <small className="admin-hint"> Не подтверждённая сумма и не выручка.</small>
+                              </dd>
+                            </div>
+                          ) : null}
                           <div>
                             <dt>Telegram</dt>
                             <dd>

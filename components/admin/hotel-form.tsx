@@ -4,6 +4,7 @@ import { useRef, useState, type SubmitEvent } from 'react';
 import {
   createHotel as createHotelDefault,
   formatCommissionPercent,
+  hotelCatalogOptions,
   isDuplicateSlugError,
   updateHotel as updateHotelDefault,
   validateHotelInput,
@@ -28,9 +29,10 @@ const fieldLabels: Record<FieldKey, string> = {
   slug: 'Slug',
   address: 'Адрес',
   commissionPercent: 'Процент отеля',
+  guestCatalogId: 'Гостевой каталог',
 };
 
-const emptyInput: HotelInput = { name: '', slug: '', address: '', commissionPercent: '' };
+const emptyInput: HotelInput = { name: '', slug: '', address: '', commissionPercent: '', guestCatalogId: '' };
 const duplicateSlugMessage = 'Такой slug уже используется';
 const genericErrorMessage = 'Не удалось сохранить отель. Повторите попытку.';
 
@@ -40,6 +42,7 @@ function toInput(hotel: Hotel): HotelInput {
     slug: hotel.slug,
     address: hotel.address,
     commissionPercent: formatCommissionPercent(hotel.commissionBps),
+    guestCatalogId: hotel.guestCatalogId ?? '',
   };
 }
 
@@ -136,6 +139,24 @@ export function HotelForm({
       {renderField('slug', { autoCapitalize: 'none', autoCorrect: 'off', spellCheck: false })}
       {renderField('address', { autoComplete: 'street-address', maxLength: 240 })}
       {renderField('commissionPercent', { inputMode: 'decimal', placeholder: '15' })}
+      <div className="admin-field">
+        <label htmlFor="hotel-guestCatalogId">{fieldLabels.guestCatalogId}</label>
+        <select
+          id="hotel-guestCatalogId"
+          name="guestCatalogId"
+          value={values.guestCatalogId}
+          onChange={(event) => setField('guestCatalogId', event.target.value)}
+          aria-invalid={fieldErrors.guestCatalogId ? true : undefined}
+          aria-describedby={fieldErrors.guestCatalogId ? 'guestCatalogId-error' : undefined}
+          disabled={pending}
+        >
+          {hotelCatalogOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+        <small className="admin-hint">Каталог включается вручную и только для отелей выбранного города.</small>
+        {fieldErrors.guestCatalogId ? <p id="guestCatalogId-error" className="admin-field-error">{fieldErrors.guestCatalogId}</p> : null}
+      </div>
       {formError ? <p role="alert" className="admin-form-error">{formError}</p> : null}
       {success ? <output className="admin-form-success">{success}</output> : null}
       <button type="submit" disabled={pending}>
