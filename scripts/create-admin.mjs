@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 /**
- * Creates a MehmonGo super administrator.
+ * Manages MehmonGo super administrators.
  *
- *   node scripts/create-admin.mjs --check            # connection and permissions only
- *   node scripts/create-admin.mjs owner@example.com  # create, password typed by you
+ *   node scripts/create-admin.mjs --check                    # connection and permissions only
+ *   node scripts/create-admin.mjs --list                     # who can sign in today
+ *   node scripts/create-admin.mjs owner@example.com          # create, password typed by you
+ *   node scripts/create-admin.mjs --remove old@example.com   # delete one administrator
  *
  * The password is read from your terminal with the echo turned off. It is sent
  * only to your own Supabase project and is never printed, stored in a file or
@@ -21,6 +23,8 @@ import { createClient } from '@supabase/supabase-js';
 const run = promisify(exec);
 const args = process.argv.slice(2);
 const checkOnly = args.includes('--check');
+const listOnly = args.includes('--list');
+const removing = args.includes('--remove');
 const email = args.find((argument) => argument.includes('@'));
 
 async function localCredentials() {
@@ -97,6 +101,30 @@ function askHidden(question) {
   });
 }
 
+/** Reads a visible answer, for questions that are not secret. */
+function ask(question) {
+  return new Promise((resolve) => {
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(question, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
+/**
+ * Pairs the admin_users rows with their Auth email, which lives in a schema
+ * the anon and service clients cannot join against.
+ */
+async function listAdmins(supabase) {
+  const { data: rows, error } = await supabase.from('admin_users').select('user_id, role, active');
+  if (error) throw new Error(`Cannot read admin_users: ${error.message}`);
+  const { data: page, error: usersError } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+  if (usersError) throw new Error(`Cannot read the accounts: ${usersError.message}`);
+  const emails = new Map(page.users.map((user) => [user.id, user.email]));
+  return rows.map((row) => ({ ...row, email: emails.get(row.user_id) ?? '(account deleted)' }));
+}
+
 async function main() {
   const { url, key, where } = await credentials();
   const supabase = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
@@ -116,9 +144,50 @@ async function main() {
     return 0;
   }
 
+  if (listOnly) {
+    const admins = await listAdmins(supabase);
+    if (admins.length === 0) console.log('No administrators yet.');
+    for (const admin of admins) {
+      console.log(`  ${admin.email}  ·  ${admin.role}  ·  ${admin.active ? 'active' : 'disabled'}`);
+    }
+    return 0;
+  }
+
   if (!email) {
     console.error('Pass the administrator email, for example: node scripts/create-admin.mjs owner@example.com');
     return 1;
+  }
+
+  if (removing) {
+    const admins = await listAdmins(supabase);
+    const target = admins.find((admin) => admin.email === email);
+    if (!target) {
+      console.error(`${email} is not an administrator here. Run --list to see who is.`);
+      return 1;
+    }
+    if (admins.filter((admin) => admin.active).length === 1 && target.active) {
+      console.error('This is the only active administrator. Create the replacement first, then remove this one.');
+      return 1;
+    }
+
+    const answer = await ask(`Delete the administrator ${email} and their sign-in? [y/N] `);
+    if (answer.toLowerCase() !== 'y') {
+      console.log('Nothing was deleted.');
+      return 0;
+    }
+
+    const { error: revokeError } = await supabase.from('admin_users').delete().eq('user_id', target.user_id);
+    if (revokeError) {
+      console.error(`Could not revoke the role: ${revokeError.message}`);
+      return 5;
+    }
+    const { error: deleteError } = await supabase.auth.admin.deleteUser(target.user_id);
+    if (deleteError) {
+      console.error(`Role revoked, but the account itself remains: ${deleteError.message}`);
+      return 6;
+    }
+    console.log(`Removed: ${email}`);
+    return 0;
   }
 
   const password = await askHidden(`Password for ${email} (at least 12 characters, not shown): `);
