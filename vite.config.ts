@@ -13,6 +13,9 @@ const { d1, r2 } = hostingConfig;
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === 'seatbelt';
 
 const localBindingConfig = {
+  // The Worker name becomes the workers.dev hostname guests scan into, so it is
+  // set here rather than inherited from the generated package name.
+  name: 'mehmongo',
   main: 'vinext/server/fetch-handler',
   compatibility_flags: ['nodejs_compat'],
   d1_databases: d1
