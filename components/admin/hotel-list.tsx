@@ -16,6 +16,7 @@ export function HotelList({ hotels, setHotelActive = setHotelActiveDefault, relo
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   if (hotels.length === 0) {
     return <p className="admin-empty">Отелей пока нет</p>;
@@ -25,19 +26,31 @@ export function HotelList({ hotels, setHotelActive = setHotelActiveDefault, relo
     setConfirmingId(null);
     setPendingId(hotel.id);
     setError(null);
+    setNotice(null);
+    let changed = false;
     try {
       await setHotelActive(hotel.id, active);
-      await reload?.();
+      changed = true;
     } catch {
       setError(statusErrorMessage);
     } finally {
       setPendingId(null);
+    }
+    if (!changed) return;
+
+    setNotice(`Отель ${hotel.name} ${active ? 'включён' : 'отключён'}`);
+    // The status change already succeeded; a failed refresh must not read as a failed mutation.
+    try {
+      await reload?.();
+    } catch {
+      // The list simply shows the pre-refresh rows until the next successful load.
     }
   };
 
   return (
     <div className="admin-table-wrap">
       {error ? <p role="alert" className="admin-form-error">{error}</p> : null}
+      {notice ? <output className="admin-form-success">{notice}</output> : null}
       <table className="admin-table">
         <thead>
           <tr>

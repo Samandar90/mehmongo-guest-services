@@ -129,7 +129,7 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .admin-empty { margin: 0; color: var(--ink-soft); font-size: 14px; }
 .admin-badge { display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
 .admin-badge-active { background: #dff1e9; color: #1f6b4f; }
-.admin-badge-inactive { background: var(--muted); color: var(--ink-soft); }
+.admin-badge-inactive { background: var(--muted); color: var(--navy); }
 .admin-table-wrap { display: grid; gap: 12px; }
 .admin-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .admin-table th { padding: 0 10px 10px; color: var(--ink-soft); font-size: 12px; font-weight: 650; text-align: left; text-transform: uppercase; letter-spacing: .08em; }
@@ -146,6 +146,7 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
   .admin-table tr { padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,253,250,.85); }
   .admin-table tr + tr { margin-top: 10px; }
   .admin-table td { padding: 6px 0; border: 0; }
+  .admin-table td.admin-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 8px; }
   .admin-table td::before { content: attr(data-label); display: block; margin-bottom: 2px; color: var(--ink-soft); font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .08em; }
 }
 @media (min-width: 720px) {

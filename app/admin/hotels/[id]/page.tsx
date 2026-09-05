@@ -15,11 +15,12 @@ type LoadState =
 export default function AdminHotelPage() {
   const params = useParams<{ id: string }>();
   const hotelId = params?.id ?? '';
-  const [state, setState] = useState<LoadState>({ status: 'loading' });
-
+  const [loadState, setState] = useState<LoadState>({ status: 'loading' });
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const state: LoadState = hotelId ? loadState : { status: 'missing' };
 
   useEffect(() => {
+    if (!hotelId) return;
     let cancelled = false;
     const run = async () => {
       try {

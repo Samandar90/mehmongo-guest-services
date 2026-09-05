@@ -12,6 +12,17 @@ import {
 
 type Router = Pick<ReturnType<typeof useRouter>, 'replace'>;
 
+const navigation = [
+  { href: '/admin', label: 'Обзор' },
+  { href: '/admin/hotels', label: 'Отели' },
+  { href: '/admin/requests', label: 'Заявки' },
+] as const;
+
+function isCurrentSection(pathname: string | null, href: string): boolean {
+  if (!pathname) return false;
+  return href === '/admin' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+}
+
 type AdminShellProps = {
   children: React.ReactNode;
   getIdentity?: () => Promise<AdminIdentity | null>;
@@ -101,16 +112,19 @@ export function AdminShell({
 
   return (
     <div className="admin-shell">
-      <nav aria-label="Административная навигация">
-        <Link href="/admin">Обзор</Link>
-        <Link href="/admin/hotels">Отели</Link>
-        <Link href="/admin/requests">Заявки</Link>
+      <nav className="admin-nav" aria-label="Административная навигация">
+        <span className="admin-nav-brand">Mehmon<span>Go</span></span>
+        {navigation.map((item) => (
+          <Link key={item.href} href={item.href} aria-current={isCurrentSection(pathname, item.href) ? 'page' : undefined}>
+            {item.label}
+          </Link>
+        ))}
         <button type="button" onClick={handleSignOut}>Выйти</button>
       </nav>
       {signOutError ? (
-        <div role="alert">
+        <div role="alert" className="admin-form-error admin-page">
           <p>{signOutError}</p>
-          <button type="button" onClick={handleSignOut}>Повторить выход</button>
+          <button type="button" className="admin-button admin-button-secondary" onClick={handleSignOut}>Повторить выход</button>
         </div>
       ) : null}
       {children}

@@ -4,8 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AdminHotelPage from './page';
 import { getHotel, updateHotel, type Hotel } from '@/lib/admin/hotels';
 
+const paramsState = vi.hoisted(() => ({ current: { id: 'hotel-1' } as { id?: string } }));
+
 vi.mock('next/navigation', () => ({
-  useParams: () => ({ id: 'hotel-1' }),
+  useParams: () => paramsState.current,
 }));
 
 vi.mock('@/lib/admin/hotels', async (importOriginal) => ({
@@ -27,8 +29,17 @@ const kamilovsHotel: Hotel = {
 
 describe('AdminHotelPage', () => {
   beforeEach(() => {
+    paramsState.current = { id: 'hotel-1' };
     vi.mocked(getHotel).mockReset();
     vi.mocked(updateHotel).mockReset();
+  });
+
+  it('treats a missing route id as a missing hotel without querying', async () => {
+    paramsState.current = {};
+    render(<AdminHotelPage />);
+
+    expect(await screen.findByText('Отель не найден')).toBeInTheDocument();
+    expect(getHotel).not.toHaveBeenCalled();
   });
 
   it('loads the hotel into an edit form and reserves the rooms section', async () => {

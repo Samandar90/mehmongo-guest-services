@@ -37,6 +37,35 @@ describe('HotelList', () => {
     expect(screen.getByRole('link', { name: 'Открыть Kamilovs Hotel' })).toHaveAttribute('href', '/admin/hotels/hotel-1');
   });
 
+  it('labels every cell so the mobile card layout can show headings', () => {
+    renderHotelList({ hotels: [kamilovsFixture] });
+
+    const labels = screen.getAllByRole('cell').map((cell) => cell.getAttribute('data-label'));
+    expect(labels).toEqual(['Отель', 'Slug', 'Процент', 'Статус', 'Действия']);
+  });
+
+  it('confirms a successful status change in a live region', async () => {
+    const user = userEvent.setup();
+    renderHotelList({ hotels: [kamilovsFixture], setHotelActive: vi.fn().mockResolvedValue(undefined) });
+
+    await user.click(screen.getByRole('button', { name: 'Отключить Kamilovs Hotel' }));
+    await user.click(screen.getByRole('button', { name: 'Подтвердить отключение' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Отель Kamilovs Hotel отключён');
+  });
+
+  it('does not report a status error when only the reload fails', async () => {
+    const user = userEvent.setup();
+    const setActive = vi.fn().mockResolvedValue(undefined);
+    const reload = vi.fn().mockRejectedValue(new Error('network'));
+    renderHotelList({ hotels: [{ ...kamilovsFixture, active: false }], setHotelActive: setActive, reload });
+
+    await user.click(screen.getByRole('button', { name: 'Включить Kamilovs Hotel' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Отель Kamilovs Hotel включён');
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('shows an empty state when there are no hotels', () => {
     renderHotelList({ hotels: [] });
 

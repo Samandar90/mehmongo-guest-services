@@ -59,6 +59,15 @@ describe('AdminShell', () => {
     expect(screen.getByRole('link', { name: 'Заявки' })).toBeInTheDocument();
   });
 
+  it('marks the current section in the navigation', async () => {
+    pathnameState.current = '/admin/hotels/hotel-1';
+    renderAdminShell({ identity: { userId: 'user-1', role: 'super_admin' } });
+
+    expect(await screen.findByRole('link', { name: 'Отели' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Обзор' })).not.toHaveAttribute('aria-current');
+    expect(screen.getByRole('navigation', { name: 'Административная навигация' })).toHaveClass('admin-nav');
+  });
+
   it('rechecks access and offers a retry when sign-out fails', async () => {
     const user = userEvent.setup();
     const identity = { userId: 'user-1', role: 'super_admin' } as const;
