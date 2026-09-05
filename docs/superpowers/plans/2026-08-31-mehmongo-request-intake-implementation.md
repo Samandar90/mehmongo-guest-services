@@ -642,7 +642,7 @@ git commit -m "feat: deliver guest requests to Telegram"
 - Modify: `lib/requests/api.test.ts`
 - Modify: `components/request-form.tsx`
 - Modify: `components/guest-experience.tsx`
-- Modify: `components/request-success.tsx`
+- Verify existing interface: `components/request-success.tsx` — it already renders its reference prop; keep unchanged when server-reference integration tests pass.
 - Modify: `components/guest-experience.test.tsx`
 
 **Interfaces:**
@@ -787,3 +787,4 @@ git commit -m "docs: add request intake pilot runbook"
 git tag request-intake-v1
 git push origin main --follow-tags
 ```
+
