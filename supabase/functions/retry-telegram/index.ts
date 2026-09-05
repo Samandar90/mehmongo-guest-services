@@ -10,7 +10,6 @@ import {
 } from '../_shared/telegram.ts';
 
 const POST_ALLOWED_METHODS = 'POST, OPTIONS';
-const DELIVERY_ALLOCATION_ATTEMPTS = 3;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type TelegramStatus = 'pending' | 'sent' | 'failed';
 
@@ -174,36 +173,33 @@ function repositoryFor(client: RetryTelegramClient): RetryTelegramRepository {
       return readRequest(data);
     },
     async createNextDelivery(requestId) {
-      for (let allocationAttempt = 0; allocationAttempt < DELIVERY_ALLOCATION_ATTEMPTS; allocationAttempt += 1) {
-        const { data: latest, error: latestError } = await client
-          .from('telegram_deliveries')
-          .select('attempt, status')
-          .eq('request_id', requestId)
-          .order('attempt', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (latestError) throw latestError;
-        const previousAttempt = latest && typeof latest === 'object' ? (latest as { attempt?: unknown }).attempt : 0;
-        if (typeof previousAttempt !== 'number' || !Number.isInteger(previousAttempt) || previousAttempt < 0) {
-          throw new Error('Telegram delivery attempt response is invalid');
-        }
-        const latestStatus = latest && typeof latest === 'object' ? (latest as { status?: unknown }).status : null;
-        if (latestStatus === 'pending') return { kind: 'pending' };
-        const attempt = previousAttempt + 1;
-        const { data, error } = await client
-          .from('telegram_deliveries')
-          .insert({ request_id: requestId, attempt, status: 'pending' })
-          .select('id')
-          .maybeSingle();
-        if (error) {
-          if (isAttemptConflict(error)) continue;
-          throw error;
-        }
-        const id = data && typeof data === 'object' ? (data as { id?: unknown }).id : null;
-        if (typeof id !== 'string') throw new Error('Telegram delivery response is invalid');
-        return { kind: 'created', delivery: { id, attempt, status: 'pending' } };
+      const { data: latest, error: latestError } = await client
+        .from('telegram_deliveries')
+        .select('attempt, status')
+        .eq('request_id', requestId)
+        .order('attempt', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (latestError) throw latestError;
+      const previousAttempt = latest && typeof latest === 'object' ? (latest as { attempt?: unknown }).attempt : 0;
+      if (typeof previousAttempt !== 'number' || !Number.isInteger(previousAttempt) || previousAttempt < 0) {
+        throw new Error('Telegram delivery attempt response is invalid');
       }
-      throw new Error('Unable to allocate Telegram delivery attempt');
+      const latestStatus = latest && typeof latest === 'object' ? (latest as { status?: unknown }).status : null;
+      if (latestStatus === 'pending' || latestStatus === 'sent') return { kind: 'pending' };
+      const attempt = previousAttempt + 1;
+      const { data, error } = await client
+        .from('telegram_deliveries')
+        .insert({ request_id: requestId, attempt, status: 'pending' })
+        .select('id')
+        .maybeSingle();
+      if (error) {
+        if (isAttemptConflict(error)) return { kind: 'pending' };
+        throw error;
+      }
+      const id = data && typeof data === 'object' ? (data as { id?: unknown }).id : null;
+      if (typeof id !== 'string') throw new Error('Telegram delivery response is invalid');
+      return { kind: 'created', delivery: { id, attempt, status: 'pending' } };
     },
     async completeDelivery(deliveryId, result) {
       const { data, error } = await client

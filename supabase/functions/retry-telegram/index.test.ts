@@ -116,6 +116,31 @@ Deno.test('refuses a retry while the latest delivery attempt is pending', async 
   assertEquals(sends, 0);
 });
 
+Deno.test('refuses a retry when the latest delivery attempt was sent', async () => {
+  let inserts = 0;
+  const latest = {
+    eq: () => latest,
+    order: () => latest,
+    limit: () => latest,
+    maybeSingle: () => Promise.resolve({ data: { attempt: 3, status: 'sent' }, error: null }),
+  };
+  const client = {
+    auth: { getUser: () => Promise.resolve({ data: { user: null }, error: null }) },
+    from: () => ({
+      select: () => latest,
+      insert: () => {
+        inserts += 1;
+        throw new Error('A sent delivery must not allocate another attempt');
+      },
+    }),
+  } as unknown as RetryTelegramClient;
+
+  const allocation = await createRepository(client).createNextDelivery(REQUEST_ID);
+
+  assertEquals(allocation, { kind: 'pending' });
+  assertEquals(inserts, 0);
+});
+
 Deno.test('leaves a retry delivery pending when sent-state persistence fails', async () => {
   let sends = 0;
   let failedUpdates = 0;
@@ -148,7 +173,7 @@ Deno.test('leaves a retry delivery pending when sent-state persistence fails', a
   assertEquals(failedUpdates, 0);
 });
 
-Deno.test('retries a conflicting delivery allocation with the next attempt number', async () => {
+Deno.test('does not allocate or send another delivery when a completed contender wins allocation', async () => {
   const insertedAttempts: number[] = [];
   let insertCalls = 0;
   const client: RetryTelegramClient = {
@@ -156,12 +181,16 @@ Deno.test('retries a conflicting delivery allocation with the next attempt numbe
     from: () => ({
       select: (columns: string) => {
         if (columns === 'attempt, status') {
-          const attempt = insertedAttempts.length === 0 ? 2 : 3;
           const latest = {
             eq: () => latest,
             order: () => latest,
             limit: () => latest,
-            maybeSingle: () => Promise.resolve({ data: { attempt, status: 'failed' }, error: null }),
+            maybeSingle: () => Promise.resolve({
+              data: insertedAttempts.length === 0
+                ? { attempt: 2, status: 'failed' }
+                : { attempt: 3, status: 'sent' },
+              error: null,
+            }),
           };
           return latest;
         }
@@ -193,14 +222,26 @@ Deno.test('retries a conflicting delivery allocation with the next attempt numbe
       maybeSingle: () => Promise.resolve({ data: null, error: null }),
     }) as unknown as ReturnType<RetryTelegramClient['from']>,
   };
+  let sends = 0;
+  const repository = {
+    ...createRepository(client),
+    getUserId: () => Promise.resolve('user-1'),
+    isActiveSuperAdmin: () => Promise.resolve(true),
+    findRequest: () => Promise.resolve(deliveryRequest()),
+  };
 
-  const delivery = await createRepository(client).createNextDelivery(REQUEST_ID);
-
-  assertEquals(insertedAttempts, [3, 4]);
-  assertEquals(delivery, {
-    kind: 'created',
-    delivery: { id: '50000000-0000-4000-8000-000000000005', attempt: 4, status: 'pending' },
+  const response = await handler(retryRequest('valid-admin-token'), {
+    repository,
+    telegramSender: () => {
+      sends += 1;
+      return Promise.resolve({ messageId: 77 });
+    },
   });
+
+  assertEquals(response.status, 409);
+  assertEquals(await response.json(), { code: 'TELEGRAM_DELIVERY_PENDING' });
+  assertEquals(insertedAttempts, [3]);
+  assertEquals(sends, 0);
 });
 
 Deno.test('production persistence fails only a pending retry delivery', async () => {
