@@ -23,7 +23,8 @@ The user's messages should be answered in Russian. Guest-facing website copy sta
 3. `docs/superpowers/plans/2026-08-31-mehmongo-a5-assets-implementation.md`
 4. `docs/operations/supabase-pilot-runbook.md`
 5. `docs/operations/a5-print-checklist.md`
-6. The guest-catalogue brief delivered on the Desktop as `MehmonGo-Claude-Catalog-Final\CLAUDE-TASK.md`. Its `internal/PRICING-RU.md` is confidential: purchase prices, hotel payouts and the bonus formula must never reach the site, the bundle or GitHub.
+6. `docs/operations/second-machine-setup.md` — continuing the project on another computer without moving secrets through a chat
+7. The guest-catalogue brief delivered on the Desktop as `MehmonGo-Claude-Catalog-Final\CLAUDE-TASK.md`. Its `internal/PRICING-RU.md` is confidential: purchase prices, hotel payouts and the bonus formula must never reach the site, the bundle or GitHub.
 
 The implementation plans use checkboxes but progress is tracked in the ignored ledgers under `.superpowers/sdd/`. Trust Git history and these ledgers rather than redoing completed tasks.
 
