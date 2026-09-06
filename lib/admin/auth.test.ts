@@ -53,3 +53,35 @@ describe('admin authentication', () => {
     expect(supabase.auth.signOut).toHaveBeenCalledOnce();
   });
 });
+
+describe('hotel accounts', () => {
+  it('returns a hotel identity carrying the hotel it may read', async () => {
+    const supabase = createClient();
+    supabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-2' } }, error: null });
+    supabase.from.mockReturnValue(queryReturning({
+      user_id: 'user-2', role: 'hotel', active: true, hotel_id: 'hotel-1',
+    }));
+
+    await expect(getAdminIdentity(supabase as never)).resolves.toEqual({
+      userId: 'user-2', role: 'hotel', hotelId: 'hotel-1',
+    });
+  });
+
+  it('rejects a hotel row that names no hotel, rather than granting a blank scope', async () => {
+    const supabase = createClient();
+    supabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-2' } }, error: null });
+    supabase.from.mockReturnValue(queryReturning({
+      user_id: 'user-2', role: 'hotel', active: true, hotel_id: null,
+    }));
+
+    await expect(getAdminIdentity(supabase as never)).resolves.toBeNull();
+  });
+
+  it('rejects a role it does not know', async () => {
+    const supabase = createClient();
+    supabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-3' } }, error: null });
+    supabase.from.mockReturnValue(queryReturning({ user_id: 'user-3', role: 'accountant', active: true }));
+
+    await expect(getAdminIdentity(supabase as never)).resolves.toBeNull();
+  });
+});

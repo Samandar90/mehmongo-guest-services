@@ -12,11 +12,23 @@ import {
 
 type Router = Pick<ReturnType<typeof useRouter>, 'replace'>;
 
-const navigation = [
-  { href: '/admin', label: 'Обзор' },
-  { href: '/admin/hotels', label: 'Отели' },
-  { href: '/admin/requests', label: 'Заявки' },
-] as const;
+/**
+ * Which role may open which section. A hotel account has no section yet — its
+ * cabinet is still to be built — so it sees an empty navigation and a refusal
+ * on anything owner-only, rather than a half-rendered owner screen.
+ */
+const navigation: { href: string; label: string; roles: AdminIdentity['role'][] }[] = [
+  { href: '/admin', label: 'Обзор', roles: ['super_admin'] },
+  { href: '/admin/hotels', label: 'Отели', roles: ['super_admin'] },
+  { href: '/admin/requests', label: 'Заявки', roles: ['super_admin'] },
+];
+
+function mayOpen(pathname: string | null, role: AdminIdentity['role']): boolean {
+  const section = navigation.find((item) => isCurrentSection(pathname, item.href));
+  // An unlisted route is owner-only by default: a section added later is
+  // closed to a hotel account until someone opens it deliberately.
+  return section ? section.roles.includes(role) : role === 'super_admin';
+}
 
 function isCurrentSection(pathname: string | null, href: string): boolean {
   if (!pathname) return false;
@@ -43,6 +55,7 @@ export function AdminShell({
   const router = routerOverride ?? appRouter;
   const isLoginRoute = pathname === '/admin/login';
   const [status, setStatus] = useState<'loading' | 'allowed' | 'denied'>('loading');
+  const [role, setRole] = useState<AdminIdentity['role'] | null>(null);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const identityGeneration = useRef(0);
   const signOutInProgress = useRef(false);
@@ -71,10 +84,12 @@ export function AdminShell({
       if (cancelled || signOutInProgress.current || currentGeneration !== identityGeneration.current) return;
 
       if (identity) {
+        setRole(identity.role);
         setStatus('allowed');
         return;
       }
 
+      setRole(null);
       setStatus('denied');
       router.replace('/admin/login');
     };
@@ -110,11 +125,16 @@ export function AdminShell({
     }
   };
 
+  // Signed in, but not for this section. A redirect would bounce a hotel
+  // account between the login page and a section it can never open, so the
+  // refusal is stated instead, with the way out.
+  const sectionAllowed = role !== null && mayOpen(pathname, role);
+
   return (
     <div className="admin-shell">
       <nav className="admin-nav" aria-label="Административная навигация">
         <span className="admin-nav-brand">Mehmon<span>Go</span></span>
-        {navigation.map((item) => (
+        {navigation.filter((item) => role !== null && item.roles.includes(role)).map((item) => (
           <Link key={item.href} href={item.href} aria-current={isCurrentSection(pathname, item.href) ? 'page' : undefined}>
             {item.label}
           </Link>
@@ -127,7 +147,11 @@ export function AdminShell({
           <button type="button" className="admin-button admin-button-secondary" onClick={handleSignOut}>Повторить выход</button>
         </div>
       ) : null}
-      {children}
+      {sectionAllowed ? children : (
+        <main className="admin-page admin-gate" aria-live="polite">
+          <p>Этот раздел доступен только владельцу MehmonGo.</p>
+        </main>
+      )}
     </div>
   );
 }

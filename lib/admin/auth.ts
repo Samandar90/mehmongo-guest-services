@@ -1,10 +1,15 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
-export type AdminIdentity = {
-  userId: string;
-  role: 'super_admin';
-};
+/**
+ * A hotel identity always names its hotel: the union makes the scope
+ * unrepresentable without it, so no screen can accidentally read "a hotel
+ * account with no hotel" as "every hotel". The database enforces the same
+ * pairing with a CHECK.
+ */
+export type AdminIdentity =
+  | { userId: string; role: 'super_admin' }
+  | { userId: string; role: 'hotel'; hotelId: string };
 
 const invalidCredentialsMessage = 'Не удалось войти. Проверьте email и пароль.';
 
@@ -16,14 +21,19 @@ export async function getAdminIdentity(
 
   const { data } = await client
     .from('admin_users')
-    .select('user_id, role, active')
+    .select('user_id, role, active, hotel_id')
     .eq('user_id', user.id)
     .eq('active', true)
     .maybeSingle();
 
-  return data?.role === 'super_admin'
-    ? { userId: data.user_id, role: 'super_admin' }
-    : null;
+  if (!data) return null;
+  if (data.role === 'super_admin') return { userId: data.user_id, role: 'super_admin' };
+  if (data.role === 'hotel' && typeof data.hotel_id === 'string') {
+    return { userId: data.user_id, role: 'hotel', hotelId: data.hotel_id };
+  }
+  // Anything else — an unknown role, or a hotel row with no hotel — is no
+  // identity at all rather than a weaker one.
+  return null;
 }
 
 export async function signInAdmin(

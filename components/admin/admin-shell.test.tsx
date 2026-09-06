@@ -132,3 +132,54 @@ describe('AdminShell', () => {
     expect(getIdentity).toHaveBeenCalledTimes(2);
   });
 });
+
+const hotelIdentity: AdminIdentity = { userId: 'user-2', role: 'hotel', hotelId: 'hotel-1' };
+const ownerIdentity: AdminIdentity = { userId: 'user-1', role: 'super_admin' };
+
+describe('AdminShell roles', () => {
+  beforeEach(() => {
+    pathnameState.current = '/admin';
+  });
+
+  it('shows the owner every section', async () => {
+    renderAdminShell({ identity: ownerIdentity });
+
+    expect(await screen.findByRole('link', { name: 'Обзор' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Отели' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Заявки' })).toBeVisible();
+  });
+
+  it('refuses a hotel account an owner-only section instead of rendering it', async () => {
+    pathnameState.current = '/admin/requests';
+    renderAdminShell({ identity: hotelIdentity });
+
+    expect(await screen.findByText(/Этот раздел доступен только владельцу/)).toBeVisible();
+    expect(screen.queryByText('Защищённая страница')).toBeNull();
+  });
+
+  it('offers a hotel account no owner-only link to follow', async () => {
+    renderAdminShell({ identity: hotelIdentity });
+
+    await waitFor(() => expect(screen.queryByText('Загрузка…')).toBeNull());
+    expect(screen.queryByRole('link', { name: 'Отели' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Заявки' })).toBeNull();
+  });
+
+  it('lets a hotel account sign out from the refusal, so it is never stuck', async () => {
+    const signOut = vi.fn().mockResolvedValue(undefined);
+    const router = renderAdminShell({ identity: hotelIdentity, signOut });
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Выйти' }));
+
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin/login'));
+    expect(signOut).toHaveBeenCalled();
+  });
+
+  it('does not send a refused hotel account back to the login page', async () => {
+    pathnameState.current = '/admin/hotels';
+    const router = renderAdminShell({ identity: hotelIdentity });
+
+    await screen.findByText(/Этот раздел доступен только владельцу/);
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+});
