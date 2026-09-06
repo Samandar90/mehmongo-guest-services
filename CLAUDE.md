@@ -43,7 +43,9 @@ Important recent commits (newest first): `b11987a` asset generator hardening, `d
 
 ## Exact next work
 
-The pilot is live (see "Production state"). What is left is owner-side and operational:
+The pilot is live (see "Production state"). Feature work in progress: hotel accounts and settlement analytics, Task 1 of seven done (schema, constraints, RLS, 25 pgTAP assertions; local only, deliberately not pushed to production until the feature is usable). Task 2 is settlement in the super admin, and it must go through an owner-checked `security definer` routine rather than a table grant, because granting UPDATE to `authenticated` would turn a hotel's forbidden edit into a silent no-op instead of a refusal.
+
+Operational items still owner-side:
 
 1. Domain decision before printing: the plaques encode `https://mehmongo.samandarup88.workers.dev/r/<token>`. A custom domain later means a rebuild with the new `SITE_URL`/`VITE_SITE_URL`, a redeploy, and reprinting every plaque, so decide first.
 2. Print the A5 plaques from the live admin (hotel page → select rooms → materials) following `docs/operations/a5-print-checklist.md`.
@@ -51,7 +53,7 @@ The pilot is live (see "Production state"). What is left is owner-side and opera
 4. Decide what happens to the older hosted demo site now that the new one is live.
 5. Claude cannot hold an admin session (password entry is off limits and injecting a session was blocked), so any further UI checks in the admin are the owner's; the room toggle in the live room editor is the only admin control not yet exercised by hand.
 
-Do not add financial analytics. This MVP only stores hotel commission as integer basis points. Do not add hotel staff accounts, online payments, Telegram assignment buttons, or separate Telegram groups.
+On 2026-09-06 the owner lifted the earlier bans on hotel accounts and financial analytics; `docs/superpowers/plans/2026-09-06-mehmongo-hotel-accounts-analytics.md` is now binding and records their three decisions. Still out of scope: online payments, Telegram assignment buttons, and separate Telegram groups.
 
 ## Known limitations recorded in the ledgers
 
