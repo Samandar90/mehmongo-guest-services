@@ -1,6 +1,6 @@
 # MehmonGo pilot deployment
 
-Status on 2026-09-06: the production project is `hraamyjvsnsgaezkolpl` (name MehmonGo, region eu-central-1, organization "Samandar90's Org", free tier). It carries the full schema and the three Edge Functions, applied through the Supabase connector because no CLI login was available; both functions that guests call answered correctly on a live probe and the security advisor reported nothing. Still pending: Edge secrets, the owner account, guest hosting and the smoke test below.
+Status on 2026-09-06: the production project is `hraamyjvsnsgaezkolpl` (name MehmonGo, region eu-central-1, organization "Samandar90's Org", free tier). It carries the full schema and the three Edge Functions; the Edge secrets (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `REQUEST_HASH_SECRET`, `SITE_URL`) are set and `submit-request` was confirmed to initialise with them. The guest site is live on Cloudflare Workers at `https://mehmongo.samandarup88.workers.dev` (Worker `mehmongo`, deployed from a `--mode production` build with that origin compiled in and passed as the `SITE_URL` var). Still pending: the owner account, the pilot hotel and rooms, and the end-to-end smoke test below.
 Choose the MehmonGo project explicitly before running remote commands. Do not reuse another application's database or push local seed data into production.
 
 ## Prerequisites
