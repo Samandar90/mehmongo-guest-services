@@ -64,7 +64,7 @@ Keep `verify_jwt = false` scoped to `room-context` and `submit-request`. `retry-
 
 ## Owner and pilot rooms
 
-Create the owner account and its super-admin role in one step. Put the project secret key (Supabase → Settings → API) into `SUPABASE_SECRET_KEY` in the ignored `.env.production.local`, then let the script prompt for the password, which it reads without echoing and never writes to disk:
+Create the owner account and its super-admin role in one step. Put the project secret key (Supabase → Settings → API, or `npx supabase projects api-keys --project-ref <ref> --reveal -o json`) into `SUPABASE_SECRET_KEY` in the ignored `.env.production.local`, then let the script prompt for the password, which it reads without echoing and never writes to disk. Without `--reveal` the CLI returns an `sb_secret_` value of the right shape that PostgREST rejects as "Invalid API key"; only the revealed value works.
 
 ```powershell
 node scripts/create-admin.mjs --production owner@example.com
