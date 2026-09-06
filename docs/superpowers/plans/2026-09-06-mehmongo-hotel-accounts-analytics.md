@@ -22,10 +22,12 @@ Nothing about money exists today. `service_requests.status` accepts only `new`, 
 1. **Done. Schema and access.** Request lifecycle (`new`, `confirmed`, `completed`, `cancelled`), `settled_amount_minor`, `settled_currency`, frozen `hotel_commission_bps`, generated `hotel_payout_minor`. `admin_users` gains `hotel_id` and the `hotel` role. RLS: a hotel reads only its own hotel, rooms and requests, and writes nothing. pgTAP covering anon, hotel and super-admin roles.
 2. **Done. Settlement in the super admin.** On a request: set the outcome and, when completed, the amount and currency. The frozen commission is taken from the hotel at that moment.
 3. **Done. Roles in the client.** `getAdminIdentity` returns the role and hotel id; the shell, navigation and every admin route respect it. A hotel account reaching an owner-only route is refused.
-4. **Hotel accounts in the super admin.** Create and disable a hotel login from the hotel page.
+4. **Done. Hotel accounts in the super admin.** Create and disable a hotel login from the hotel page.
 5. **Hotel cabinet.** Own counters and own payout, by period and by service.
 6. **Owner analytics.** Totals, by service, by hotel, and what is owed to each hotel.
 
-Tasks 1-3 are done and local-only. Task 4 is next: until a hotel login can be created, no hotel account exists to exercise the gate.
+Tasks 1-4 are done and local-only. The owner chose the one-time password over an invite link: the password is generated in the Edge Function, returned once and never stored, and the screen says so. Its weakness is stated for the record — it travels through the owner's screen and whatever they paste it into, and nothing forces the hotel to change it.
+
+ Task 5 is next: the hotel cabinet those accounts sign in to. Until it exists, a hotel account reaches only the refusal screen.
 
 A route the navigation does not list is owner-only by default, so a section added later stays closed to a hotel account until someone opens it deliberately. A refused hotel account is told so and can sign out, rather than being redirected to the login page it has just come from.

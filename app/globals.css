@@ -337,3 +337,13 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .admin-settlement { grid-template-columns: 1fr; gap: 14px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); max-width: 420px; }
 .admin-settlement .admin-hint { margin: 0; }
 .admin-settlement button[type='submit'] { justify-self: start; }
+
+/* Hotel sign-ins, on the hotel page. */
+.admin-hotel-accounts { display: grid; gap: 16px; }
+.admin-account-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+.admin-account-list li { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,253,250,.7); }
+.admin-account-list li > span:first-child { flex: 1 1 220px; font-weight: 650; word-break: break-all; }
+/* The password is shown once and copied by hand, so it must not wrap oddly. */
+.admin-issued-password code { display: inline-block; padding: 4px 8px; border-radius: 8px; background: rgba(16,43,78,.07); font-size: 15px; letter-spacing: .04em; word-break: break-all; }
+.admin-issued-password { display: grid; gap: 8px; }
+.admin-issued-password p { margin: 0; }

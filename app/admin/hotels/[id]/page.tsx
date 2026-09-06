@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { AssetGenerator } from '@/components/admin/asset-generator';
+import { HotelAccounts } from '@/components/admin/hotel-accounts';
 import { HotelForm } from '@/components/admin/hotel-form';
 import { RoomEditor } from '@/components/admin/room-editor';
 import { getHotel, type Hotel } from '@/lib/admin/hotels';
@@ -146,6 +147,11 @@ export default function AdminHotelPage() {
                 onSelectionChange={setSelectedRoomIds}
               />
             ) : null}
+          </section>
+
+          <section className="admin-card" aria-labelledby="hotel-accounts-heading">
+            <h2 id="hotel-accounts-heading">Доступ отеля</h2>
+            <HotelAccounts key={state.hotel.id} hotelId={state.hotel.id} />
           </section>
 
           <section className="admin-card" aria-labelledby="hotel-assets-heading">
