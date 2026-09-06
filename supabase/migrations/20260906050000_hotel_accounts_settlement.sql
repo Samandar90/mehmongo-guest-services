@@ -32,11 +32,16 @@ alter table public.service_requests
   add column settled_currency text check (settled_currency ~ '^[A-Z]{3}$'),
   add column hotel_commission_bps integer check (hotel_commission_bps between 0 and 10000);
 
--- bigint, not integer: one bill is settled in som, and a 32-bit column runs out
--- just past 21 million som once minor units are applied. Tickets for a family
--- pass that, so the narrower type would have failed on a real transaction.
+-- The minor unit is per currency, not a universal hundredth: USD is settled in
+-- cents, UZS in whole som, because tiyin left circulation and every price in
+-- Tashkent is quoted and paid in whole som. lib/admin/money.ts holds the same
+-- table and must move with this one.
+--
+-- bigint rather than integer: a som figure is six or seven digits before any
+-- scaling, so one width for every currency keeps the ceiling out of the design
+-- entirely instead of leaving a 32-bit limit to be rediscovered later.
 comment on column public.service_requests.settled_amount_minor is
-  'What the request settled for, in minor units of settled_currency. Integer only: no floating point touches the money path.';
+  'What the request settled for, in minor units of settled_currency: cents for USD, whole som for UZS. Integer only: no floating point touches the money path.';
 
 -- Money exists on a completed request and nowhere else, so a total can never
 -- quietly include something that was cancelled or never agreed.

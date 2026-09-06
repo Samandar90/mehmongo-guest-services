@@ -118,19 +118,18 @@ select is(
   'an unsettled request owes nothing'
 );
 
--- A real Tashkent bill in som. Tickets for a family run to tens of millions,
--- and a 32-bit column overflows just past 21 million som once minor units are
--- applied, so the money columns have to be wider than the request references.
+-- A real Tashkent bill, settled in som. UZS carries no minor unit in practice,
+-- so the som is the minor unit here and the stored figure is the som figure.
 select lives_ok(
   $$ update public.service_requests
-     set status = 'completed', settled_amount_minor = 2500000000, settled_currency = 'UZS', hotel_commission_bps = 1500
+     set status = 'completed', settled_amount_minor = 25000000, settled_currency = 'UZS', hotel_commission_bps = 1500
      where id = '81000000-0000-4000-8000-000000000302' $$,
   'a 25 million som settlement is storable'
 );
 
 select is(
   (select hotel_payout_minor from public.service_requests where id = '81000000-0000-4000-8000-000000000302'),
-  375000000::bigint,
+  3750000::bigint,
   '15% of 25 000 000 som is 3 750 000 som'
 );
 
