@@ -28,9 +28,15 @@ alter table public.service_requests
   drop constraint service_requests_status_check,
   add constraint service_requests_status_check
     check (status in ('new', 'confirmed', 'completed', 'cancelled')),
-  add column settled_amount_minor integer check (settled_amount_minor >= 0),
+  add column settled_amount_minor bigint check (settled_amount_minor >= 0),
   add column settled_currency text check (settled_currency ~ '^[A-Z]{3}$'),
   add column hotel_commission_bps integer check (hotel_commission_bps between 0 and 10000);
+
+-- bigint, not integer: one bill is settled in som, and a 32-bit column runs out
+-- just past 21 million som once minor units are applied. Tickets for a family
+-- pass that, so the narrower type would have failed on a real transaction.
+comment on column public.service_requests.settled_amount_minor is
+  'What the request settled for, in minor units of settled_currency. Integer only: no floating point touches the money path.';
 
 -- Money exists on a completed request and nowhere else, so a total can never
 -- quietly include something that was cancelled or never agreed.
@@ -52,9 +58,9 @@ comment on column public.service_requests.hotel_commission_bps is
 -- Derived, so the owner's number and the hotel's number are the same number by
 -- construction. round() on numeric goes to the nearest minor unit.
 alter table public.service_requests
-  add column hotel_payout_minor integer
+  add column hotel_payout_minor bigint
     generated always as (
-      round(settled_amount_minor::numeric * hotel_commission_bps / 10000)::integer
+      round(settled_amount_minor::numeric * hotel_commission_bps / 10000)::bigint
     ) stored;
 
 create index service_requests_settlement_idx

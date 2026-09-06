@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(27);
 
 -- A hotel account is an admin_users row scoped to one hotel. The owner records
 -- what a request settled for; the hotel only ever reads its own numbers.
@@ -108,7 +108,7 @@ select lives_ok(
 -- The payout is derived, so the owner's number and the hotel's number are one number.
 select is(
   (select hotel_payout_minor from public.service_requests where id = '81000000-0000-4000-8000-000000000301'),
-  4500,
+  4500::bigint,
   '15% of 300.00 is 45.00'
 );
 
@@ -118,11 +118,31 @@ select is(
   'an unsettled request owes nothing'
 );
 
+-- A real Tashkent bill in som. Tickets for a family run to tens of millions,
+-- and a 32-bit column overflows just past 21 million som once minor units are
+-- applied, so the money columns have to be wider than the request references.
+select lives_ok(
+  $$ update public.service_requests
+     set status = 'completed', settled_amount_minor = 2500000000, settled_currency = 'UZS', hotel_commission_bps = 1500
+     where id = '81000000-0000-4000-8000-000000000302' $$,
+  'a 25 million som settlement is storable'
+);
+
+select is(
+  (select hotel_payout_minor from public.service_requests where id = '81000000-0000-4000-8000-000000000302'),
+  375000000::bigint,
+  '15% of 25 000 000 som is 3 750 000 som'
+);
+
+update public.service_requests
+set status = 'new', settled_amount_minor = null, settled_currency = null, hotel_commission_bps = null
+where id = '81000000-0000-4000-8000-000000000302';
+
 -- Renegotiating the rate must not rewrite what was already earned.
 update public.hotels set commission_bps = 2500 where id = '81000000-0000-4000-8000-000000000101';
 select is(
   (select hotel_payout_minor from public.service_requests where id = '81000000-0000-4000-8000-000000000301'),
-  4500,
+  4500::bigint,
   'a later commission change leaves a settled payout alone'
 );
 
@@ -151,7 +171,7 @@ select is(
 
 select is(
   (select settled_amount_minor from public.service_requests limit 1),
-  30000,
+  30000::bigint,
   'a hotel can see what its own request settled for'
 );
 
