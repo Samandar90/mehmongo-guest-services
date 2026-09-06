@@ -11,8 +11,8 @@ select col_is_unique('public'::name, 'service_requests'::name, 'reference'::name
 select col_is_unique('public'::name, 'service_requests'::name, 'idempotency_key'::name, 'service_requests.idempotency_key is unique');
 select has_index('public'::name, 'service_requests'::name, 'service_requests_hotel_created_idx'::name);
 select has_index('public'::name, 'service_requests'::name, 'service_requests_rate_limit_idx'::name);
-select policies_are('public', 'hotels', array['super admins manage hotels']);
-select policies_are('public', 'service_requests', array['super admins read requests']);
+select policies_are('public', 'hotels', array['super admins manage hotels', 'hotels read their own hotel']);
+select policies_are('public', 'service_requests', array['super admins read requests', 'hotels read their own requests']);
 
 insert into public.hotels (id, slug, name)
 values
