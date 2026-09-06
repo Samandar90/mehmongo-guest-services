@@ -1,17 +1,34 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import AdminDashboardPage from './page';
 import { getDashboardMetrics } from '@/lib/admin/requests';
+import { listHotels } from '@/lib/admin/hotels';
+import { getSettlementSummary } from '@/lib/admin/summary';
 
 vi.mock('@/lib/admin/requests', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/admin/requests')>()),
   getDashboardMetrics: vi.fn(),
 }));
 
+// The page runs two independent loads. Leaving these real made the counters'
+// own error test flaky: the browser client threw, and a second alert appeared
+// beside the one under test.
+vi.mock('@/lib/admin/hotels', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/admin/hotels')>()),
+  listHotels: vi.fn(),
+}));
+
+vi.mock('@/lib/admin/summary', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/admin/summary')>()),
+  getSettlementSummary: vi.fn(),
+}));
+
 describe('AdminDashboardPage', () => {
   beforeEach(() => {
     vi.mocked(getDashboardMetrics).mockReset();
+    vi.mocked(listHotels).mockReset().mockResolvedValue([]);
+    vi.mocked(getSettlementSummary).mockReset().mockResolvedValue([]);
   });
 
   it('loads and renders the metrics', async () => {
@@ -30,9 +47,13 @@ describe('AdminDashboardPage', () => {
       .mockResolvedValueOnce({ activeHotels: 2, activeRooms: 40, newRequests: 0 });
     render(<AdminDashboardPage />);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось загрузить показатели.');
+    // Named by its text: the totals below load separately and can raise their own.
+    expect(await screen.findByText('Не удалось загрузить показатели.')).toBeVisible();
     expect(screen.getByRole('article', { name: 'Новые заявки' })).not.toHaveAttribute('aria-busy');
-    expect(screen.getAllByText('—')).toHaveLength(3);
+    // Scoped to the three counter cards: the totals section below has its own
+    // em dashes for a hotel that earned nothing.
+    const cards = screen.getAllByRole('article');
+    expect(cards.filter((card) => within(card).queryByText('—'))).toHaveLength(3);
 
     await user.click(screen.getByRole('button', { name: 'Повторить' }));
 
@@ -48,5 +69,31 @@ describe('AdminDashboardPage', () => {
     expect(live).toHaveAttribute('aria-live', 'polite');
     await screen.findByText('24');
     expect(live).toBeEmptyDOMElement();
+  });
+
+  it('shows the settlement totals alongside the counters', async () => {
+    vi.mocked(getDashboardMetrics).mockResolvedValue({ activeHotels: 1, activeRooms: 9, newRequests: 3 });
+    vi.mocked(listHotels).mockResolvedValue([
+      { id: 'hotel-1', name: 'Kamilovs Hotel', slug: 'kamilovs', address: '', commissionBps: 1500, active: true, guestCatalogId: null, createdAt: '', updatedAt: '' },
+    ]);
+    vi.mocked(getSettlementSummary).mockResolvedValue([
+      { hotel_id: 'hotel-1', service_type: 'transport', status: 'completed', settled_currency: 'UZS', requests: 1, settled_amount_minor: 25_000_000, hotel_payout_minor: 3_750_000 },
+    ]);
+
+    render(<AdminDashboardPage />);
+
+    const payouts = await screen.findByRole('table', { name: /по отелям/i });
+    expect(within(payouts).getByText('Kamilovs Hotel')).toBeVisible();
+    expect(within(payouts).getByText('3 750 000 UZS')).toBeVisible();
+  });
+
+  it('keeps a failed total from hiding the counters', async () => {
+    vi.mocked(getDashboardMetrics).mockResolvedValue({ activeHotels: 1, activeRooms: 9, newRequests: 3 });
+    vi.mocked(getSettlementSummary).mockRejectedValue(new Error('network'));
+
+    render(<AdminDashboardPage />);
+
+    expect(await screen.findByText('Не удалось загрузить итоги.')).toBeVisible();
+    expect(screen.getByText('9')).toBeVisible();
   });
 });

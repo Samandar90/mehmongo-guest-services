@@ -206,3 +206,24 @@ describe('AdminShell hotel cabinet', () => {
     expect(screen.queryByText(/доступен только владельцу/)).toBeNull();
   });
 });
+
+describe('AdminShell refusal is not a dead end', () => {
+  beforeEach(() => {
+    pathnameState.current = '/admin';
+  });
+
+  it('points a refused hotel account at the section it can open', async () => {
+    renderAdminShell({ identity: hotelIdentity });
+
+    const link = await screen.findByRole('link', { name: /Перейти в кабинет отеля/ });
+    expect(link).toHaveAttribute('href', '/admin/hotel');
+  });
+
+  it('offers the owner their own overview when they land in the hotel cabinet', async () => {
+    pathnameState.current = '/admin/hotel';
+    renderAdminShell({ identity: ownerIdentity });
+
+    const link = await screen.findByRole('link', { name: /Перейти в обзор/ });
+    expect(link).toHaveAttribute('href', '/admin');
+  });
+});

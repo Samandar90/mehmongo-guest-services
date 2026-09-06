@@ -13,6 +13,14 @@ export type AdminIdentity =
 
 const invalidCredentialsMessage = 'Не удалось войти. Проверьте email и пароль.';
 
+/**
+ * The section a role starts in. A hotel signing in used to land on the owner's
+ * overview and be greeted by a refusal, with only a navigation link out of it.
+ */
+export function adminHome(role: AdminIdentity['role'] | null | undefined): string {
+  return role === 'hotel' ? '/admin/hotel' : '/admin';
+}
+
 export async function getAdminIdentity(
   client: SupabaseClient = getSupabaseBrowserClient(),
 ): Promise<AdminIdentity | null> {

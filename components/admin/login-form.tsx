@@ -2,15 +2,17 @@
 
 import { useState, type SubmitEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { signInAdmin } from '@/lib/admin/auth';
+import { adminHome, getAdminIdentity, signInAdmin, type AdminIdentity } from '@/lib/admin/auth';
 
 type Router = Pick<ReturnType<typeof useRouter>, 'replace'>;
 
 export function LoginForm({
   signIn = signInAdmin,
+  getIdentity = getAdminIdentity,
   router: routerOverride,
 }: {
   signIn?: (email: string, password: string) => Promise<void>;
+  getIdentity?: () => Promise<AdminIdentity | null>;
   router?: Router;
 }) {
   const appRouter = useRouter();
@@ -26,7 +28,16 @@ export function LoginForm({
     setError(null);
     try {
       await signIn(email, password);
-      router.replace('/admin');
+      // Resolved here so the first screen after a password is the one this
+      // account can actually use. If it cannot be read, the shell re-checks and
+      // redirects anyway, so the overview is a safe fallback rather than a stall.
+      let identity: AdminIdentity | null = null;
+      try {
+        identity = await getIdentity();
+      } catch {
+        identity = null;
+      }
+      router.replace(adminHome(identity?.role));
     } catch {
       setError('Не удалось войти. Проверьте email и пароль.');
     } finally {

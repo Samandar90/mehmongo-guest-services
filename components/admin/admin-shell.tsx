@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
+  adminHome,
   getAdminIdentity,
   onAdminAuthStateChange,
   signOutAdmin,
@@ -155,6 +156,13 @@ export function AdminShell({
           <p>{role === 'hotel'
             ? 'Этот раздел доступен только владельцу MehmonGo.'
             : 'Этот раздел — кабинет отеля, он открывается под учётной записью отеля.'}</p>
+          {/* A refusal must never be a dead end: the way on is stated, not left
+              to be found in the navigation. */}
+          <p>
+            <Link href={adminHome(role)}>
+              {role === 'hotel' ? 'Перейти в кабинет отеля' : 'Перейти в обзор'}
+            </Link>
+          </p>
         </main>
       )}
     </div>
