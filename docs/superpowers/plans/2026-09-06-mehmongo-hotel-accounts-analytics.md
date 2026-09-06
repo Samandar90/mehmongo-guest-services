@@ -19,11 +19,11 @@ Nothing about money exists today. `service_requests.status` accepts only `new`, 
 
 ## Tasks
 
-1. **Schema and access.** Request lifecycle (`new`, `confirmed`, `completed`, `cancelled`), `settled_amount_minor`, `settled_currency`, frozen `hotel_commission_bps`, generated `hotel_payout_minor`. `admin_users` gains `hotel_id` and the `hotel` role. RLS: a hotel reads only its own hotel, rooms and requests, and writes nothing. pgTAP covering anon, hotel and super-admin roles.
-2. **Settlement in the super admin.** On a request: set the outcome and, when completed, the amount and currency. The frozen commission is taken from the hotel at that moment.
+1. **Done. Schema and access.** Request lifecycle (`new`, `confirmed`, `completed`, `cancelled`), `settled_amount_minor`, `settled_currency`, frozen `hotel_commission_bps`, generated `hotel_payout_minor`. `admin_users` gains `hotel_id` and the `hotel` role. RLS: a hotel reads only its own hotel, rooms and requests, and writes nothing. pgTAP covering anon, hotel and super-admin roles.
+2. **Done. Settlement in the super admin.** On a request: set the outcome and, when completed, the amount and currency. The frozen commission is taken from the hotel at that moment.
 3. **Roles in the client.** `getAdminIdentity` returns the role and hotel id; the shell, navigation and every admin route respect it. A hotel account reaching an owner-only route is refused.
 4. **Hotel accounts in the super admin.** Create and disable a hotel login from the hotel page.
 5. **Hotel cabinet.** Own counters and own payout, by period and by service.
 6. **Owner analytics.** Totals, by service, by hotel, and what is owed to each hotel.
 
-Task 1 is the only one that blocks the rest; 2 and 3 can then proceed together.
+Tasks 1 and 2 are done and local-only. Task 3 is next and unblocks 4-6.
