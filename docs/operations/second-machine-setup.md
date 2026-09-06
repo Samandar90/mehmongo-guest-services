@@ -29,12 +29,11 @@ git clone https://github.com/Samandar90/mehmongo-guest-services.git
 ```
 
 ```bash
-cd mehmongo-guest-services && git checkout codex/mehmongo-platform-mvp
+cd mehmongo-guest-services && npm ci
 ```
 
-```bash
-npm ci
-```
+`main` carries the whole project as of 2026-09-06, so the default clone is
+enough; `codex/mehmongo-platform-mvp` points at the same commit.
 
 ## Recreate the four env files
 
