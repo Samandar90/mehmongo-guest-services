@@ -24,11 +24,11 @@ Nothing about money exists today. `service_requests.status` accepts only `new`, 
 3. **Done. Roles in the client.** `getAdminIdentity` returns the role and hotel id; the shell, navigation and every admin route respect it. A hotel account reaching an owner-only route is refused.
 4. **Done. Hotel accounts in the super admin.** Create and disable a hotel login from the hotel page.
 5. **Done. Hotel cabinet.** Own counters and own payout, by period and by service.
-6. **Owner analytics.** Totals, by service, by hotel, and what is owed to each hotel.
+6. **Done. Owner analytics.** Totals, by service, by hotel, and what is owed to each hotel.
 
 Tasks 1-4 are done and local-only. The owner chose the one-time password over an invite link: the password is generated in the Edge Function, returned once and never stored, and the screen says so. Its weakness is stated for the record — it travels through the owner's screen and whatever they paste it into, and nothing forces the hotel to change it.
 
- Task 6 is next, and most of it already exists: public.settlement_summary is written security invoker, so the same call that gives a hotel its own totals gives the owner every hotel's. What remains is the owner's screen over it, grouped by hotel.
+ All six tasks are done, and all of it is local: the three migrations and the hotel-accounts function are deliberately not deployed until the owner has exercised the whole flow on the local stack.
 
 The counting lives in the database on purpose. The request list is capped at one page, so folding it up in the browser would stop counting past the cap and under-report what a hotel is owed.
 

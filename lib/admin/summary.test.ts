@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AdminRequestError } from '@/lib/admin/errors';
-import { getSettlementSummary, summariseRows, type SummaryRow } from '@/lib/admin/summary';
+import { getSettlementSummary, summariseByHotel, summariseRows, type SummaryRow } from '@/lib/admin/summary';
 
 function rpcClient(rows: SummaryRow[] | null, error: unknown = null) {
   const rpc = vi.fn().mockResolvedValue({ data: rows, error });
@@ -94,5 +94,48 @@ describe('summariseRows', () => {
     expect(summariseRows(both, 'hotel-1').requests).toBe(7);
     expect(summariseRows(both, 'hotel-2').requests).toBe(1);
     expect(summariseRows(both).requests).toBe(8);
+  });
+});
+
+describe('summariseByHotel', () => {
+  const both: SummaryRow[] = [
+    ...rows,
+    { hotel_id: 'hotel-2', service_type: 'tickets', status: 'completed', settled_currency: 'UZS', requests: 1, settled_amount_minor: 50_000_000, hotel_payout_minor: 5_000_000 },
+  ];
+  const names = [
+    { id: 'hotel-1', name: 'Kamilovs Hotel' },
+    { id: 'hotel-2', name: 'Second Hotel' },
+    { id: 'hotel-3', name: 'Quiet Hotel' },
+  ];
+
+  it('gives each hotel its own totals, per currency', () => {
+    const [first, second] = summariseByHotel(both, names);
+
+    expect(first.hotelName).toBe('Kamilovs Hotel');
+    expect(first.requests).toBe(7);
+    expect(first.payouts).toEqual([
+      { currency: 'USD', amountMinor: 30_000, payoutMinor: 4_500, requests: 1 },
+      { currency: 'UZS', amountMinor: 40_000_000, payoutMinor: 6_000_000, requests: 2 },
+    ]);
+    expect(second.payouts).toEqual([
+      { currency: 'UZS', amountMinor: 50_000_000, payoutMinor: 5_000_000, requests: 1 },
+    ]);
+  });
+
+  it('leaves out a hotel with nothing in the period rather than showing a row of zeroes', () => {
+    expect(summariseByHotel(both, names).map((hotel) => hotel.hotelId)).toEqual(['hotel-1', 'hotel-2']);
+  });
+
+  it('still names a hotel that is no longer in the list', () => {
+    const [only] = summariseByHotel(
+      [{ hotel_id: 'hotel-9', service_type: 'tours', status: 'new', settled_currency: null, requests: 1, settled_amount_minor: 0, hotel_payout_minor: 0 }],
+      names,
+    );
+    expect(only.hotelName).toBe('hotel-9');
+  });
+
+  it('orders by what is owed, so the biggest debt is read first', () => {
+    const ordered = summariseByHotel(both, names);
+    expect(ordered.map((hotel) => hotel.hotelId)).toEqual(['hotel-1', 'hotel-2']);
   });
 });

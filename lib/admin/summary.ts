@@ -111,3 +111,31 @@ export function summariseRows(rows: SummaryRow[], hotelId?: string): SettlementS
     byService: [...services.values()].sort((a, b) => b.requests - a.requests || a.serviceType.localeCompare(b.serviceType)),
   };
 }
+
+export type HotelSettlement = SettlementSummary & { hotelId: string; hotelName: string };
+
+/**
+ * The owner's view: one block per hotel that had anything in the period.
+ *
+ * A hotel with nothing is left out rather than shown as a row of zeroes, and
+ * ordering is by what is owed, so the largest debt is read first. Comparing
+ * across currencies is not meaningful, so the order uses the total number of
+ * settled requests: it ranks activity without pretending som and dollars can be
+ * added.
+ */
+export function summariseByHotel(
+  rows: SummaryRow[],
+  hotels: { id: string; name: string }[],
+): HotelSettlement[] {
+  const names = new Map(hotels.map((hotel) => [hotel.id, hotel.name]));
+  const hotelIds = [...new Set(rows.map((row) => row.hotel_id))];
+
+  return hotelIds
+    .map((hotelId) => ({
+      hotelId,
+      // A hotel deleted or renamed out of the list still has to be identifiable.
+      hotelName: names.get(hotelId) ?? hotelId,
+      ...summariseRows(rows, hotelId),
+    }))
+    .sort((a, b) => b.completed - a.completed || b.requests - a.requests || a.hotelName.localeCompare(b.hotelName));
+}

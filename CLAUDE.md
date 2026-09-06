@@ -43,14 +43,16 @@ Important recent commits (newest first): `b11987a` asset generator hardening, `d
 
 ## Exact next work
 
-The pilot is live (see "Production state"). Feature work in progress: hotel accounts and settlement analytics, Tasks 1 and 2 of six done — schema and RLS, then `public.settle_request`, `lib/admin/money.ts` and the settlement panel on the requests screen. All of it is local: the two migrations are deliberately not pushed to production until the feature is usable end to end.
+The pilot is live (see "Production state"). Hotel accounts and settlement analytics are complete, all six tasks: schema and RLS, `public.settle_request` with `lib/admin/money.ts` and the settlement panel, roles in the admin shell, the `hotel-accounts` Edge Function with its screen on the hotel page, the hotel cabinet at `/admin/hotel`, and the owner's totals on `/admin`. All of it is local — three migrations and one new Edge Function are deliberately undeployed until the owner has exercised the flow on the local stack.
 
 Rulings made while building it, which later tasks must not undo:
 - The minor unit is per currency. UZS has none in circulation, so the som IS the minor unit; USD is cents. `settlementCurrencies` in `lib/admin/money.ts` and the ceilings inside `settle_request` hold the same table and must move together.
 - Never `Intl.NumberFormat` for money: CLDR has no zero-digit override for UZS and would add an invented hundredth to every som figure.
 - The commission is frozen on the way into `completed` and kept while the request stays completed, so correcting a mistyped amount cannot repay the work at a rate agreed afterwards. Only a cancel-then-complete re-reads it.
 - `service_requests` still has no UPDATE grant for `authenticated`, and must not get one: it would turn a hotel's forbidden edit into a silent zero-row success instead of a refusal.
-- A catch-scoped `const` captured by a state-updater closure trips the react-compiler lint rule; read the value inside the updater instead.
+- A catch-scoped `const` captured by a state-updater closure trips the react-compiler lint rule; read the value inside the updater instead. A `useCallback` that sets state, called from an effect body, trips its cascading-render rule: put the loader inside the effect and reload with a counter.
+- `public.settlement_summary` is `security invoker` on purpose, so one function serves both roles: it aggregates exactly the rows the caller may read. Counting must stay in the database — the request list is capped at one page, and folding it up in the browser would under-report what a hotel is owed.
+- Money is grouped by currency everywhere and never totalled across currencies.
 
 Assumptions the owner has not ruled on: a zero settled amount is refused (a blank field reads as zero far more often than a service is genuinely free), and one request is capped at 1 000 000 000 сум or 100 000.00 USD purely as mistype protection.
 
