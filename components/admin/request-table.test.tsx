@@ -31,6 +31,11 @@ const adminRequestFixture: AdminRequestRow = {
   offerId: 'tashkent-airport-sedan',
   offerTitle: 'Your airport ride, arranged',
   offerEstimate: 'от 30 USD · per vehicle · one way',
+  hotelCommissionBps: 1500,
+  settledAmountMinor: null,
+  settledCurrency: null,
+  settledCommissionBps: null,
+  hotelPayoutMinor: null,
 };
 
 const kamilovsHotel: Hotel = {
@@ -281,5 +286,152 @@ describe('catalogue offer in the request table', () => {
     renderRequestTable({ rows: [{ ...adminRequestFixture, offerId: null, offerTitle: null, offerEstimate: null }] });
 
     expect(screen.queryByText('Your airport ride, arranged')).not.toBeInTheDocument();
+  });
+});
+
+// The formatter groups with U+00A0; testing-library normalises it to a plain space.
+
+function settledRow(overrides: Partial<AdminRequestRow> = {}): AdminRequestRow {
+  return {
+    ...adminRequestFixture,
+    status: 'completed',
+    settledAmountMinor: 2_500_000,
+    settledCurrency: 'UZS',
+    settledCommissionBps: 1500,
+    hotelPayoutMinor: 375_000,
+    ...overrides,
+  };
+}
+
+describe('RequestTable settlement', () => {
+  it('shows the status of every request', () => {
+    render(<RequestTable rows={[adminRequestFixture]} retryTelegram={vi.fn()} settleRequest={vi.fn()} />);
+    expect(screen.getByText('Новая')).toBeVisible();
+  });
+
+  it('shows what a settled request came to, without opening it', () => {
+    render(<RequestTable rows={[settledRow()]} retryTelegram={vi.fn()} settleRequest={vi.fn()} />);
+    expect(screen.getByText('Выполнена')).toBeVisible();
+    expect(screen.getByText('2 500 000 UZS')).toBeVisible();
+  });
+
+  it('says nothing about revenue on a request that has not completed', () => {
+    render(<RequestTable rows={[adminRequestFixture]} retryTelegram={vi.fn()} settleRequest={vi.fn()} />);
+    expect(screen.queryByText(/UZS/)).toBeNull();
+  });
+
+  it('confirms a new request in one tap, recording no money', async () => {
+    const settle = vi.fn().mockResolvedValue({
+      status: 'confirmed', settledAmountMinor: null, settledCurrency: null,
+      settledCommissionBps: null, hotelPayoutMinor: null,
+    });
+    render(<RequestTable rows={[adminRequestFixture]} retryTelegram={vi.fn()} settleRequest={settle} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /Подтвердить MG-ABCDEFGH/ }));
+
+    expect(settle).toHaveBeenCalledWith({ requestId: 'request-1', status: 'confirmed' });
+    await waitFor(() => expect(screen.getByText('Подтверждена')).toBeVisible());
+  });
+
+  it('offers the one-tap confirmation only while the request is new', () => {
+    render(<RequestTable rows={[settledRow()]} retryTelegram={vi.fn()} settleRequest={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: /Подтвердить/ })).toBeNull();
+  });
+
+  it('asks for an amount only once the outcome is Выполнена', async () => {
+    render(<RequestTable rows={[adminRequestFixture]} retryTelegram={vi.fn()} settleRequest={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: /Подробнее MG-ABCDEFGH/ }));
+
+    expect(screen.queryByLabelText('Сумма')).toBeNull();
+    await userEvent.click(screen.getByRole('radio', { name: 'Выполнена' }));
+    expect(screen.getByLabelText('Сумма')).toBeVisible();
+    expect(screen.getByLabelText('Валюта')).toBeVisible();
+  });
+
+  it('previews what the hotel is owed as the owner types', async () => {
+    render(<RequestTable rows={[adminRequestFixture]} retryTelegram={vi.fn()} settleRequest={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: /Подробнее MG-ABCDEFGH/ }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Выполнена' }));
+    await userEvent.type(screen.getByLabelText('Сумма'), '2500000');
+
+    expect(screen.getByText('Отелю: 375 000 UZS (15%)')).toBeVisible();
+  });
+
+  it('saves a completed settlement and shows it on the row without a reload', async () => {
+    const settle = vi.fn().mockResolvedValue({
+      status: 'completed', settledAmountMinor: 2_500_000, settledCurrency: 'UZS',
+      settledCommissionBps: 1500, hotelPayoutMinor: 375_000,
+    });
+    render(<RequestTable rows={[adminRequestFixture]} retryTelegram={vi.fn()} settleRequest={settle} />);
+    await userEvent.click(screen.getByRole('button', { name: /Подробнее MG-ABCDEFGH/ }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Выполнена' }));
+    await userEvent.type(screen.getByLabelText('Сумма'), '2500000');
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить итог' }));
+
+    expect(settle).toHaveBeenCalledWith({
+      requestId: 'request-1', status: 'completed', amount: '2500000', currency: 'UZS',
+    });
+    // The panel stays open, so its radio label carries the same word: assert on
+    // the row badge, which is what someone scanning the list actually reads.
+    await waitFor(() => expect(screen.getByText('Выполнена', { selector: '.admin-badge' })).toBeVisible());
+    // Once on the row and once in the open details; the row is the one that
+    // makes a week of settled work legible without opening anything.
+    expect(screen.getByText('2 500 000 UZS', { selector: 'td[data-label="Статус"] small' })).toBeVisible();
+    expect(screen.getByText('Итог сохранён')).toBeVisible();
+  });
+
+  it('prefills the stored amount so a wrong figure is corrected, not retyped', async () => {
+    render(<RequestTable rows={[settledRow()]} retryTelegram={vi.fn()} settleRequest={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: /Подробнее MG-ABCDEFGH/ }));
+    expect(screen.getByLabelText('Сумма')).toHaveValue('2500000');
+  });
+
+  it('reports a rejected amount under the field, without calling the server', async () => {
+    const settle = vi.fn();
+    render(<RequestTable rows={[adminRequestFixture]} retryTelegram={vi.fn()} settleRequest={settle} />);
+    await userEvent.click(screen.getByRole('button', { name: /Подробнее MG-ABCDEFGH/ }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Выполнена' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Сохранить итог' }));
+
+    expect(settle).not.toHaveBeenCalled();
+    expect(await screen.findByText('Введите сумму')).toBeVisible();
+  });
+
+  it('reports a refusal from the database in the panel', async () => {
+    const settle = vi.fn().mockRejectedValue({ code: '42501', message: 'refused' });
+    render(<RequestTable rows={[adminRequestFixture]} retryTelegram={vi.fn()} settleRequest={settle} />);
+    await userEvent.click(screen.getByRole('button', { name: /Подтвердить MG-ABCDEFGH/ }));
+
+    // Fired from the row, where no panel is open to hold the answer.
+    expect(await screen.findByRole('alert')).toHaveTextContent('MG-ABCDEFGH: Нет прав на изменение итога. Войдите заново.');
+    expect(screen.getByText('Новая')).toBeVisible();
+  });
+
+  it('shows the frozen commission beside the payout, not the rate today', async () => {
+    render(<RequestTable rows={[settledRow({ hotelCommissionBps: 2500 })]} retryTelegram={vi.fn()} settleRequest={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: /Подробнее MG-ABCDEFGH/ }));
+
+    expect(screen.getByText(/Комиссия 15% на момент расчёта\./)).toBeVisible();
+  });
+
+  it('keeps the guest estimate marked as not revenue beside the settled amount', async () => {
+    render(<RequestTable rows={[settledRow()]} retryTelegram={vi.fn()} settleRequest={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: /Подробнее MG-ABCDEFGH/ }));
+
+    // The starting price the guest saw and the money actually taken are read
+    // together, and only one of them carries the disclaimer.
+    expect(screen.getByText(/Не подтверждённая сумма и не выручка\./)).toBeVisible();
+    expect(screen.getByText('Итог')).toBeVisible();
+    expect(screen.getByText('Ориентировочная цена')).toBeVisible();
+  });
+
+  it('offers every status in the filter bar', () => {
+    render(
+      <RequestFilterBar filters={{}} hotels={[kamilovsHotel]} rooms={[room205]} onChange={vi.fn()} />,
+    );
+    const status = screen.getByLabelText('Статус');
+    for (const label of ['Новая', 'Подтверждена', 'Выполнена', 'Отменена']) {
+      expect(within(status).getByRole('option', { name: label })).toBeInTheDocument();
+    }
   });
 });

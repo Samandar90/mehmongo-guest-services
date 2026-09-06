@@ -324,3 +324,16 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .notice-panel .intro p { margin: 0 0 14px; }
 .notice-panel .intro p:last-child { margin-bottom: 0; }
 .notice-panel .intro a { color: var(--magenta); }
+
+/* Request outcome. Separate from the .admin-badge-* Telegram set above, which
+   uses the delivery vocabulary (sent/failed/pending/none) and must not collide. */
+.admin-status-new { background: #fff0d3; color: #76521a; }
+.admin-status-confirmed { background: #e4edfb; color: #1d3f80; }
+.admin-status-completed { background: #dff1e9; color: #1f6b4f; }
+.admin-status-cancelled { background: var(--muted); color: var(--navy); }
+
+/* The settlement panel sits inside the details disclosure, where .admin-form's
+   two-column grid would be cramped. */
+.admin-settlement { grid-template-columns: 1fr; gap: 14px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); max-width: 420px; }
+.admin-settlement .admin-hint { margin: 0; }
+.admin-settlement button[type='submit'] { justify-self: start; }

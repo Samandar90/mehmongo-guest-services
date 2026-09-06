@@ -3,11 +3,23 @@
 import { Fragment, useState } from 'react';
 import {
   retryTelegram as retryTelegramDefault,
+  settleRequest as settleRequestDefault,
   type AdminRequestRow,
   type RequestFilters,
+  type RequestStatus,
   type RetryResult,
+  type SettlementInput,
+  type SettlementResult,
   type TelegramStatus,
 } from '@/lib/admin/requests';
+import {
+  formatMinorAmount,
+  formatMinorInput,
+  parseSettledAmount,
+  previewPayoutMinor,
+  settlementCurrencies,
+  type SettlementCurrency,
+} from '@/lib/admin/money';
 import type { Hotel } from '@/lib/admin/hotels';
 import type { Room } from '@/lib/admin/rooms';
 import type { ServiceId } from '@/supabase/functions/_shared/contracts';
@@ -19,7 +31,32 @@ export const serviceLabels: Record<ServiceId, string> = {
   tickets: 'Билеты',
 };
 
-const requestStatusLabels = { new: 'Новая' } as const;
+/**
+ * Typed rather than `as const`: with a bare literal, widening RequestStatus
+ * left the compiler silent and the three new statuses rendered as undefined.
+ * Feminine throughout, agreeing with «заявка».
+ */
+export const requestStatusLabels: Record<RequestStatus, string> = {
+  new: 'Новая',
+  confirmed: 'Подтверждена',
+  completed: 'Выполнена',
+  cancelled: 'Отменена',
+};
+
+const settleMessages = {
+  forbidden: 'Нет прав на изменение итога. Войдите заново.',
+  missing: 'Заявка не найдена. Обновите список.',
+  invalid: 'Проверьте сумму и валюту.',
+  failed: 'Не удалось сохранить итог. Повторите попытку.',
+};
+
+/** The codes public.settle_request raises, in the owner's words. */
+function settleErrorMessage(code: string | undefined): string {
+  if (code === '42501') return settleMessages.forbidden;
+  if (code === 'P0002') return settleMessages.missing;
+  if (code === '22023' || code === '23514') return settleMessages.invalid;
+  return settleMessages.failed;
+}
 
 const telegramLabels: Record<TelegramStatus | 'none', string> = {
   sent: 'Отправлено',
@@ -65,17 +102,64 @@ function errorCode(error: unknown): string | undefined {
   return typeof error === 'object' && error !== null ? (error as { code?: unknown }).code as string | undefined : undefined;
 }
 
+/**
+ * What the hotel is owed, recomputed as the owner types. Silent while the
+ * amount is unreadable: a red field error already says why, and a stale figure
+ * beside a wrong amount is worse than none.
+ */
+function PayoutHint({ amount, currency, commissionBps }: {
+  amount: string;
+  currency: SettlementCurrency;
+  commissionBps: number;
+}) {
+  let parsed: number;
+  try {
+    parsed = parseSettledAmount(amount, currency);
+  } catch {
+    return null;
+  }
+  const percent = (commissionBps / 100).toFixed(2).replace(/\.?0+$/, '');
+  return (
+    <p className="admin-hint">
+      Отелю: {formatMinorAmount(previewPayoutMinor(parsed, commissionBps), currency)} ({percent}%)
+    </p>
+  );
+}
+
 type RequestTableProps = {
   rows: AdminRequestRow[];
   retryTelegram?: (requestId: string) => Promise<RetryResult>;
+  settleRequest?: (input: SettlementInput) => Promise<SettlementResult>;
 };
 
-export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: RequestTableProps) {
+/** What a row shows once it has been settled in this session, without a reload. */
+type Settlement = SettlementResult;
+
+function settledView(row: AdminRequestRow, settlement: Settlement | undefined) {
+  const status = settlement?.status ?? row.status;
+  const amount = settlement ? settlement.settledAmountMinor : row.settledAmountMinor;
+  const currency = settlement ? settlement.settledCurrency : row.settledCurrency;
+  const payout = settlement ? settlement.hotelPayoutMinor : row.hotelPayoutMinor;
+  const frozenBps = settlement ? settlement.settledCommissionBps : row.settledCommissionBps;
+  return { status, amount, currency, payout, frozenBps };
+}
+
+export function RequestTable({
+  rows,
+  retryTelegram = retryTelegramDefault,
+  settleRequest = settleRequestDefault,
+}: RequestTableProps) {
   const [overrides, setOverrides] = useState<Record<string, TelegramStatus>>({});
   const [retrying, setRetrying] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [settlements, setSettlements] = useState<Record<string, Settlement>>({});
+  const [settling, setSettling] = useState<string[]>([]);
+  const [drafts, setDrafts] = useState<Record<string, { status: RequestStatus; amount: string; currency: SettlementCurrency }>>({});
+  const [panelError, setPanelError] = useState<Record<string, string>>({});
+  const [panelNotice, setPanelNotice] = useState<Record<string, string>>({});
+  const [amountError, setAmountError] = useState<Record<string, string>>({});
 
   if (rows.length === 0) {
     return <p className="admin-empty">Заявок не найдено</p>;
@@ -111,6 +195,67 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
     }
   };
 
+  const draftFor = (row: AdminRequestRow) => {
+    const view = settledView(row, settlements[row.id]);
+    return drafts[row.id] ?? {
+      status: view.status,
+      amount: view.amount === null ? '' : formatMinorInput(view.amount, view.currency ?? 'UZS'),
+      // Som by default: the payable amount is agreed in som, so the daily case costs no taps.
+      currency: (view.currency === 'USD' ? 'USD' : 'UZS') as SettlementCurrency,
+    };
+  };
+
+  /**
+   * Messages stay per row: the table's shared pair is cleared by every Telegram
+   * retry, so sharing it would let a settlement wipe a retry message and back.
+   */
+  const settle = async (row: AdminRequestRow, input: SettlementInput) => {
+    // Parsed here, not only in the repository: the owner sees a bad figure
+    // named under the field itself, before anything reaches the network.
+    if (input.status === 'completed') {
+      try {
+        parseSettledAmount(input.amount, input.currency);
+      } catch (caught) {
+        setAmountError((current) => ({ ...current, [row.id]: (caught as Error).message }));
+        return;
+      }
+    }
+
+    setSettling((current) => [...current, row.id]);
+    setPanelError((current) => ({ ...current, [row.id]: '' }));
+    setPanelNotice((current) => ({ ...current, [row.id]: '' }));
+    setAmountError((current) => ({ ...current, [row.id]: '' }));
+    try {
+      const result = await settleRequest(input);
+      setSettlements((current) => ({ ...current, [row.id]: result }));
+      setDrafts((current) => {
+        const next = { ...current };
+        delete next[row.id];
+        return next;
+      });
+      setPanelNotice((current) => ({ ...current, [row.id]: 'Итог сохранён' }));
+    } catch (caught) {
+      const code = errorCode(caught);
+      if (code === 'VALIDATION_ERROR') {
+        setAmountError((current) => ({ ...current, [row.id]: (caught as Error).message }));
+        return;
+      }
+      // The one-tap confirmation is fired from the row, where no panel is open
+      // to hold the answer; that failure belongs in the table's own message.
+      // Everything derived from the rejection is read inside the updaters: the
+      // react-compiler rule rejects a catch-scoped const captured by a closure,
+      // and functional updates keep two rows settling at once independent.
+      setPanelError((current) => (expandedId === row.id
+        ? { ...current, [row.id]: settleErrorMessage(errorCode(caught)) }
+        : current));
+      setError((current) => (expandedId === row.id
+        ? current
+        : `${row.reference}: ${settleErrorMessage(errorCode(caught))}`));
+    } finally {
+      setSettling((current) => current.filter((id) => id !== row.id));
+    }
+  };
+
   return (
     <div className="admin-table-wrap">
       {error ? <p role="alert" className="admin-form-error">{error}</p> : null}
@@ -122,6 +267,7 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
             <th scope="col">Отель / комната</th>
             <th scope="col">Категория</th>
             <th scope="col">Гость</th>
+            <th scope="col">Статус</th>
             <th scope="col">Telegram</th>
             <th scope="col">Действия</th>
           </tr>
@@ -133,6 +279,10 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
             const inFlight = retrying.includes(row.id);
             const expanded = expandedId === row.id;
             const detailsId = `request-details-${row.id}`;
+            const view = settledView(row, settlements[row.id]);
+            const draft = draftFor(row);
+            const savingSettlement = settling.includes(row.id);
+            const settledLabel = view.amount === null ? null : formatMinorAmount(view.amount, view.currency ?? 'UZS');
             return (
               <Fragment key={row.id}>
                 <tr>
@@ -146,11 +296,15 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
                   </td>
                   <td data-label="Категория">
                     <span>{serviceLabels[row.serviceType]}</span>
-                    <small>{row.offerTitle ?? requestStatusLabels[row.status]}</small>
+                    <small>{row.offerTitle ?? '—'}</small>
                   </td>
                   <td data-label="Гость">
                     <span>{row.guestName}</span>
                     <small>{maskContact(row.contact)}</small>
+                  </td>
+                  <td data-label="Статус">
+                    <span className={`admin-badge admin-status-${view.status}`}>{requestStatusLabels[view.status]}</span>
+                    {settledLabel ? <small>{settledLabel}</small> : null}
                   </td>
                   <td data-label="Telegram">
                     <span className={`admin-badge admin-badge-${telegramStatus}`}>{telegramLabels[telegramStatus]}</span>
@@ -166,6 +320,17 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
                     >
                       {expanded ? 'Скрыть' : 'Подробнее'}
                     </button>
+                    {view.status === 'new' ? (
+                      <button
+                        type="button"
+                        className="admin-button admin-button-secondary"
+                        disabled={savingSettlement}
+                        aria-label={`Подтвердить ${row.reference}`}
+                        onClick={() => { void settle(row, { requestId: row.id, status: 'confirmed' }); }}
+                      >
+                        Подтвердить
+                      </button>
+                    ) : null}
                     {telegramStatus === 'failed' ? (
                       inFlight ? (
                         <button type="button" className="admin-button admin-button-secondary" disabled>Отправка…</button>
@@ -179,7 +344,7 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
                 </tr>
                 {expanded ? (
                   <tr className="admin-request-details-row">
-                    <td colSpan={6}>
+                    <td colSpan={7}>
                       <section id={detailsId} className="admin-request-details" aria-label={`Детали заявки ${row.reference}`}>
                         <dl>
                           <div><dt>Что</dt><dd>{describeWhat(row)}</dd></div>
@@ -212,7 +377,97 @@ export function RequestTable({ rows, retryTelegram = retryTelegramDefault }: Req
                                   : row.telegramAttempt > 0 ? `попытка ${row.telegramAttempt}` : '—'}
                             </dd>
                           </div>
+                          {settledLabel ? (
+                            <>
+                              <div><dt>Итог</dt><dd>{settledLabel}</dd></div>
+                              <div>
+                                <dt>Отелю</dt>
+                                <dd>
+                                  {view.payout === null ? '—' : formatMinorAmount(view.payout, view.currency ?? 'UZS')}
+                                  {view.frozenBps !== null ? (
+                                    <small className="admin-hint"> Комиссия {(view.frozenBps / 100).toFixed(2).replace(/\.?0+$/, '')}% на момент расчёта.</small>
+                                  ) : null}
+                                </dd>
+                              </div>
+                            </>
+                          ) : null}
                         </dl>
+
+                        <form
+                          className="admin-form admin-settlement"
+                          aria-label={`Итог заявки ${row.reference}`}
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            void settle(row, draft.status === 'completed'
+                              ? { requestId: row.id, status: 'completed', amount: draft.amount, currency: draft.currency }
+                              : { requestId: row.id, status: draft.status });
+                          }}
+                        >
+                          <fieldset className="admin-mode">
+                            <legend>Изменить итог</legend>
+                            {(Object.keys(requestStatusLabels) as RequestStatus[]).map((status) => (
+                              <label key={status} htmlFor={`settle-${status}-${row.id}`}>
+                                <input
+                                  id={`settle-${status}-${row.id}`}
+                                  type="radio"
+                                  name={`settle-status-${row.id}`}
+                                  value={status}
+                                  checked={draft.status === status}
+                                  disabled={savingSettlement}
+                                  onChange={() => setDrafts((current) => ({ ...current, [row.id]: { ...draft, status } }))}
+                                />
+                                {requestStatusLabels[status]}
+                              </label>
+                            ))}
+                          </fieldset>
+
+                          {draft.status === 'completed' ? (
+                            <>
+                              <div className="admin-field">
+                                <label htmlFor={`settle-amount-${row.id}`}>Сумма</label>
+                                <input
+                                  id={`settle-amount-${row.id}`}
+                                  inputMode="decimal"
+                                  placeholder="2 500 000"
+                                  value={draft.amount}
+                                  disabled={savingSettlement}
+                                  aria-invalid={amountError[row.id] ? true : undefined}
+                                  aria-describedby={amountError[row.id] ? `settle-amount-${row.id}-error` : undefined}
+                                  onChange={(event) => setDrafts((current) => ({ ...current, [row.id]: { ...draft, amount: event.target.value } }))}
+                                />
+                                {amountError[row.id] ? (
+                                  <p id={`settle-amount-${row.id}-error`} className="field-error">{amountError[row.id]}</p>
+                                ) : null}
+                              </div>
+                              <div className="admin-field">
+                                <label htmlFor={`settle-currency-${row.id}`}>Валюта</label>
+                                <select
+                                  id={`settle-currency-${row.id}`}
+                                  value={draft.currency}
+                                  disabled={savingSettlement}
+                                  onChange={(event) => setDrafts((current) => ({ ...current, [row.id]: { ...draft, currency: event.target.value as SettlementCurrency } }))}
+                                >
+                                  {(Object.keys(settlementCurrencies) as SettlementCurrency[]).map((code) => (
+                                    <option key={code} value={code}>{settlementCurrencies[code].label}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <PayoutHint
+                                amount={draft.amount}
+                                currency={draft.currency}
+                                // The frozen rate when there is one, today's rate otherwise: exactly
+                                // what the routine applies, so the preview is the stored number.
+                                commissionBps={view.frozenBps ?? row.hotelCommissionBps}
+                              />
+                            </>
+                          ) : null}
+
+                          {panelError[row.id] ? <p role="alert" className="admin-form-error">{panelError[row.id]}</p> : null}
+                          {panelNotice[row.id] ? <output className="admin-form-success">{panelNotice[row.id]}</output> : null}
+                          <button type="submit" disabled={savingSettlement}>
+                            {savingSettlement ? 'Сохранение…' : 'Сохранить итог'}
+                          </button>
+                        </form>
                       </section>
                     </td>
                   </tr>
@@ -291,7 +546,9 @@ export function RequestFilterBar({ filters, hotels, rooms, onChange, disabled = 
           onChange={(event) => update({ status: (event.target.value || undefined) as RequestFilters['status'] })}
         >
           <option value="">Все статусы</option>
-          <option value="new">{requestStatusLabels.new}</option>
+          {(Object.keys(requestStatusLabels) as RequestStatus[]).map((status) => (
+            <option key={status} value={status}>{requestStatusLabels[status]}</option>
+          ))}
         </select>
       </div>
       <div className="admin-field">

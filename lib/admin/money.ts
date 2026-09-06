@@ -1,4 +1,4 @@
-import { AdminRequestError } from '@/lib/admin/requests';
+import { AdminRequestError } from '@/lib/admin/errors';
 
 /**
  * The money kernel for owner-recorded settlements. It has no Supabase

@@ -10,6 +10,7 @@ vi.mock('@/lib/admin/requests', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/admin/requests')>()),
   listRequests: vi.fn(),
   retryTelegram: vi.fn(),
+  settleRequest: vi.fn(),
 }));
 
 vi.mock('@/lib/admin/hotels', async (importOriginal) => ({
@@ -47,6 +48,11 @@ const requestRow: AdminRequestRow = {
   offerId: null,
   offerTitle: null,
   offerEstimate: null,
+  hotelCommissionBps: 1500,
+  settledAmountMinor: null,
+  settledCurrency: null,
+  settledCommissionBps: null,
+  hotelPayoutMinor: null,
 };
 
 const kamilovsHotel: Hotel = {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AdminRequestError, getDashboardMetrics, listRequests, retryTelegram } from './requests';
+import { AdminRequestError, getDashboardMetrics, listRequests, retryTelegram, settleRequest } from './requests';
 
 const requestRowFixture = {
   id: 'request-1',
@@ -260,5 +260,139 @@ describe('catalogue offers in the admin list', () => {
     expect(result.items[0].offerId).toBeNull();
     expect(result.items[0].offerTitle).toBeNull();
     expect(result.items[0].offerEstimate).toBeNull();
+  });
+});
+
+/**
+ * Settlement. The owner writes money through public.settle_request, never
+ * through the table: service_requests carries no update grant, deliberately.
+ */
+function rpcClient(result: unknown, error: unknown = null) {
+  const rpc = vi.fn().mockResolvedValue({ data: result, error });
+  return { client: { rpc } as never, rpc };
+}
+
+const settledRpcRow = {
+  request_status: 'completed',
+  amount_minor: 2_500_000,
+  currency_code: 'UZS',
+  frozen_commission_bps: 1500,
+  payout_minor: 375_000,
+};
+
+describe('listRequests settlement fields', () => {
+  it('reads what a request settled for and what the hotel earned', async () => {
+    const { client } = requestQueryClient([{
+      ...requestRowFixture,
+      status: 'completed',
+      hotels: { name: 'Kamilovs Hotel', commission_bps: 1500 },
+      settled_amount_minor: 2_500_000,
+      settled_currency: 'UZS',
+      hotel_commission_bps: 1500,
+      hotel_payout_minor: 375_000,
+    }]);
+
+    const [row] = (await listRequests({}, client)).items;
+
+    expect(row.status).toBe('completed');
+    expect(row.settledAmountMinor).toBe(2_500_000);
+    expect(row.settledCurrency).toBe('UZS');
+    expect(row.settledCommissionBps).toBe(1500);
+    expect(row.hotelPayoutMinor).toBe(375_000);
+    expect(row.hotelCommissionBps).toBe(1500);
+  });
+
+  it('leaves a request that has not completed without any money on it', async () => {
+    const { client } = requestQueryClient([{
+      ...requestRowFixture,
+      hotels: { name: 'Kamilovs Hotel', commission_bps: 1500 },
+      settled_amount_minor: null,
+      settled_currency: null,
+      hotel_commission_bps: null,
+      hotel_payout_minor: null,
+    }]);
+
+    const [row] = (await listRequests({}, client)).items;
+
+    expect(row.settledAmountMinor).toBeNull();
+    expect(row.hotelPayoutMinor).toBeNull();
+    expect(row.settledCommissionBps).toBeNull();
+    expect(row.hotelCommissionBps).toBe(1500);
+  });
+
+  it('filters by a settled status', async () => {
+    const { client, filters } = requestQueryClient([]);
+    await listRequests({ status: 'completed' }, client);
+    expect(filters).toContainEqual(['eq', 'status', 'completed']);
+  });
+});
+
+describe('settleRequest', () => {
+  it('records an outcome that carries no money', async () => {
+    const { client, rpc } = rpcClient([{
+      request_status: 'confirmed', amount_minor: null, currency_code: null,
+      frozen_commission_bps: null, payout_minor: null,
+    }]);
+
+    const result = await settleRequest({ requestId: 'request-1', status: 'confirmed' }, client);
+
+    expect(rpc).toHaveBeenCalledWith('settle_request', {
+      target_request_id: 'request-1',
+      new_status: 'confirmed',
+      new_amount_minor: null,
+      new_currency: null,
+    });
+    expect(result).toEqual({
+      status: 'confirmed', settledAmountMinor: null, settledCurrency: null,
+      settledCommissionBps: null, hotelPayoutMinor: null,
+    });
+  });
+
+  it('converts the typed amount to minor units before the call', async () => {
+    const { client, rpc } = rpcClient([settledRpcRow]);
+
+    await settleRequest({ requestId: 'request-1', status: 'completed', amount: '2 500 000', currency: 'UZS' }, client);
+
+    expect(rpc).toHaveBeenCalledWith('settle_request', {
+      target_request_id: 'request-1',
+      new_status: 'completed',
+      new_amount_minor: 2_500_000,
+      new_currency: 'UZS',
+    });
+  });
+
+  it('never sends a commission, because the routine freezes it', async () => {
+    const { client, rpc } = rpcClient([settledRpcRow]);
+    await settleRequest({ requestId: 'request-1', status: 'completed', amount: '300,50', currency: 'USD' }, client);
+    expect(Object.keys(rpc.mock.calls[0][1])).not.toContain('new_commission_bps');
+    expect(rpc.mock.calls[0][1].new_amount_minor).toBe(30_050);
+  });
+
+  it('returns the stored settlement, including the derived payout', async () => {
+    const { client } = rpcClient([settledRpcRow]);
+    const result = await settleRequest({ requestId: 'request-1', status: 'completed', amount: '2500000', currency: 'UZS' }, client);
+    expect(result).toEqual({
+      status: 'completed', settledAmountMinor: 2_500_000, settledCurrency: 'UZS',
+      settledCommissionBps: 1500, hotelPayoutMinor: 375_000,
+    });
+  });
+
+  it('refuses a malformed amount without touching the network', async () => {
+    const { client, rpc } = rpcClient([settledRpcRow]);
+    await expect(
+      settleRequest({ requestId: 'request-1', status: 'completed', amount: 'сколько-то', currency: 'UZS' }, client),
+    ).rejects.toBeInstanceOf(AdminRequestError);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('passes a database refusal through untouched, so the panel can read its code', async () => {
+    const refusal = { code: '42501', message: 'only an active super admin can settle a request' };
+    const { client } = rpcClient(null, refusal);
+    await expect(settleRequest({ requestId: 'request-1', status: 'confirmed' }, client)).rejects.toBe(refusal);
+  });
+
+  it('reports an empty answer rather than inventing a settlement', async () => {
+    const { client } = rpcClient([]);
+    await expect(settleRequest({ requestId: 'request-1', status: 'confirmed' }, client)).rejects.toBeInstanceOf(AdminRequestError);
   });
 });
