@@ -347,3 +347,7 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .admin-issued-password code { display: inline-block; padding: 4px 8px; border-radius: 8px; background: rgba(16,43,78,.07); font-size: 15px; letter-spacing: .04em; word-break: break-all; }
 .admin-issued-password { display: grid; gap: 8px; }
 .admin-issued-password p { margin: 0; }
+
+/* Settlement report, shared by the hotel cabinet and the owner's overview. */
+.admin-report { display: grid; gap: 20px; }
+.admin-report .admin-table { margin: 0; }

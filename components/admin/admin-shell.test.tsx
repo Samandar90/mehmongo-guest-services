@@ -183,3 +183,26 @@ describe('AdminShell roles', () => {
     expect(router.replace).not.toHaveBeenCalled();
   });
 });
+
+describe('AdminShell hotel cabinet', () => {
+  beforeEach(() => {
+    pathnameState.current = '/admin/hotel';
+  });
+
+  it('lets a hotel account open its own cabinet', async () => {
+    renderAdminShell({ identity: hotelIdentity });
+
+    expect(await screen.findByText('Защищённая страница')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Мой отель' })).toBeVisible();
+  });
+
+  it('does not offer the owner a cabinet that is not theirs', async () => {
+    renderAdminShell({ identity: ownerIdentity });
+
+    await waitFor(() => expect(screen.queryByText('Загрузка…')).toBeNull());
+    expect(screen.queryByRole('link', { name: 'Мой отель' })).toBeNull();
+    // Refused, but told why from their own side rather than the hotel's.
+    expect(screen.getByText(/кабинет отеля/)).toBeVisible();
+    expect(screen.queryByText(/доступен только владельцу/)).toBeNull();
+  });
+});

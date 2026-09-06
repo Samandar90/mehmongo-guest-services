@@ -21,6 +21,7 @@ const navigation: { href: string; label: string; roles: AdminIdentity['role'][] 
   { href: '/admin', label: 'Обзор', roles: ['super_admin'] },
   { href: '/admin/hotels', label: 'Отели', roles: ['super_admin'] },
   { href: '/admin/requests', label: 'Заявки', roles: ['super_admin'] },
+  { href: '/admin/hotel', label: 'Мой отель', roles: ['hotel'] },
 ];
 
 function mayOpen(pathname: string | null, role: AdminIdentity['role']): boolean {
@@ -149,7 +150,11 @@ export function AdminShell({
       ) : null}
       {sectionAllowed ? children : (
         <main className="admin-page admin-gate" aria-live="polite">
-          <p>Этот раздел доступен только владельцу MehmonGo.</p>
+          {/* Told from the reader's side: an owner refused the hotel cabinet is
+              not being told the section is owner-only. */}
+          <p>{role === 'hotel'
+            ? 'Этот раздел доступен только владельцу MehmonGo.'
+            : 'Этот раздел — кабинет отеля, он открывается под учётной записью отеля.'}</p>
         </main>
       )}
     </div>

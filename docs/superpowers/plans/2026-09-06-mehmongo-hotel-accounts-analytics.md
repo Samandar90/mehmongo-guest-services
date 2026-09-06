@@ -23,11 +23,13 @@ Nothing about money exists today. `service_requests.status` accepts only `new`, 
 2. **Done. Settlement in the super admin.** On a request: set the outcome and, when completed, the amount and currency. The frozen commission is taken from the hotel at that moment.
 3. **Done. Roles in the client.** `getAdminIdentity` returns the role and hotel id; the shell, navigation and every admin route respect it. A hotel account reaching an owner-only route is refused.
 4. **Done. Hotel accounts in the super admin.** Create and disable a hotel login from the hotel page.
-5. **Hotel cabinet.** Own counters and own payout, by period and by service.
+5. **Done. Hotel cabinet.** Own counters and own payout, by period and by service.
 6. **Owner analytics.** Totals, by service, by hotel, and what is owed to each hotel.
 
 Tasks 1-4 are done and local-only. The owner chose the one-time password over an invite link: the password is generated in the Edge Function, returned once and never stored, and the screen says so. Its weakness is stated for the record — it travels through the owner's screen and whatever they paste it into, and nothing forces the hotel to change it.
 
- Task 5 is next: the hotel cabinet those accounts sign in to. Until it exists, a hotel account reaches only the refusal screen.
+ Task 6 is next, and most of it already exists: public.settlement_summary is written security invoker, so the same call that gives a hotel its own totals gives the owner every hotel's. What remains is the owner's screen over it, grouped by hotel.
+
+The counting lives in the database on purpose. The request list is capped at one page, so folding it up in the browser would stop counting past the cap and under-report what a hotel is owed.
 
 A route the navigation does not list is owner-only by default, so a section added later stays closed to a hotel account until someone opens it deliberately. A refused hotel account is told so and can sign out, rather than being redirected to the login page it has just come from.
