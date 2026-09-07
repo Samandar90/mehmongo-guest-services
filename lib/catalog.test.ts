@@ -77,15 +77,18 @@ describe('catalog data', () => {
     expect(findCatalogOffer('tashkent-v1', 'ticket-assistance')?.maxPassengers).toBeNull();
   });
 
+  // The airport transfer, not the city day: which category an offer sits in is
+  // a commercial decision that moves — it decides what the hotel is paid — and
+  // a lookup test should not fail when it does.
   it('finds an offer only inside its own catalog', () => {
-    expect(findCatalogOffer('tashkent-v1', 'tashkent-city-car')?.category).toBe('transport');
+    expect(findCatalogOffer('tashkent-v1', 'tashkent-airport-sedan')?.category).toBe('transport');
     expect(findCatalogOffer('tashkent-v1', 'made-up-offer')).toBeNull();
-    expect(findCatalogOffer('unknown-catalog', 'tashkent-city-car')).toBeNull();
+    expect(findCatalogOffer('unknown-catalog', 'tashkent-airport-sedan')).toBeNull();
   });
 });
 
 describe('isOfferAvailable', () => {
-  const offer = findCatalogOffer('tashkent-v1', 'tashkent-city-car') as CatalogOffer;
+  const offer = findCatalogOffer('tashkent-v1', 'tashkent-airport-sedan') as CatalogOffer;
 
   it('requires the hotel catalog and the enabled category', () => {
     expect(isOfferAvailable(offer, { catalogId: 'tashkent-v1', services: ['transport', 'tours'] })).toBe(true);

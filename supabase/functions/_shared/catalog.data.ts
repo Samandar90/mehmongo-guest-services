@@ -143,7 +143,7 @@ export const catalogData = {
     },
     {
       "id": "tashkent-city-car",
-      "category": "transport",
+      "category": "tours",
       "featured": true,
       "title": "Your own pace. Your own city day.",
       "eyebrow": "PRIVATE CAR & DRIVER · TASHKENT",
@@ -261,7 +261,7 @@ export const catalogData = {
     },
     {
       "id": "tashkent-samarkand-one-way",
-      "category": "transport",
+      "category": "tours",
       "featured": true,
       "title": "Next stop: Samarkand",
       "eyebrow": "TASHKENT → SAMARKAND · ONE WAY",

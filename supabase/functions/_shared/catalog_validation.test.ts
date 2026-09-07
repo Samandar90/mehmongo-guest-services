@@ -67,11 +67,11 @@ Deno.test('the guide profile asks for a date and a party size, not a free-text c
 });
 
 Deno.test('the city profile asks for a meeting point and no time', () => {
-  const request = validateSubmitPayload(payload('tashkent-city-car', 'transport', { pickup: 'Hotel lobby' }));
+  const request = validateSubmitPayload(payload('tashkent-city-car', 'tours', { pickup: 'Hotel lobby' }));
   assertEquals(request.pickup, 'Hotel lobby');
   assertEquals(request.time, '');
 
-  assertThrows(() => validateSubmitPayload(payload('tashkent-city-car', 'transport')));
+  assertThrows(() => validateSubmitPayload(payload('tashkent-city-car', 'tours')));
 });
 
 Deno.test('the mountains profile asks for a route preference', () => {
@@ -100,14 +100,14 @@ Deno.test('the arrival package fixes the direction to airport pickup', () => {
 });
 
 Deno.test('the intercity profile asks for both addresses and a time', () => {
-  const request = validateSubmitPayload(payload('tashkent-samarkand-one-way', 'transport', {
+  const request = validateSubmitPayload(payload('tashkent-samarkand-one-way', 'tours', {
     pickup: 'Hotel Uzbekistan',
     destination: 'Registan area hotel',
     time: '08:00',
   }));
   assertEquals(request.destination, 'Registan area hotel');
 
-  assertThrows(() => validateSubmitPayload(payload('tashkent-samarkand-one-way', 'transport', { pickup: 'Hotel', time: '08:00' })));
+  assertThrows(() => validateSubmitPayload(payload('tashkent-samarkand-one-way', 'tours', { pickup: 'Hotel', time: '08:00' })));
 });
 
 Deno.test('the ticket profile asks for a travel mode and a route without a time', () => {
