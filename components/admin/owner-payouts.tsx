@@ -1,15 +1,16 @@
 'use client';
 
-import { Fragment } from 'react';
 import { formatMinorAmount } from '@/lib/admin/money';
 import type { HotelSettlement } from '@/lib/admin/summary';
 
 /**
  * What each hotel is owed for the period.
  *
- * A hotel settled in two currencies gets one line per currency: there is no
- * combined figure, because adding som to dollars would produce a number that
- * means nothing and would be paid out by someone eventually.
+ * One row per hotel, and each money cell lists its own currencies on their own
+ * lines. Payout and turnover no longer share a currency — the hotel is paid a
+ * fixed rate in dollars while a sale is usually settled in som — so pairing
+ * them on one row would put two unrelated figures side by side and invite them
+ * to be read as a percentage of each other.
  */
 export function OwnerPayouts({ hotels }: { hotels: HotelSettlement[] }) {
   if (hotels.length === 0) {
@@ -29,31 +30,27 @@ export function OwnerPayouts({ hotels }: { hotels: HotelSettlement[] }) {
       </thead>
       <tbody>
         {hotels.map((hotel) => (
-          <Fragment key={hotel.hotelId}>
-            {hotel.payouts.length === 0 ? (
-              <tr>
-                <td data-label="Отель">{hotel.hotelName}</td>
-                <td data-label="Заявок">{hotel.requests}</td>
-                <td data-label="Выполнено">{hotel.completed}</td>
-                <td data-label="Оборот">—</td>
-                <td data-label="Начислено отелю">—</td>
-              </tr>
-            ) : (
-              hotel.payouts.map((total, index) => (
-                <tr key={`${hotel.hotelId}-${total.currency}`}>
-                  {/* The hotel is named once and its counts stated once, even
-                      when it settled in more than one currency. */}
-                  <td data-label="Отель">{index === 0 ? hotel.hotelName : ''}</td>
-                  <td data-label="Заявок">{index === 0 ? hotel.requests : ''}</td>
-                  <td data-label="Выполнено">{index === 0 ? hotel.completed : ''}</td>
-                  <td data-label="Оборот">{formatMinorAmount(total.amountMinor, total.currency)}</td>
-                  <td data-label="Начислено отелю">
-                    <strong>{formatMinorAmount(total.payoutMinor, total.currency)}</strong>
-                  </td>
-                </tr>
-              ))
-            )}
-          </Fragment>
+          <tr key={hotel.hotelId}>
+            <td data-label="Отель">{hotel.hotelName}</td>
+            <td data-label="Заявок">{hotel.requests}</td>
+            <td data-label="Выполнено">{hotel.completed}</td>
+            <td data-label="Оборот">
+              {hotel.turnover && hotel.turnover.length > 0
+                ? hotel.turnover.map((total) => (
+                    <div key={total.currency}>{formatMinorAmount(total.amountMinor, total.currency)}</div>
+                  ))
+                : '—'}
+            </td>
+            <td data-label="Начислено отелю">
+              {hotel.payouts.length === 0
+                ? '—'
+                : hotel.payouts.map((total) => (
+                    <div key={total.currency}>
+                      <strong>{formatMinorAmount(total.payoutMinor, total.currency)}</strong>
+                    </div>
+                  ))}
+            </td>
+          </tr>
         ))}
       </tbody>
     </table>

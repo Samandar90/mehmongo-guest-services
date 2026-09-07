@@ -48,11 +48,11 @@ const requestRow: AdminRequestRow = {
   offerId: null,
   offerTitle: null,
   offerEstimate: null,
-  hotelCommissionBps: 1500,
   settledAmountMinor: null,
   settledCurrency: null,
-  settledCommissionBps: null,
-  hotelPayoutMinor: null,
+  completedAt: null,
+  hotelRateMinor: null,
+  hotelRateCurrency: null,
 };
 
 const kamilovsHotel: Hotel = {

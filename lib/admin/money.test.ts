@@ -4,7 +4,6 @@ import {
   formatMinorAmount,
   formatMinorInput,
   parseSettledAmount,
-  previewPayoutMinor,
   settlementCurrencies,
 } from '@/lib/admin/money';
 
@@ -93,24 +92,8 @@ describe('formatMinorInput', () => {
   });
 });
 
-describe('previewPayoutMinor', () => {
-  it('matches what the generated column stores', () => {
-    expect(previewPayoutMinor(25_000_000, 1500)).toBe(3_750_000);
-    expect(previewPayoutMinor(30_000, 1500)).toBe(4_500);
-  });
-
-  it('rounds a half away from zero, the way Postgres round(numeric) does', () => {
-    // 30050 * 1500 / 10000 is exactly 4507.5; the database stores 4508.
-    expect(previewPayoutMinor(30_050, 1500)).toBe(4_508);
-  });
-
-  it('owes nothing at a zero commission', () => {
-    expect(previewPayoutMinor(25_000_000, 0)).toBe(0);
-  });
-
-  it('stays exact at the ceiling, where the product passes what a float can hold', () => {
-    expect(previewPayoutMinor(settlementCurrencies.UZS.ceilingMinor, 10_000)).toBe(
-      settlementCurrencies.UZS.ceilingMinor,
-    );
-  });
-});
+// previewPayoutMinor and its tests are gone with the percentage. The payout no
+// longer derives from the settled amount at all: it is a fixed rate per
+// request, frozen by settle_request from public.payout_rates, and the monthly
+// volume step is applied by settlement_summary. Both are covered by pgTAP,
+// which is where that arithmetic now lives.

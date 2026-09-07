@@ -25,11 +25,25 @@ afterEach(() => {
   server.submit.mockReset();
 });
 
+/**
+ * A date the form will accept, worked out when the test runs.
+ *
+ * The field carries min={todayIso()}, so a hard-coded date silently becomes a
+ * past date and every submission in this file starts failing on validation.
+ * That is exactly what happened once the calendar moved past the literal that
+ * used to be here.
+ */
+function acceptableDate(): string {
+  const day = new Date();
+  day.setDate(day.getDate() + 1);
+  return day.toISOString().slice(0, 10);
+}
+
 async function completeTransportForm(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: /Transport/i }));
   await user.type(screen.getByLabelText('Pickup point'), 'Kamilovs Hotel');
   await user.type(screen.getByLabelText('Destination'), 'Airport');
-  await user.type(screen.getByLabelText('Preferred date'), '2026-09-06');
+  await user.type(screen.getByLabelText('Preferred date'), acceptableDate());
   await user.type(screen.getByLabelText('Preferred time'), '18:30');
   await user.clear(screen.getByLabelText('Passengers'));
   await user.type(screen.getByLabelText('Passengers'), '2');

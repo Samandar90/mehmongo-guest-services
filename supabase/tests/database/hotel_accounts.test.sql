@@ -1,5 +1,5 @@
 begin;
-select plan(27);
+select plan(30);
 
 -- A hotel account is an admin_users row scoped to one hotel. The owner records
 -- what a request settled for; the hotel only ever reads its own numbers.
@@ -150,10 +150,18 @@ set local role authenticated;
 -- The hotel account of the first hotel.
 select set_config('request.jwt.claims', '{"sub":"81000000-0000-4000-8000-000000000002","role":"authenticated"}', true);
 
+-- The requests table itself is now the owner's alone.
 select is(
   (select count(*)::integer from public.service_requests),
+  0,
+  'a hotel no longer reads the requests table directly'
+);
+
+-- What it reads instead, scoped to itself by the function.
+select is(
+  (select count(*)::integer from public.hotel_requests()),
   1,
-  'a hotel reads only its own requests'
+  'a hotel reads its own requests through hotel_requests'
 );
 
 select is(
@@ -168,10 +176,29 @@ select is(
   'a hotel reads only its own rooms'
 );
 
+-- The turnover is the owner's figure. The hotel is paid a fixed rate per
+-- request, so it never needs to know what the service sold for — and must not
+-- be able to find out.
 select is(
-  (select settled_amount_minor from public.service_requests limit 1),
-  30000::bigint,
-  'a hotel can see what its own request settled for'
+  (select count(*)::integer from public.service_requests where settled_amount_minor is not null),
+  0,
+  'a hotel cannot read what any request settled for'
+);
+
+select throws_ok(
+  $$ select settled_amount_minor from public.hotel_requests() $$,
+  '42703',
+  null,
+  'hotel_requests has no settled amount to select'
+);
+
+-- Filtering is the path a column list alone would not close: PostgREST lets a
+-- role filter on a column it may select even when it does not request it, so a
+-- binary search would read the amount back. There is nothing left to filter.
+select is(
+  (select count(*)::integer from public.service_requests where settled_amount_minor > 1),
+  0,
+  'a hotel cannot probe the amount with a filter either'
 );
 
 select throws_ok(

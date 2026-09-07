@@ -12,7 +12,11 @@ select col_is_unique('public'::name, 'service_requests'::name, 'idempotency_key'
 select has_index('public'::name, 'service_requests'::name, 'service_requests_hotel_created_idx'::name);
 select has_index('public'::name, 'service_requests'::name, 'service_requests_rate_limit_idx'::name);
 select policies_are('public', 'hotels', array['super admins manage hotels', 'hotels read their own hotel']);
-select policies_are('public', 'service_requests', array['super admins read requests', 'hotels read their own requests']);
+-- The hotel's own policy is gone on purpose. A row policy cannot hide a
+-- column, and PostgREST filters on any column the role may select even when it
+-- is not requested, so leaving it would leave the settled amount reachable.
+-- Hotels read through public.hotel_requests and public.settlement_summary.
+select policies_are('public', 'service_requests', array['super admins read requests']);
 
 insert into public.hotels (id, slug, name)
 values

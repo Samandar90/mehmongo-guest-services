@@ -16,7 +16,6 @@ import {
   formatMinorAmount,
   formatMinorInput,
   parseSettledAmount,
-  previewPayoutMinor,
   settlementCurrencies,
   type SettlementCurrency,
 } from '@/lib/admin/money';
@@ -107,21 +106,16 @@ function errorCode(error: unknown): string | undefined {
  * amount is unreadable: a red field error already says why, and a stale figure
  * beside a wrong amount is worse than none.
  */
-function PayoutHint({ amount, currency, commissionBps }: {
-  amount: string;
-  currency: SettlementCurrency;
-  commissionBps: number;
-}) {
-  let parsed: number;
-  try {
-    parsed = parseSettledAmount(amount, currency);
-  } catch {
-    return null;
-  }
-  const percent = (commissionBps / 100).toFixed(2).replace(/\.?0+$/, '');
+/**
+ * The amount is our turnover, and nothing else reads it: the hotel is paid a
+ * fixed rate per request. Saying so under the field is worth more than the old
+ * percentage preview, which invited the amount to be read as the hotel's base.
+ */
+function TurnoverHint() {
   return (
     <p className="admin-hint">
-      Отелю: {formatMinorAmount(previewPayoutMinor(parsed, commissionBps), currency)} ({percent}%)
+      Сумма — наша выручка. Отелю она не показывается и на его выплату не влияет:
+      ставка фиксированная за заявку.
     </p>
   );
 }
@@ -139,9 +133,9 @@ function settledView(row: AdminRequestRow, settlement: Settlement | undefined) {
   const status = settlement?.status ?? row.status;
   const amount = settlement ? settlement.settledAmountMinor : row.settledAmountMinor;
   const currency = settlement ? settlement.settledCurrency : row.settledCurrency;
-  const payout = settlement ? settlement.hotelPayoutMinor : row.hotelPayoutMinor;
-  const frozenBps = settlement ? settlement.settledCommissionBps : row.settledCommissionBps;
-  return { status, amount, currency, payout, frozenBps };
+  const rateMinor = settlement ? settlement.hotelRateMinor : row.hotelRateMinor;
+  const rateCurrency = settlement ? settlement.hotelRateCurrency : row.hotelRateCurrency;
+  return { status, amount, currency, rateMinor, rateCurrency };
 }
 
 export function RequestTable({
@@ -381,11 +375,13 @@ export function RequestTable({
                             <>
                               <div><dt>Итог</dt><dd>{settledLabel}</dd></div>
                               <div>
-                                <dt>Отелю</dt>
+                                <dt>Ставка отелю</dt>
                                 <dd>
-                                  {view.payout === null ? '—' : formatMinorAmount(view.payout, view.currency ?? 'UZS')}
-                                  {view.frozenBps !== null ? (
-                                    <small className="admin-hint"> Комиссия {(view.frozenBps / 100).toFixed(2).replace(/\.?0+$/, '')}% на момент расчёта.</small>
+                                  {view.rateMinor === null
+                                    ? '—'
+                                    : formatMinorAmount(view.rateMinor, view.rateCurrency ?? 'USD')}
+                                  {view.rateMinor !== null ? (
+                                    <small className="admin-hint"> Базовая ставка, зафиксирована при расчёте. Надбавка за объём начисляется по итогам месяца.</small>
                                   ) : null}
                                 </dd>
                               </div>
@@ -452,13 +448,7 @@ export function RequestTable({
                                   ))}
                                 </select>
                               </div>
-                              <PayoutHint
-                                amount={draft.amount}
-                                currency={draft.currency}
-                                // The frozen rate when there is one, today's rate otherwise: exactly
-                                // what the routine applies, so the preview is the stored number.
-                                commissionBps={view.frozenBps ?? row.hotelCommissionBps}
-                              />
+                              <TurnoverHint />
                             </>
                           ) : null}
 

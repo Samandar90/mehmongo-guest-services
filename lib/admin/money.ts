@@ -104,16 +104,4 @@ export function formatMinorInput(minor: number, currency: string): string {
   return `${whole}${fraction ? `,${fraction}` : ''}`;
 }
 
-/**
- * Reproduces the hotel_payout_minor generated column exactly, for the preview
- * shown before saving: round half away from zero, matching Postgres
- * round(numeric). BigInt is not decoration — at the som ceiling the product
- * reaches 1e13, and a later raise would pass what a double can hold exactly.
- */
-export function previewPayoutMinor(amountMinor: number, commissionBps: number): number {
-  // BigInt(...) rather than the 5000n literal: the build targets ES2017, where
-  // bigint literals do not parse. The values are constants either way.
-  const half = BigInt(5000);
-  const scale = BigInt(10_000);
-  return Number((BigInt(amountMinor) * BigInt(commissionBps) + half) / scale);
-}
+
