@@ -77,14 +77,16 @@ describe('AdminDashboardPage', () => {
       { id: 'hotel-1', name: 'Kamilovs Hotel', slug: 'kamilovs', address: '', commissionBps: 1500, active: true, guestCatalogId: null, createdAt: '', updatedAt: '' },
     ]);
     vi.mocked(getSettlementSummary).mockResolvedValue([
-      { hotel_id: 'hotel-1', service_type: 'transport', status: 'completed', settled_currency: 'UZS', requests: 1, settled_amount_minor: 25_000_000, hotel_payout_minor: 3_750_000 },
+      { hotel_id: 'hotel-1', service_type: 'transport', status: 'completed', requests: 1, settled_currency: 'UZS', settled_amount_minor: 25_000_000, payout_currency: 'USD', payout_minor: 200 },
     ]);
 
     render(<AdminDashboardPage />);
 
     const payouts = await screen.findByRole('table', { name: /по отелям/i });
     expect(within(payouts).getByText('Kamilovs Hotel')).toBeVisible();
-    expect(within(payouts).getByText('3 750 000 UZS')).toBeVisible();
+    // The payout is the frozen rate card price, not a share of the sale: this
+    // transfer sold for 25 000 000 сум and pays the hotel two dollars.
+    expect(within(payouts).getByText('2,00 USD')).toBeVisible();
   });
 
   it('keeps a failed total from hiding the counters', async () => {

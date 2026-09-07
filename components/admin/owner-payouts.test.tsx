@@ -10,9 +10,10 @@ const hotels: HotelSettlement[] = [
     requests: 7,
     completed: 3,
     cancelled: 1,
-    payouts: [
-      { currency: 'USD', amountMinor: 30_000, payoutMinor: 4_500, requests: 1 },
-      { currency: 'UZS', amountMinor: 40_000_000, payoutMinor: 6_000_000, requests: 2 },
+    payouts: [{ currency: 'USD', payoutMinor: 1_200, requests: 3 }],
+    turnover: [
+      { currency: 'USD', amountMinor: 30_000, requests: 1 },
+      { currency: 'UZS', amountMinor: 40_000_000, requests: 2 },
     ],
     byService: [{ serviceType: 'transport', requests: 2, completed: 2 }],
   },
@@ -22,7 +23,8 @@ const hotels: HotelSettlement[] = [
     requests: 1,
     completed: 1,
     cancelled: 0,
-    payouts: [{ currency: 'UZS', amountMinor: 50_000_000, payoutMinor: 5_000_000, requests: 1 }],
+    payouts: [{ currency: 'USD', payoutMinor: 200, requests: 1 }],
+    turnover: [{ currency: 'UZS', amountMinor: 50_000_000, requests: 1 }],
     byService: [{ serviceType: 'tickets', requests: 1, completed: 1 }],
   },
 ];
@@ -34,16 +36,18 @@ describe('OwnerPayouts', () => {
     expect(screen.getByText('Second Hotel')).toBeVisible();
   });
 
-  it('shows a hotel owed in two currencies on two lines', () => {
+  it('lists a hotel turnover currencies on their own lines, apart from the payout', () => {
     render(<OwnerPayouts hotels={hotels} />);
     const table = screen.getByRole('table', { name: /по отелям/i });
 
-    expect(within(table).getByText('6 000 000 UZS')).toBeVisible();
-    expect(within(table).getByText('45,00 USD')).toBeVisible();
+    // Paid in dollars; the sales behind it were settled in two currencies.
+    expect(within(table).getByText('12,00 USD')).toBeVisible();
+    expect(within(table).getByText('40 000 000 UZS')).toBeVisible();
+    expect(within(table).getByText('300,00 USD')).toBeVisible();
   });
 
   it('says a hotel that earned nothing earned nothing, instead of leaving a blank', () => {
-    render(<OwnerPayouts hotels={[{ ...hotels[1], completed: 0, payouts: [] }]} />);
+    render(<OwnerPayouts hotels={[{ ...hotels[1], completed: 0, payouts: [], turnover: [] }]} />);
     // Both money columns say so explicitly rather than sitting empty.
     expect(screen.getAllByText('—')).toHaveLength(2);
   });

@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(26);
 
 -- public.settle_request is the only way the owner writes money onto a request.
 -- It runs security definer, so its own is_super_admin() check is the whole of
@@ -124,17 +124,25 @@ select throws_ok(
 
 -- What the owner may do.
 select results_eq(
-  $$ select request_status, amount_minor, currency_code, frozen_commission_bps, payout_minor
+  $$ select request_status, amount_minor, currency_code, rate_minor, rate_currency_code
      from public.settle_request('82000000-0000-4000-8000-000000000301', 'confirmed') $$,
-  $$ values ('confirmed'::text, null::bigint, null::text, null::integer, null::bigint) $$,
+  $$ values ('confirmed'::text, null::bigint, null::text, null::bigint, null::text) $$,
   'confirming records no money'
 );
 
+-- The fixture is a transport request, so the rate card pays two dollars. The
+-- amount it sold for is recorded but no longer decides the payout.
 select results_eq(
-  $$ select request_status, amount_minor, currency_code, frozen_commission_bps, payout_minor
+  $$ select request_status, amount_minor, currency_code, rate_minor, rate_currency_code
      from public.settle_request('82000000-0000-4000-8000-000000000301', 'completed', 25000000, 'UZS') $$,
-  $$ values ('completed'::text, 25000000::bigint, 'UZS'::text, 1500::integer, 3750000::bigint) $$,
-  'completing freezes the rate and derives the payout'
+  $$ values ('completed'::text, 25000000::bigint, 'UZS'::text, 200::bigint, 'USD'::text) $$,
+  'completing records the turnover and freezes the rate card price'
+);
+
+select isnt(
+  (select completed_at from public.settle_request('82000000-0000-4000-8000-000000000301', 'completed', 25000000, 'UZS')),
+  null,
+  'a completed request carries the moment it was completed'
 );
 
 select results_eq(
@@ -143,31 +151,39 @@ select results_eq(
   'a lower-case currency is stored upper-cased'
 );
 
--- Correcting a mistyped amount must not repay the work at a rate agreed later.
+-- Raising the rate card must not repay work that was already done.
 reset role;
-update public.hotels set commission_bps = 2500 where id = '82000000-0000-4000-8000-000000000101';
+update public.payout_rates set rate_minor = 500 where service_type = 'transport';
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"82000000-0000-4000-8000-000000000001","role":"authenticated"}', true);
 
 select results_eq(
-  $$ select frozen_commission_bps, payout_minor
-     from public.settle_request('82000000-0000-4000-8000-000000000301', 'completed', 30000, 'USD') $$,
-  $$ values (1500::integer, 4500::bigint) $$,
+  $$ select rate_minor from public.settle_request('82000000-0000-4000-8000-000000000301', 'completed', 30000, 'USD') $$,
+  $$ values (200::bigint) $$,
   'correcting the amount keeps the rate the work was settled at'
 );
 
 select results_eq(
-  $$ select request_status, amount_minor, currency_code, frozen_commission_bps, payout_minor
+  $$ select request_status, amount_minor, currency_code
      from public.settle_request('82000000-0000-4000-8000-000000000301', 'cancelled') $$,
-  $$ values ('cancelled'::text, null::bigint, null::text, null::integer, null::bigint) $$,
-  'cancelling clears the amount, the currency and the rate together'
+  $$ values ('cancelled'::text, null::bigint, null::text) $$,
+  'cancelling clears the amount and the currency'
 );
 
+-- Deliberately unlike the old percentage, which was re-taken on every fresh
+-- completion. The completion date decides which month is paid, and months get
+-- closed and paid out: letting a cancel-and-redo slide a request into a later
+-- month at a newer rate would rewrite a month that is already settled.
 select results_eq(
-  $$ select frozen_commission_bps from public.settle_request('82000000-0000-4000-8000-000000000301', 'completed', 30000, 'USD') $$,
-  $$ values (2500::integer) $$,
-  'completing again after a cancellation takes the rate in force today'
+  $$ select rate_minor from public.settle_request('82000000-0000-4000-8000-000000000301', 'completed', 30000, 'USD') $$,
+  $$ values (200::bigint) $$,
+  'completing again after a cancellation keeps the original rate'
 );
+
+reset role;
+update public.payout_rates set rate_minor = 200 where service_type = 'transport';
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"82000000-0000-4000-8000-000000000001","role":"authenticated"}', true);
 
 -- The settlement must not disturb what the guest was shown.
 select is(

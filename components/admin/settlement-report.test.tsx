@@ -7,9 +7,10 @@ const summary: SettlementSummary = {
   requests: 7,
   completed: 3,
   cancelled: 1,
-  payouts: [
-    { currency: 'USD', amountMinor: 30_000, payoutMinor: 4_500, requests: 1 },
-    { currency: 'UZS', amountMinor: 40_000_000, payoutMinor: 6_000_000, requests: 2 },
+  payouts: [{ currency: 'USD', payoutMinor: 1_200, requests: 3 }],
+  turnover: [
+    { currency: 'USD', amountMinor: 30_000, requests: 1 },
+    { currency: 'UZS', amountMinor: 40_000_000, requests: 2 },
   ],
   byService: [
     { serviceType: 'tickets', requests: 3, completed: 0 },
@@ -18,7 +19,7 @@ const summary: SettlementSummary = {
   ],
 };
 
-const empty: SettlementSummary = { requests: 0, completed: 0, cancelled: 0, payouts: [], byService: [] };
+const empty: SettlementSummary = { requests: 0, completed: 0, cancelled: 0, payouts: [], turnover: null, byService: [] };
 
 describe('SettlementReport', () => {
   it('shows how many requests came in and how many were carried out', () => {
@@ -31,14 +32,26 @@ describe('SettlementReport', () => {
     expect(within(metrics).getByText('Отменено').nextElementSibling).toHaveTextContent('1');
   });
 
-  it('shows each currency on its own line, never a single mixed total', () => {
+  it('shows the payout in its own currency, apart from the turnover', () => {
     render(<SettlementReport summary={summary} />);
     const payouts = screen.getByRole('table', { name: /начислено/i });
+    const turnover = screen.getByRole('table', { name: /оборот/i });
 
-    expect(within(payouts).getByText('6 000 000 UZS')).toBeVisible();
-    expect(within(payouts).getByText('45,00 USD')).toBeVisible();
+    // Paid in dollars whatever the sale was settled in.
+    expect(within(payouts).getByText('12,00 USD')).toBeVisible();
+    // The turnover keeps its own currencies, each on its own line.
+    expect(within(turnover).getByText('40 000 000 UZS')).toBeVisible();
+    expect(within(turnover).getByText('300,00 USD')).toBeVisible();
     // Nothing anywhere claims a combined figure across currencies.
-    expect(within(payouts).queryByText(/Итого по всем валютам/i)).toBeNull();
+    expect(screen.queryByText(/Итого по всем валютам/i)).toBeNull();
+  });
+
+  it('shows a hotel no turnover table at all', () => {
+    render(<SettlementReport summary={{ ...summary, turnover: null }} />);
+
+    expect(screen.getByRole('table', { name: /начислено/i })).toBeVisible();
+    expect(screen.queryByRole('table', { name: /оборот/i })).toBeNull();
+    expect(screen.queryByText('40 000 000 UZS')).toBeNull();
   });
 
   it('shows what the services were worth alongside the counts', () => {

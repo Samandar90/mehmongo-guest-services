@@ -8,9 +8,9 @@ The user's messages should be answered in Russian. Guest-facing website copy sta
 
 ## Work in this checkout
 
-- Repository: `C:\Users\user\Desktop\MehmonGo\.worktrees\mehmongo-platform-mvp`
-- Branch: `codex/mehmongo-platform-mvp`
-- Do not implement in the main checkout on `main`.
+- Repository on the owner's second machine (2026-09-07 onward): `C:\Users\Comp X\Desktop\mehmongo-guest-services`, branch `main`. The worktree layout below belonged to the first machine and no longer exists.
+- Docker Desktop on that machine crashes on startup because the user profile path contains a space: it writes a socket at `unix://C:\Users\Comp X\AppData\Local\Docker\run\dockerInference`, then cannot remove it. Launch it with `Запустить Docker.cmd` on the Desktop, which clears the broken sockets and passes the 8.3 short path.
+- Historical, for the first machine: branch `codex/mehmongo-platform-mvp`, do not implement in the main checkout on `main`.
 - Preserve existing commits and do not rewrite history.
 - Never commit `.env.local`, Telegram credentials, Supabase service keys, or the ignored local smoke-owner fixture.
 - Use the existing pinned dependencies and the existing Supabase/Docker setup.
@@ -49,10 +49,10 @@ The pilot is live (see "Production state"). Hotel accounts and settlement analyt
 Rulings made while building it, which later tasks must not undo:
 - The minor unit is per currency. UZS has none in circulation, so the som IS the minor unit; USD is cents. `settlementCurrencies` in `lib/admin/money.ts` and the ceilings inside `settle_request` hold the same table and must move together.
 - Never `Intl.NumberFormat` for money: CLDR has no zero-digit override for UZS and would add an invented hundredth to every som figure.
-- The commission is frozen on the way into `completed` and kept while the request stays completed, so correcting a mistyped amount cannot repay the work at a rate agreed afterwards. Only a cancel-then-complete re-reads it.
+- **Superseded on 2026-09-07 by the fixed-rate model below.** The percentage commission was frozen on the way into `completed`, and a cancel-then-complete re-read it. The rate is now frozen once and never re-read, because the completion date decides which month is paid.
 - `service_requests` still has no UPDATE grant for `authenticated`, and must not get one: it would turn a hotel's forbidden edit into a silent zero-row success instead of a refusal.
 - A catch-scoped `const` captured by a state-updater closure trips the react-compiler lint rule; read the value inside the updater instead. A `useCallback` that sets state, called from an effect body, trips its cascading-render rule: put the loader inside the effect and reload with a counter.
-- `public.settlement_summary` is `security invoker` on purpose, so one function serves both roles: it aggregates exactly the rows the caller may read. Counting must stay in the database — the request list is capped at one page, and folding it up in the browser would under-report what a hotel is owed.
+- **Superseded on 2026-09-07.** `public.settlement_summary` was `security invoker` so one function could serve both roles. It is now `security definer`: the hotel has no policy on `service_requests` any more, so an invoker function would return it nothing, and the column list — which a row policy cannot express — is enforced inside. Counting still stays in the database, for the original reason: the request list is capped at one page, and folding it up in the browser would under-report what a hotel is owed.
 - Money is grouped by currency everywhere and never totalled across currencies.
 
 Two advisor warnings on production are known and expected. `settle_request` is flagged as a `security definer` function callable by `authenticated`: that is the design — the grant is what lets the owner call it at all, and the function's own `is_super_admin()` check is the barrier. Leaked-password protection is off; enabling it in Authentication → Passwords is a one-click improvement now that hotel accounts exist.
@@ -68,6 +68,52 @@ Operational items still owner-side:
 5. Claude cannot hold an admin session (password entry is off limits and injecting a session was blocked), so any further UI checks in the admin are the owner's; the room toggle in the live room editor is the only admin control not yet exercised by hand.
 
 On 2026-09-06 the owner lifted the earlier bans on hotel accounts and financial analytics; `docs/superpowers/plans/2026-09-06-mehmongo-hotel-accounts-analytics.md` is now binding and records their three decisions. Still out of scope: online payments, Telegram assignment buttons, and separate Telegram groups.
+
+## Hotel payouts: fixed rates, decided 2026-09-07
+
+The percentage of turnover is gone. Every hotel is on the same terms: a fixed
+sum per **completed** request, plus a monthly volume step.
+
+| service_type | rate | volume step applies | counts toward the step |
+| --- | --- | --- | --- |
+| `transport` | $2.00 | yes | yes |
+| `tours` | $8.00 | yes | yes |
+| `tickets` | $2.00 | **no** | yes |
+| `restaurants` | not paid | no | yes |
+
+Steps by completed requests in an Asia/Tashkent calendar month: 1–14 none,
+15–39 +20%, 40+ +40%. The step multiplies **every** request of that month, not
+only those past the threshold. Tickets are flat because the service fee on a
+ticket is about $2.40, and +40% would pay out more than the ticket earns.
+
+Why fixed rather than a percentage: the hotel can verify its own payout by
+counting requests in its cabinet, without ever seeing — or having to trust —
+our turnover. That is the argument the partner site is built on
+(`https://samandar90.github.io/mehmongo-partners/`, repository
+`Samandar90/mehmongo-partners`).
+
+Rulings this created, which later work must not undo:
+
+- **A hotel must never see `settled_amount_minor`.** Staff still record what
+  every completed request sold for; it is the owner's figure alone. The hotel's
+  row policy on `service_requests` was dropped for this: a row policy cannot
+  hide a column, and PostgREST filters on a column a role may select even when
+  it is not requested, so `?select=id&settled_amount_minor=gt.X` plus a binary
+  search would read it back. Hotels read `public.hotel_requests` and
+  `public.settlement_summary`, both of which name their columns.
+- Only the **base** rate is frozen onto a request, at first completion. The
+  monthly step cannot be frozen per row: it is a property of the whole month.
+- `settled_at` is set on first completion and never moved. A cancel and a later
+  re-completion must not slide a request into a month that is already paid, and
+  must not re-read the rate card.
+- The month boundary is `private.payout_month()`, one shared definition, so a
+  completion just after Tashkent midnight lands in the right month.
+- Payout currency and settlement currency are different things: the hotel is
+  paid in dollars while a sale is usually settled in som. They are never put on
+  one row and never added.
+- `hotels.commission_bps` and `service_requests.hotel_commission_bps` still
+  exist and are still written, but nothing reads them for money any more. They
+  are dropped in a later migration, once no screen mentions them.
 
 ## Known limitations recorded in the ledgers
 

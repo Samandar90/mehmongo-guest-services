@@ -23,14 +23,13 @@ export function SettlementReport({ summary }: { summary: SettlementSummary }) {
       </dl>
 
       {summary.payouts.length === 0 ? (
-        <p className="admin-empty">Пока ничего не начислено: ни одна заявка не закрыта суммой.</p>
+        <p className="admin-empty">Пока ничего не начислено: ни одна заявка не выполнена.</p>
       ) : (
         <table className="admin-table" aria-label="Начислено отелю">
           <thead>
             <tr>
               <th scope="col">Валюта</th>
               <th scope="col">Выполнено</th>
-              <th scope="col">Оборот</th>
               <th scope="col">Начислено отелю</th>
             </tr>
           </thead>
@@ -39,13 +38,39 @@ export function SettlementReport({ summary }: { summary: SettlementSummary }) {
               <tr key={total.currency}>
                 <td data-label="Валюта">{total.currency}</td>
                 <td data-label="Выполнено">{total.requests}</td>
-                <td data-label="Оборот">{formatMinorAmount(total.amountMinor, total.currency)}</td>
                 <td data-label="Начислено отелю"><strong>{formatMinorAmount(total.payoutMinor, total.currency)}</strong></td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
+
+      {/*
+        Turnover is a separate table, not another column, for two reasons: the
+        hotel is paid in dollars while a sale is often settled in som, so the
+        two never belong on one row; and the database returns no turnover at all
+        to a hotel account, so there is nothing to render for one.
+      */}
+      {summary.turnover && summary.turnover.length > 0 ? (
+        <table className="admin-table" aria-label="Оборот">
+          <thead>
+            <tr>
+              <th scope="col">Валюта</th>
+              <th scope="col">Заявок</th>
+              <th scope="col">Оборот</th>
+            </tr>
+          </thead>
+          <tbody>
+            {summary.turnover.map((total) => (
+              <tr key={total.currency}>
+                <td data-label="Валюта">{total.currency}</td>
+                <td data-label="Заявок">{total.requests}</td>
+                <td data-label="Оборот">{formatMinorAmount(total.amountMinor, total.currency)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ) : null}
 
       <table className="admin-table" aria-label="Заявки по услугам">
         <thead>

@@ -7,12 +7,20 @@ function rpcClient(rows: SummaryRow[] | null, error: unknown = null) {
   return { client: { rpc } as never, rpc };
 }
 
+// The owner's view: turnover is filled in. A hotel account gets the same rows
+// with settled_currency and settled_amount_minor null, which is what the
+// database sends it.
 const rows: SummaryRow[] = [
-  { hotel_id: 'hotel-1', service_type: 'transport', status: 'completed', settled_currency: 'UZS', requests: 2, settled_amount_minor: 40_000_000, hotel_payout_minor: 6_000_000 },
-  { hotel_id: 'hotel-1', service_type: 'tours', status: 'completed', settled_currency: 'USD', requests: 1, settled_amount_minor: 30_000, hotel_payout_minor: 4_500 },
-  { hotel_id: 'hotel-1', service_type: 'tours', status: 'cancelled', settled_currency: null, requests: 1, settled_amount_minor: 0, hotel_payout_minor: 0 },
-  { hotel_id: 'hotel-1', service_type: 'tickets', status: 'new', settled_currency: null, requests: 3, settled_amount_minor: 0, hotel_payout_minor: 0 },
+  { hotel_id: 'hotel-1', service_type: 'transport', status: 'completed', requests: 2, settled_currency: 'UZS', settled_amount_minor: 40_000_000, payout_currency: 'USD', payout_minor: 400 },
+  { hotel_id: 'hotel-1', service_type: 'tours', status: 'completed', requests: 1, settled_currency: 'USD', settled_amount_minor: 30_000, payout_currency: 'USD', payout_minor: 800 },
+  { hotel_id: 'hotel-1', service_type: 'tours', status: 'cancelled', requests: 1, settled_currency: null, settled_amount_minor: null, payout_currency: null, payout_minor: 0 },
+  { hotel_id: 'hotel-1', service_type: 'tickets', status: 'new', requests: 3, settled_currency: null, settled_amount_minor: null, payout_currency: null, payout_minor: 0 },
 ];
+
+const hotelTwoRow: SummaryRow = {
+  hotel_id: 'hotel-2', service_type: 'tickets', status: 'completed', requests: 1,
+  settled_currency: 'UZS', settled_amount_minor: 50_000_000, payout_currency: 'USD', payout_minor: 200,
+};
 
 describe('getSettlementSummary', () => {
   it('asks the database to count, rather than counting a page in the browser', async () => {
@@ -67,11 +75,26 @@ describe('summariseRows', () => {
     expect(summary.cancelled).toBe(1);
   });
 
-  it('totals payouts per currency and never adds som to dollars', () => {
+  it('totals payouts in the payout currency, whatever the sale was settled in', () => {
     expect(summariseRows(rows).payouts).toEqual([
-      { currency: 'USD', amountMinor: 30_000, payoutMinor: 4_500, requests: 1 },
-      { currency: 'UZS', amountMinor: 40_000_000, payoutMinor: 6_000_000, requests: 2 },
+      { currency: 'USD', payoutMinor: 1_200, requests: 3 },
     ]);
+  });
+
+  it('keeps turnover apart from the payout, and never adds som to dollars', () => {
+    expect(summariseRows(rows).turnover).toEqual([
+      { currency: 'USD', amountMinor: 30_000, requests: 1 },
+      { currency: 'UZS', amountMinor: 40_000_000, requests: 2 },
+    ]);
+  });
+
+  it('reports no turnover at all for a viewer the database hid it from', () => {
+    const asHotelSees = rows.map((row) => ({ ...row, settled_currency: null, settled_amount_minor: null }));
+    const summary = summariseRows(asHotelSees);
+    // Null, not an empty list: an absent figure has to be told apart from a
+    // genuine zero, or the cabinet would show a hotel a turnover of nothing.
+    expect(summary.turnover).toBeNull();
+    expect(summary.payouts).toEqual([{ currency: 'USD', payoutMinor: 1_200, requests: 3 }]);
   });
 
   it('breaks the count down by service, busiest first', () => {
@@ -83,14 +106,11 @@ describe('summariseRows', () => {
   });
 
   it('reports an empty period as zero rather than as nothing at all', () => {
-    expect(summariseRows([])).toEqual({ requests: 0, completed: 0, cancelled: 0, payouts: [], byService: [] });
+    expect(summariseRows([])).toEqual({ requests: 0, completed: 0, cancelled: 0, payouts: [], turnover: null, byService: [] });
   });
 
   it('keeps hotels apart when the owner asks across all of them', () => {
-    const both: SummaryRow[] = [
-      ...rows,
-      { hotel_id: 'hotel-2', service_type: 'tickets', status: 'completed', settled_currency: 'UZS', requests: 1, settled_amount_minor: 50_000_000, hotel_payout_minor: 5_000_000 },
-    ];
+    const both: SummaryRow[] = [...rows, hotelTwoRow];
     expect(summariseRows(both, 'hotel-1').requests).toBe(7);
     expect(summariseRows(both, 'hotel-2').requests).toBe(1);
     expect(summariseRows(both).requests).toBe(8);
@@ -98,10 +118,7 @@ describe('summariseRows', () => {
 });
 
 describe('summariseByHotel', () => {
-  const both: SummaryRow[] = [
-    ...rows,
-    { hotel_id: 'hotel-2', service_type: 'tickets', status: 'completed', settled_currency: 'UZS', requests: 1, settled_amount_minor: 50_000_000, hotel_payout_minor: 5_000_000 },
-  ];
+  const both: SummaryRow[] = [...rows, hotelTwoRow];
   const names = [
     { id: 'hotel-1', name: 'Kamilovs Hotel' },
     { id: 'hotel-2', name: 'Second Hotel' },
@@ -113,13 +130,12 @@ describe('summariseByHotel', () => {
 
     expect(first.hotelName).toBe('Kamilovs Hotel');
     expect(first.requests).toBe(7);
-    expect(first.payouts).toEqual([
-      { currency: 'USD', amountMinor: 30_000, payoutMinor: 4_500, requests: 1 },
-      { currency: 'UZS', amountMinor: 40_000_000, payoutMinor: 6_000_000, requests: 2 },
+    expect(first.payouts).toEqual([{ currency: 'USD', payoutMinor: 1_200, requests: 3 }]);
+    expect(first.turnover).toEqual([
+      { currency: 'USD', amountMinor: 30_000, requests: 1 },
+      { currency: 'UZS', amountMinor: 40_000_000, requests: 2 },
     ]);
-    expect(second.payouts).toEqual([
-      { currency: 'UZS', amountMinor: 50_000_000, payoutMinor: 5_000_000, requests: 1 },
-    ]);
+    expect(second.payouts).toEqual([{ currency: 'USD', payoutMinor: 200, requests: 1 }]);
   });
 
   it('leaves out a hotel with nothing in the period rather than showing a row of zeroes', () => {
@@ -128,7 +144,7 @@ describe('summariseByHotel', () => {
 
   it('still names a hotel that is no longer in the list', () => {
     const [only] = summariseByHotel(
-      [{ hotel_id: 'hotel-9', service_type: 'tours', status: 'new', settled_currency: null, requests: 1, settled_amount_minor: 0, hotel_payout_minor: 0 }],
+      [{ hotel_id: 'hotel-9', service_type: 'tours', status: 'new', requests: 1, settled_currency: null, settled_amount_minor: null, payout_currency: null, payout_minor: 0 }],
       names,
     );
     expect(only.hotelName).toBe('hotel-9');
