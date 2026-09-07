@@ -31,11 +31,11 @@ const adminRequestFixture: AdminRequestRow = {
   offerId: 'tashkent-airport-sedan',
   offerTitle: 'Your airport ride, arranged',
   offerEstimate: 'от 30 USD · per vehicle · one way',
-  hotelCommissionBps: 1500,
   settledAmountMinor: null,
   settledCurrency: null,
-  settledCommissionBps: null,
-  hotelPayoutMinor: null,
+  completedAt: null,
+  hotelRateMinor: null,
+  hotelRateCurrency: null,
 };
 
 const kamilovsHotel: Hotel = {
@@ -297,8 +297,9 @@ function settledRow(overrides: Partial<AdminRequestRow> = {}): AdminRequestRow {
     status: 'completed',
     settledAmountMinor: 2_500_000,
     settledCurrency: 'UZS',
-    settledCommissionBps: 1500,
-    hotelPayoutMinor: 375_000,
+    completedAt: '2026-09-07T09:00:00.000Z',
+    hotelRateMinor: 200,
+    hotelRateCurrency: 'USD',
     ...overrides,
   };
 }
@@ -348,13 +349,17 @@ describe('RequestTable settlement', () => {
     expect(screen.getByLabelText('Валюта')).toBeVisible();
   });
 
-  it('previews what the hotel is owed as the owner types', async () => {
+  it('says plainly that the amount is our turnover and not the hotel base', async () => {
     render(<RequestTable rows={[adminRequestFixture]} retryTelegram={vi.fn()} settleRequest={vi.fn()} />);
     await userEvent.click(screen.getByRole('button', { name: /Подробнее MG-ABCDEFGH/ }));
     await userEvent.click(screen.getByRole('radio', { name: 'Выполнена' }));
     await userEvent.type(screen.getByLabelText('Сумма'), '2500000');
 
-    expect(screen.getByText('Отелю: 375 000 UZS (15%)')).toBeVisible();
+    // The old preview showed a percentage of what was typed. There is no such
+    // percentage any more, and a figure that moved with the amount would be a
+    // lie about how the hotel is paid.
+    expect(screen.getByText(/Сумма — наша выручка/)).toBeVisible();
+    expect(screen.queryByText(/375 000 UZS/)).toBeNull();
   });
 
   it('saves a completed settlement and shows it on the row without a reload', async () => {
@@ -407,11 +412,13 @@ describe('RequestTable settlement', () => {
     expect(screen.getByText('Новая')).toBeVisible();
   });
 
-  it('shows the frozen commission beside the payout, not the rate today', async () => {
-    render(<RequestTable rows={[settledRow({ hotelCommissionBps: 2500 })]} retryTelegram={vi.fn()} settleRequest={vi.fn()} />);
+  it('shows the frozen rate, and says the monthly step is added later', async () => {
+    render(<RequestTable rows={[settledRow()]} retryTelegram={vi.fn()} settleRequest={vi.fn()} />);
     await userEvent.click(screen.getByRole('button', { name: /Подробнее MG-ABCDEFGH/ }));
 
-    expect(screen.getByText(/Комиссия 15% на момент расчёта\./)).toBeVisible();
+    // The sale was 2 500 000 сум; the rate is two dollars and owes it nothing.
+    expect(screen.getByText('2,00 USD')).toBeVisible();
+    expect(screen.getByText(/Надбавка за объём начисляется по итогам месяца\./)).toBeVisible();
   });
 
   it('keeps the guest estimate marked as not revenue beside the settled amount', async () => {

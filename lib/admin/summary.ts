@@ -1,7 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
-import { AdminRequestError } from '@/lib/admin/errors';
-import { requestTimeZoneOffset } from '@/lib/admin/requests';
+import { localMidnight } from '@/lib/admin/requests';
 import type { ServiceId } from '@/supabase/functions/_shared/contracts';
 
 /**
@@ -54,16 +53,11 @@ export type SettlementSummary = {
 
 export type SummaryPeriod = { dateFrom?: string; dateTo?: string };
 
-const datePattern = /^\d{4}-\d{2}-\d{2}$/;
-
-/** The same Asia/Tashkent boundary the request list uses, so the two agree. */
-function localMidnight(date: string, plusDays = 0): string {
-  if (!datePattern.test(date)) throw new AdminRequestError('VALIDATION_ERROR', 'Invalid date filter');
-  const parsed = new Date(`${date}T00:00:00.000${requestTimeZoneOffset}`);
-  if (Number.isNaN(parsed.getTime())) throw new AdminRequestError('VALIDATION_ERROR', 'Invalid date filter');
-  parsed.setUTCDate(parsed.getUTCDate() + plusDays);
-  return parsed.toISOString();
-}
+// The boundary itself now lives in lib/admin/requests.ts and is imported. The
+// copy that used to be here looked the same but skipped the round-trip check,
+// so it accepted '2026-09-31' and quietly counted a day of October into
+// September. That was harmless while the payout was a percentage of each row;
+// with a monthly volume step it moves money.
 
 export async function getSettlementSummary(
   period: SummaryPeriod,

@@ -276,8 +276,9 @@ const settledRpcRow = {
   request_status: 'completed',
   amount_minor: 2_500_000,
   currency_code: 'UZS',
-  frozen_commission_bps: 1500,
-  payout_minor: 375_000,
+  completed_at: '2026-09-07T09:00:00.000Z',
+  rate_minor: 200,
+  rate_currency_code: 'USD',
 };
 
 describe('listRequests settlement fields', () => {
@@ -285,11 +286,12 @@ describe('listRequests settlement fields', () => {
     const { client } = requestQueryClient([{
       ...requestRowFixture,
       status: 'completed',
-      hotels: { name: 'Kamilovs Hotel', commission_bps: 1500 },
+      hotels: { name: 'Kamilovs Hotel' },
       settled_amount_minor: 2_500_000,
       settled_currency: 'UZS',
-      hotel_commission_bps: 1500,
-      hotel_payout_minor: 375_000,
+      settled_at: '2026-09-07T09:00:00.000Z',
+      hotel_rate_minor: 200,
+      hotel_rate_currency: 'USD',
     }]);
 
     const [row] = (await listRequests({}, client)).items;
@@ -297,27 +299,30 @@ describe('listRequests settlement fields', () => {
     expect(row.status).toBe('completed');
     expect(row.settledAmountMinor).toBe(2_500_000);
     expect(row.settledCurrency).toBe('UZS');
-    expect(row.settledCommissionBps).toBe(1500);
-    expect(row.hotelPayoutMinor).toBe(375_000);
-    expect(row.hotelCommissionBps).toBe(1500);
+    // The turnover is som; the hotel is paid its frozen dollar rate, and the
+    // two have nothing to do with each other any more.
+    expect(row.hotelRateMinor).toBe(200);
+    expect(row.hotelRateCurrency).toBe('USD');
+    expect(row.completedAt).toBe('2026-09-07T09:00:00.000Z');
   });
 
   it('leaves a request that has not completed without any money on it', async () => {
     const { client } = requestQueryClient([{
       ...requestRowFixture,
-      hotels: { name: 'Kamilovs Hotel', commission_bps: 1500 },
+      hotels: { name: 'Kamilovs Hotel' },
       settled_amount_minor: null,
       settled_currency: null,
-      hotel_commission_bps: null,
-      hotel_payout_minor: null,
+      settled_at: null,
+      hotel_rate_minor: null,
+      hotel_rate_currency: null,
     }]);
 
     const [row] = (await listRequests({}, client)).items;
 
     expect(row.settledAmountMinor).toBeNull();
-    expect(row.hotelPayoutMinor).toBeNull();
-    expect(row.settledCommissionBps).toBeNull();
-    expect(row.hotelCommissionBps).toBe(1500);
+    expect(row.hotelRateMinor).toBeNull();
+    expect(row.hotelRateCurrency).toBeNull();
+    expect(row.completedAt).toBeNull();
   });
 
   it('filters by a settled status', async () => {
@@ -331,7 +336,7 @@ describe('settleRequest', () => {
   it('records an outcome that carries no money', async () => {
     const { client, rpc } = rpcClient([{
       request_status: 'confirmed', amount_minor: null, currency_code: null,
-      frozen_commission_bps: null, payout_minor: null,
+      completed_at: null, rate_minor: null, rate_currency_code: null,
     }]);
 
     const result = await settleRequest({ requestId: 'request-1', status: 'confirmed' }, client);
@@ -344,7 +349,7 @@ describe('settleRequest', () => {
     });
     expect(result).toEqual({
       status: 'confirmed', settledAmountMinor: null, settledCurrency: null,
-      settledCommissionBps: null, hotelPayoutMinor: null,
+      completedAt: null, hotelRateMinor: null, hotelRateCurrency: null,
     });
   });
 
@@ -368,12 +373,14 @@ describe('settleRequest', () => {
     expect(rpc.mock.calls[0][1].new_amount_minor).toBe(30_050);
   });
 
-  it('returns the stored settlement, including the derived payout', async () => {
+  it('returns the stored settlement and the rate frozen onto it', async () => {
     const { client } = rpcClient([settledRpcRow]);
     const result = await settleRequest({ requestId: 'request-1', status: 'completed', amount: '2500000', currency: 'UZS' }, client);
+    // Sold for som, paid in dollars: the rate comes from the rate card and owes
+    // the amount nothing at all.
     expect(result).toEqual({
       status: 'completed', settledAmountMinor: 2_500_000, settledCurrency: 'UZS',
-      settledCommissionBps: 1500, hotelPayoutMinor: 375_000,
+      completedAt: '2026-09-07T09:00:00.000Z', hotelRateMinor: 200, hotelRateCurrency: 'USD',
     });
   });
 
