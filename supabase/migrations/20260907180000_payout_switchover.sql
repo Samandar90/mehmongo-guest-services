@@ -76,7 +76,7 @@ begin
   end if;
 
   if new_status is null or new_status not in ('new', 'confirmed', 'completed', 'cancelled') then
-    raise exception 'unknown request status %', new_status
+    raise exception 'unknown status %', new_status
       using errcode = '22023';
   end if;
 
