@@ -105,9 +105,50 @@ export default function AdminDashboardPage() {
 
   return (
     <main className="admin-page">
-      <header className="admin-page-header">
-        <h1>Обзор</h1>
-        <p>Текущее состояние MehmonGo.</p>
+      {/* The period belongs beside the title, not in a card of its own: it is a
+          control for everything below, and as a card it pushed the figures
+          another screenful down. */}
+      <header className="admin-page-header admin-head-row">
+        <div>
+          <h1>Обзор</h1>
+          <p>Текущее состояние MehmonGo.</p>
+        </div>
+        <div className="admin-period">
+          <fieldset className="admin-presets">
+            <legend className="admin-sr-only">Быстрый выбор периода</legend>
+            {presets.map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                className="admin-preset"
+                aria-pressed={activePreset?.label === preset.label}
+                onClick={() => setPeriod(preset.value)}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </fieldset>
+          <form className="admin-period-dates" aria-label="Период итогов" onSubmit={(event) => event.preventDefault()}>
+            <div className="admin-field">
+              <label htmlFor="report-from">С даты</label>
+              <input
+                id="report-from"
+                type="date"
+                value={period.dateFrom}
+                onChange={(event) => setPeriod((current) => ({ ...current, dateFrom: event.target.value }))}
+              />
+            </div>
+            <div className="admin-field">
+              <label htmlFor="report-to">По дату</label>
+              <input
+                id="report-to"
+                type="date"
+                value={period.dateTo}
+                onChange={(event) => setPeriod((current) => ({ ...current, dateTo: event.target.value }))}
+              />
+            </div>
+          </form>
+        </div>
       </header>
 
       {state.status === 'error' ? (
@@ -122,46 +163,6 @@ export default function AdminDashboardPage() {
 
       <DashboardCards metrics={state.metrics} busy={state.status === 'loading'} />
 
-      <section className="admin-card" aria-labelledby="dashboard-period-heading">
-        <h2 id="dashboard-period-heading">Период</h2>
-
-        <fieldset className="admin-presets">
-          <legend className="admin-sr-only">Быстрый выбор периода</legend>
-          {presets.map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              className="admin-preset"
-              aria-pressed={activePreset?.label === preset.label}
-              onClick={() => setPeriod(preset.value)}
-            >
-              {preset.label}
-            </button>
-          ))}
-        </fieldset>
-
-        <form className="admin-filters" aria-label="Период итогов" onSubmit={(event) => event.preventDefault()}>
-          <div className="admin-field">
-            <label htmlFor="report-from">С даты</label>
-            <input
-              id="report-from"
-              type="date"
-              value={period.dateFrom}
-              onChange={(event) => setPeriod((current) => ({ ...current, dateFrom: event.target.value }))}
-            />
-          </div>
-          <div className="admin-field">
-            <label htmlFor="report-to">По дату</label>
-            <input
-              id="report-to"
-              type="date"
-              value={period.dateTo}
-              onChange={(event) => setPeriod((current) => ({ ...current, dateTo: event.target.value }))}
-            />
-          </div>
-        </form>
-      </section>
-
       {report.status === 'loading' ? <p className="admin-empty" aria-live="polite">Загрузка итогов…</p> : null}
 
       {report.status === 'error' ? (
@@ -173,18 +174,23 @@ export default function AdminDashboardPage() {
 
       {report.status === 'ready' ? (
         <>
-          <section className="admin-card admin-card-owner" aria-labelledby="dashboard-profit-heading">
-            <div className="admin-card-head">
-              <h2 id="dashboard-profit-heading">Деньги</h2>
-              <span className="admin-owner-tag">Видите только вы</span>
-            </div>
-            <ProfitReport summary={report.profit} />
-          </section>
+          <div className="admin-columns">
+            <section className="admin-card admin-card-owner" aria-labelledby="dashboard-profit-heading">
+              <div className="admin-card-head">
+                <h2 id="dashboard-profit-heading">Деньги</h2>
+                <span className="admin-owner-tag">Видите только вы</span>
+              </div>
+              <ProfitReport summary={report.profit} />
+            </section>
 
-          <section className="admin-card" aria-labelledby="dashboard-report-heading">
-            <h2 id="dashboard-report-heading">Заявки и начисления отелям</h2>
-            <SettlementReport summary={report.overall} />
-            <h3>По отелям</h3>
+            <section className="admin-card" aria-labelledby="dashboard-report-heading">
+              <h2 id="dashboard-report-heading">Заявки и начисления отелям</h2>
+              <SettlementReport summary={report.overall} />
+            </section>
+          </div>
+
+          <section className="admin-card" aria-labelledby="dashboard-hotels-heading">
+            <h2 id="dashboard-hotels-heading">По отелям</h2>
             <OwnerPayouts hotels={report.byHotel} />
             <p className="admin-hint">
               Начисляются только выполненные заявки, по ставке, зафиксированной в момент расчёта.

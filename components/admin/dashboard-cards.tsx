@@ -8,21 +8,33 @@ type DashboardCardsProps = {
   busy?: boolean;
 };
 
-const cards: Array<{ key: keyof DashboardMetrics; title: string; href: string; linkLabel: string }> = [
-  { key: 'activeHotels', title: 'Активные отели', href: '/admin/hotels', linkLabel: 'Открыть отели' },
-  { key: 'activeRooms', title: 'Активные комнаты', href: '/admin/hotels', linkLabel: 'Открыть отели' },
-  { key: 'newRequests', title: 'Новые заявки', href: '/admin/requests', linkLabel: 'Открыть заявки' },
+const cards: Array<{ key: keyof DashboardMetrics; title: string; href: string }> = [
+  { key: 'activeHotels', title: 'Активные отели', href: '/admin/hotels' },
+  { key: 'activeRooms', title: 'Активные комнаты', href: '/admin/hotels' },
+  { key: 'newRequests', title: 'Новые заявки', href: '/admin/requests' },
 ];
 
+/**
+ * Three counters, and each one is the link.
+ *
+ * They used to carry a button underneath, which made every card twice as tall
+ * for a second target to the same page — two of the three said «Открыть отели».
+ * The card is the target now, so the strip states the numbers and stops.
+ */
 export function DashboardCards({ metrics, busy = false }: DashboardCardsProps) {
   return (
     <div className="admin-metrics">
       {cards.map((card) => (
-        <article key={card.key} className="admin-card admin-metric" aria-label={card.title} aria-busy={busy || undefined}>
-          <h2>{card.title}</h2>
-          <p className="admin-metric-value">{metrics ? metrics[card.key] : busy ? '…' : '—'}</p>
-          <Link href={card.href} className="admin-button admin-button-secondary">{card.linkLabel}</Link>
-        </article>
+        <Link
+          key={card.key}
+          href={card.href}
+          className="admin-metric"
+          aria-label={card.title}
+          aria-busy={busy || undefined}
+        >
+          <span className="admin-metric-title">{card.title}</span>
+          <span className="admin-metric-value">{metrics ? metrics[card.key] : busy ? '…' : '—'}</span>
+        </Link>
       ))}
     </div>
   );

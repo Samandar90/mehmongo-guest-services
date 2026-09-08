@@ -98,7 +98,7 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .admin-nav .admin-nav-brand span { color: var(--magenta); }
 .admin-nav button { margin-left: auto; color: var(--ink-soft); }
 .admin-gate { min-height: 100svh; display: grid; place-items: center; color: var(--ink-soft); font-size: 14px; }
-.admin-page { width: min(100%, 960px); margin: 0 auto; padding: 24px 16px 48px; display: grid; gap: 20px; }
+.admin-page { width: min(100%, 1180px); margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 14px; align-content: start; }
 /* Centred on both axes rather than pushed down by a viewport-height padding:
    on a phone in landscape 12vh put the form under the fold, and on a tall
    desktop it left the card stranded near the top. */
@@ -112,10 +112,10 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
    came second silently won. */
 .admin-page h1 { margin: 0; font-size: clamp(28px, 6vw, 40px); line-height: 1.05; letter-spacing: -.04em; font-weight: 790; }
 .admin-login h1 { margin: 0; line-height: 1.08; letter-spacing: -.035em; font-weight: 790; }
-.admin-page-header { display: grid; gap: 8px; }
+.admin-page-header { display: grid; gap: 4px; }
 .admin-page-header p { margin: 0; color: var(--ink-soft); font-size: 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.admin-card { display: grid; gap: 16px; padding: 20px; border: 1px solid rgba(16,43,78,.09); border-radius: 20px; background: rgba(255,253,250,.92); box-shadow: 0 10px 32px rgba(16,43,78,.055); }
-.admin-card h2 { margin: 0; font-size: 18px; letter-spacing: -.025em; }
+.admin-card { display: grid; gap: 12px; padding: 16px 18px; border: 1px solid rgba(16,43,78,.09); border-radius: 18px; background: rgba(255,253,250,.92); box-shadow: 0 8px 24px rgba(16,43,78,.045); align-content: start; }
+.admin-card h2 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
 .admin-form, .admin-login form { display: grid; gap: 16px; }
 .admin-field, .admin-login form { display: grid; gap: 8px; }
 .admin-field label, .admin-login label { font-size: 13px; font-weight: 680; }
@@ -144,7 +144,7 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .admin-table-wrap { display: grid; gap: 12px; }
 .admin-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 .admin-table th { padding: 0 10px 10px; color: var(--ink-soft); font-size: 12px; font-weight: 650; text-align: left; text-transform: uppercase; letter-spacing: .08em; }
-.admin-table td { padding: 12px 10px; border-top: 1px solid var(--line); vertical-align: middle; }
+.admin-table td { padding: 9px 10px; border-top: 1px solid var(--line); vertical-align: middle; }
 .admin-table td strong { display: block; font-weight: 700; }
 .admin-table td small { display: block; color: var(--ink-soft); font-size: 12px; }
 .admin-table code { font-size: 13px; }
@@ -209,12 +209,14 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
   .admin-table tr:has(+ .admin-request-details-row) { border-bottom: 0; border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
   .admin-request-details-row td::before { content: none; }
 }
-.admin-metrics { display: grid; grid-template-columns: 1fr; gap: 14px; }
-.admin-metric { gap: 10px; }
-.admin-metric h2 { font-size: 14px; color: var(--ink-soft); font-weight: 650; text-transform: uppercase; letter-spacing: .08em; }
-.admin-metric-value { margin: 0; font-size: clamp(36px, 8vw, 52px); line-height: 1; font-weight: 790; letter-spacing: -.04em; }
-.admin-metric .admin-button { justify-self: start; }
-@media (min-width: 720px) { .admin-metrics { grid-template-columns: repeat(3, 1fr); } }
+.admin-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.admin-metric { display: grid; gap: 2px; padding: 12px 14px; border: 1px solid rgba(16,43,78,.09); border-radius: 16px; background: rgba(255,253,250,.92); color: var(--navy); text-decoration: none; }
+.admin-metric:hover { border-color: rgba(16,43,78,.24); background: var(--paper); }
+.admin-metric-title { color: var(--ink-soft); font-size: 11px; font-weight: 650; text-transform: uppercase; letter-spacing: .07em; }
+
+.admin-metric-value { margin: 0; font-size: 28px; line-height: 1.1; font-weight: 780; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+
+
 .admin-asset-generator { display: grid; gap: 14px; }
 .admin-asset-toolbar { display: grid; gap: 10px; }
 .admin-asset-progress { margin: 0; display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 650; }
@@ -393,4 +395,35 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .admin-note-warn { margin: 0; padding: 10px 14px; border-radius: 14px; background: #fff0d3; color: #76521a; font-size: 13px; }
 @media (min-width: 720px) {
   .admin-profit-figures { grid-template-columns: repeat(3, 1fr); align-items: end; }
+}
+
+/* ---------- dashboard density ---------- */
+/* Title and period on one line where there is room. The period controls every
+   figure below, so it reads as part of the heading rather than as the first
+   thing to scroll past. */
+.admin-head-row { gap: 12px; }
+.admin-period { display: grid; gap: 10px; }
+.admin-period-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.admin-period-dates .admin-field label { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .07em; }
+.admin-period-dates .admin-field input { min-height: 40px; border-radius: 12px; }
+.admin-preset { min-height: 40px; padding: 0 14px; }
+
+/* Two reports side by side once the screen can hold them without cramping the
+   tables; one column below that, in source order. */
+.admin-columns { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
+
+@media (min-width: 900px) {
+  .admin-head-row { grid-template-columns: 1fr auto; align-items: end; }
+  .admin-period { grid-template-columns: auto auto; align-items: end; gap: 12px; }
+  .admin-period-dates { grid-template-columns: 160px 160px; }
+}
+@media (min-width: 1040px) {
+  .admin-columns { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 719px) {
+  /* Three counters still fit across a phone: they are two lines of small text. */
+  .admin-metrics { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .admin-metric { padding: 10px; }
+  .admin-metric-value { font-size: 22px; }
+  .admin-metric-title { font-size: 10px; letter-spacing: .05em; }
 }

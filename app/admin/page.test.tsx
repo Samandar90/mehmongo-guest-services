@@ -58,16 +58,17 @@ describe('AdminDashboardPage', () => {
 
     // Named by its text: the totals below load separately and can raise their own.
     expect(await screen.findByText('Не удалось загрузить показатели.')).toBeVisible();
-    expect(screen.getByRole('article', { name: 'Новые заявки' })).not.toHaveAttribute('aria-busy');
-    // Scoped to the three counter cards: the totals section below has its own
-    // em dashes for a hotel that earned nothing.
-    const cards = screen.getAllByRole('article');
-    expect(cards.filter((card) => within(card).queryByText('—'))).toHaveLength(3);
+    expect(screen.getByRole('link', { name: 'Новые заявки' })).not.toHaveAttribute('aria-busy');
+    // Scoped to the three counters, which are links now: the totals section
+    // below has its own em dashes for a hotel that earned nothing.
+    const counters = ['Активные отели', 'Активные комнаты', 'Новые заявки']
+      .map((name) => screen.getByRole('link', { name }));
+    expect(counters.filter((card) => within(card).queryByText('—'))).toHaveLength(3);
 
     await user.click(screen.getByRole('button', { name: 'Повторить' }));
 
     expect(await screen.findByText('40')).toBeInTheDocument();
-    expect(screen.getByRole('article', { name: 'Новые заявки' })).not.toHaveAttribute('aria-busy');
+    expect(screen.getByRole('link', { name: 'Новые заявки' })).not.toHaveAttribute('aria-busy');
   });
 
   it('announces loading through a persistent live region', async () => {
