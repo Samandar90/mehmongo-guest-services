@@ -9,6 +9,9 @@ const geistSans = Geist({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.SITE_URL ?? 'http://localhost:3000'),
+  // Without this the browser asks for /favicon.ico, gets a 404 and shows a
+  // blank tab. A hotel opening the link sees an unnamed page.
+  icons: { icon: [{ url: '/favicon.svg', type: 'image/svg+xml' }] },
   title: 'MehmonGo — Guest Services',
   description: 'Tours, transport, restaurants and tickets from your hotel room.',
   openGraph: {
