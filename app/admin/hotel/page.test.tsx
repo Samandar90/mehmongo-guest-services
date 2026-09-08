@@ -67,6 +67,21 @@ describe('HotelCabinetPage', () => {
     expect(within(table).getByText('2,00 USD')).toBeVisible();
   });
 
+  it('shows no money against a request that was not carried out', async () => {
+    // The rate stays frozen on a request that completed and was then cancelled,
+    // so re-completing it cannot re-read a newer rate card. Printing that figure
+    // in the cabinet would read as a debt for work that never happened.
+    vi.mocked(listHotelRequests).mockResolvedValue([
+      { ...hotelRequests[0], status: 'cancelled', rateMinor: 200, rateCurrency: 'USD' },
+    ]);
+    render(<HotelCabinetPage />);
+    const table = await screen.findByRole('table', { name: 'Заявки отеля' });
+
+    expect(within(table).getByText('Отменена')).toBeVisible();
+    expect(within(table).queryByText('2,00 USD')).toBeNull();
+    expect(within(table).getByText('—')).toBeVisible();
+  });
+
   it('shows the hotel no turnover anywhere on the page', async () => {
     render(<HotelCabinetPage />);
     await screen.findByRole('table', { name: 'Заявки отеля' });

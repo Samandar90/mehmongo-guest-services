@@ -78,7 +78,7 @@ export default function HotelCabinetPage() {
     <main className="admin-page">
       <header className="admin-page-header">
         <h1>Кабинет отеля</h1>
-        <p>Заявки ваших гостей и начисления по ним.</p>
+        <p>Заявки ваших гостей. Начисляем только за выполненные.</p>
       </header>
 
       <form className="admin-filters" aria-label="Месяц" onSubmit={(event) => event.preventDefault()}>
@@ -92,8 +92,9 @@ export default function HotelCabinetPage() {
           />
         </div>
         <p className="admin-hint">
-          Начисления считаются за календарный месяц целиком: надбавка за объём
-          зависит от того, сколько заявок набралось за весь месяц.
+          Начисляется только то, что доведено до конца: если гость передумал или
+          заказ не состоялся, заявка не оплачивается. Надбавка за объём считается
+          за календарный месяц целиком — от числа выполненных заявок за весь месяц.
         </p>
       </form>
 
@@ -131,7 +132,7 @@ export default function HotelCabinetPage() {
                     <th scope="col">Комната</th>
                     <th scope="col">Услуга</th>
                     <th scope="col">Статус</th>
-                    <th scope="col">Ставка</th>
+                    <th scope="col">Начислено</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -141,10 +142,16 @@ export default function HotelCabinetPage() {
                       <td data-label="Комната">{request.roomLabel}</td>
                       <td data-label="Услуга">{serviceLabels[request.serviceType]}</td>
                       <td data-label="Статус">{statusLabels[request.status] ?? request.status}</td>
-                      <td data-label="Ставка">
-                        {request.rateMinor === null
-                          ? '—'
-                          : formatMinorAmount(request.rateMinor, request.rateCurrency ?? 'USD')}
+                      {/*
+                        A rate stays frozen on a request that was completed and
+                        later cancelled, so that re-completing it cannot re-read
+                        a newer rate card. Showing that figure here would read as
+                        a debt: nothing is owed unless the request is completed.
+                      */}
+                      <td data-label="Начислено">
+                        {request.status === 'completed' && request.rateMinor !== null
+                          ? formatMinorAmount(request.rateMinor, request.rateCurrency ?? 'USD')
+                          : '—'}
                       </td>
                     </tr>
                   ))}
@@ -152,8 +159,9 @@ export default function HotelCabinetPage() {
               </table>
             )}
             <p className="admin-hint">
-              В столбце «Ставка» — базовая ставка за заявку. Надбавка за объём
-              начисляется на весь месяц и учтена в итогах выше.
+              Прочерк означает, что заявка ещё не выполнена или не состоялась —
+              за такие мы не платим. У выполненных показана базовая ставка;
+              надбавка за объём начисляется на весь месяц и учтена в итогах выше.
             </p>
           </section>
         </>
