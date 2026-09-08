@@ -59,6 +59,12 @@ export type AdminRequestRow = {
   /** When it was first completed. This is the month the payout belongs to. */
   completedAt: string | null;
   /**
+   * What the supplier charged us, in minor units of settledCurrency. The
+   * owner's figure: no hotel-facing function selects it, and null means it has
+   * not been entered yet rather than that the service was free.
+   */
+  costMinor: number | null;
+  /**
    * The base rate frozen onto the request at completion — not the payout. The
    * monthly volume step is added by settlement_summary when the month is read.
    */
@@ -78,7 +84,8 @@ const requestColumns = [
   'id', 'reference', 'service_type', 'status', 'choice', 'pickup', 'destination',
   'requested_date', 'requested_time', 'party_size', 'guest_name', 'guest_contact', 'note',
   'hotel_id', 'room_id', 'created_at', 'offer_id', 'offer_snapshot',
-  'settled_amount_minor', 'settled_currency', 'settled_at', 'hotel_rate_minor', 'hotel_rate_currency',
+  'settled_amount_minor', 'settled_currency', 'settled_at', 'cost_amount_minor',
+  'hotel_rate_minor', 'hotel_rate_currency',
   'hotels!inner(name)', 'rooms!inner(label)',
   'telegram_deliveries(attempt, status, error_code)',
 ].join(', ');
@@ -107,6 +114,7 @@ type RequestRow = {
   settled_amount_minor: number | null;
   settled_currency: string | null;
   settled_at: string | null;
+  cost_amount_minor: number | null;
   hotel_rate_minor: number | null;
   hotel_rate_currency: string | null;
   hotels: { name: string } | { name: string }[] | null;
@@ -190,6 +198,7 @@ function toRow(row: RequestRow): AdminRequestRow {
     settledAmountMinor: row.settled_amount_minor ?? null,
     settledCurrency: row.settled_currency ?? null,
     completedAt: row.settled_at ?? null,
+    costMinor: row.cost_amount_minor ?? null,
     hotelRateMinor: row.hotel_rate_minor ?? null,
     hotelRateCurrency: row.hotel_rate_currency ?? null,
   };
@@ -295,13 +304,26 @@ export async function retryTelegram(
  */
 export type SettlementInput =
   | { requestId: string; status: 'new' | 'confirmed' | 'cancelled' }
-  | { requestId: string; status: 'completed'; amount: string; currency: SettlementCurrency };
+  | {
+      requestId: string;
+      status: 'completed';
+      amount: string;
+      currency: SettlementCurrency;
+      /**
+       * What the supplier charged us. Optional: it is often known a day after
+       * the sale, and leaving it blank keeps whatever was recorded before
+       * rather than erasing it.
+       */
+      cost?: string;
+    };
 
 export type SettlementResult = {
   status: RequestStatus;
   settledAmountMinor: number | null;
   settledCurrency: string | null;
   completedAt: string | null;
+  /** What we paid the supplier, in minor units of the settlement currency. */
+  costMinor: number | null;
   /**
    * The base rate frozen onto the request. Not the payout: the monthly volume
    * step is a property of the whole month and is added when the month is read,
@@ -315,6 +337,7 @@ type SettlementRpcRow = {
   request_status: RequestStatus;
   amount_minor: number | null;
   currency_code: string | null;
+  cost_minor: number | null;
   completed_at: string | null;
   rate_minor: number | null;
   rate_currency_code: string | null;
@@ -335,11 +358,15 @@ export async function settleRequest(
   client: SupabaseClient = getSupabaseBrowserClient(),
 ): Promise<SettlementResult> {
   const completed = input.status === 'completed';
+  // A blank cost is "not known yet", not "zero": it is left out so the routine
+  // keeps whatever was recorded before instead of overwriting it.
+  const typedCost = completed ? (input.cost ?? '').trim() : '';
   const { data, error } = await client.rpc('settle_request', {
     target_request_id: input.requestId,
     new_status: input.status,
     new_amount_minor: completed ? parseSettledAmount(input.amount, input.currency) : null,
     new_currency: completed ? input.currency : null,
+    new_cost_minor: typedCost ? parseSettledAmount(typedCost, (input as { currency: SettlementCurrency }).currency) : null,
   });
   if (error) throw error;
 
@@ -351,6 +378,7 @@ export async function settleRequest(
     settledAmountMinor: row.amount_minor ?? null,
     settledCurrency: row.currency_code ?? null,
     completedAt: row.completed_at ?? null,
+    costMinor: row.cost_minor ?? null,
     hotelRateMinor: row.rate_minor ?? null,
     hotelRateCurrency: row.rate_currency_code ?? null,
   };

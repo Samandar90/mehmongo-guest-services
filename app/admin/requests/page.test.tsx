@@ -51,6 +51,7 @@ const requestRow: AdminRequestRow = {
   settledAmountMinor: null,
   settledCurrency: null,
   completedAt: null,
+  costMinor: null,
   hotelRateMinor: null,
   hotelRateCurrency: null,
 };

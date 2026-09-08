@@ -3,9 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { DashboardCards } from '@/components/admin/dashboard-cards';
 import { OwnerPayouts } from '@/components/admin/owner-payouts';
+import { ProfitReport } from '@/components/admin/profit-report';
 import { SettlementReport } from '@/components/admin/settlement-report';
 import { getDashboardMetrics, type DashboardMetrics } from '@/lib/admin/requests';
 import { listHotels } from '@/lib/admin/hotels';
+import { getProfitSummary, summariseProfit, type ProfitSummary } from '@/lib/admin/profit';
 import {
   getSettlementSummary,
   summariseByHotel,
@@ -21,13 +23,31 @@ type MetricsState =
 
 type ReportState =
   | { status: 'loading' }
-  | { status: 'ready'; overall: SettlementSummary; byHotel: HotelSettlement[] }
+  | { status: 'ready'; overall: SettlementSummary; byHotel: HotelSettlement[]; profit: ProfitSummary }
   | { status: 'error' };
+
+type Period = { dateFrom: string; dateTo: string };
+
+function isoDay(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Whole calendar months, because that is the unit the hotel payout is priced
+ * in: the volume step multiplies every request of a month, so a period that
+ * straddles two of them cannot report one honest payout figure.
+ */
+function monthPeriod(monthsBack: number): Period {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1);
+  const last = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 0);
+  return { dateFrom: isoDay(first), dateTo: isoDay(last) };
+}
 
 export default function AdminDashboardPage() {
   const [state, setState] = useState<MetricsState>({ status: 'loading', metrics: null });
   const [loadAttempt, setLoadAttempt] = useState(0);
-  const [period, setPeriod] = useState<{ dateFrom: string; dateTo: string }>({ dateFrom: '', dateTo: '' });
+  const [period, setPeriod] = useState<Period>(() => monthPeriod(0));
   const [report, setReport] = useState<ReportState>({ status: 'loading' });
 
   useEffect(() => {
@@ -50,15 +70,18 @@ export default function AdminDashboardPage() {
     let cancelled = false;
     const run = async () => {
       try {
-        const [rows, hotels] = await Promise.all([
-          getSettlementSummary({ dateFrom: period.dateFrom || undefined, dateTo: period.dateTo || undefined }),
+        const window = { dateFrom: period.dateFrom || undefined, dateTo: period.dateTo || undefined };
+        const [rows, hotels, profit] = await Promise.all([
+          getSettlementSummary(window),
           listHotels(),
+          getProfitSummary(window),
         ]);
         if (cancelled) return;
         setReport({
           status: 'ready',
           overall: summariseRows(rows),
           byHotel: summariseByHotel(rows, hotels),
+          profit: summariseProfit(profit),
         });
       } catch {
         if (!cancelled) setReport({ status: 'error' });
@@ -73,11 +96,18 @@ export default function AdminDashboardPage() {
     setLoadAttempt((attempt) => attempt + 1);
   }, []);
 
+  const presets: { label: string; value: Period }[] = [
+    { label: 'Этот месяц', value: monthPeriod(0) },
+    { label: 'Прошлый месяц', value: monthPeriod(1) },
+    { label: 'Весь период', value: { dateFrom: '', dateTo: '' } },
+  ];
+  const activePreset = presets.find((p) => p.value.dateFrom === period.dateFrom && p.value.dateTo === period.dateTo);
+
   return (
     <main className="admin-page">
       <header className="admin-page-header">
         <h1>Обзор</h1>
-        <p>Текущее состояние пилота MehmonGo.</p>
+        <p>Текущее состояние MehmonGo.</p>
       </header>
 
       {state.status === 'error' ? (
@@ -92,8 +122,23 @@ export default function AdminDashboardPage() {
 
       <DashboardCards metrics={state.metrics} busy={state.status === 'loading'} />
 
-      <section className="admin-card" aria-labelledby="dashboard-report-heading">
-        <h2 id="dashboard-report-heading">Итоги и начисления</h2>
+      <section className="admin-card" aria-labelledby="dashboard-period-heading">
+        <h2 id="dashboard-period-heading">Период</h2>
+
+        <fieldset className="admin-presets">
+          <legend className="admin-sr-only">Быстрый выбор периода</legend>
+          {presets.map((preset) => (
+            <button
+              key={preset.label}
+              type="button"
+              className="admin-preset"
+              aria-pressed={activePreset?.label === preset.label}
+              onClick={() => setPeriod(preset.value)}
+            >
+              {preset.label}
+            </button>
+          ))}
+        </fieldset>
 
         <form className="admin-filters" aria-label="Период итогов" onSubmit={(event) => event.preventDefault()}>
           <div className="admin-field">
@@ -114,26 +159,30 @@ export default function AdminDashboardPage() {
               onChange={(event) => setPeriod((current) => ({ ...current, dateTo: event.target.value }))}
             />
           </div>
-          <button
-            type="button"
-            className="admin-button admin-button-secondary"
-            onClick={() => setPeriod({ dateFrom: '', dateTo: '' })}
-          >
-            Весь период
-          </button>
         </form>
+      </section>
 
-        {report.status === 'loading' ? <p className="admin-empty" aria-live="polite">Загрузка итогов…</p> : null}
+      {report.status === 'loading' ? <p className="admin-empty" aria-live="polite">Загрузка итогов…</p> : null}
 
-        {report.status === 'error' ? (
-          <div role="alert" className="admin-form-error">
-            <p>Не удалось загрузить итоги.</p>
-            <button type="button" className="admin-button admin-button-secondary" onClick={reload}>Повторить</button>
-          </div>
-        ) : null}
+      {report.status === 'error' ? (
+        <div role="alert" className="admin-form-error">
+          <p>Не удалось загрузить итоги.</p>
+          <button type="button" className="admin-button admin-button-secondary" onClick={reload}>Повторить</button>
+        </div>
+      ) : null}
 
-        {report.status === 'ready' ? (
-          <>
+      {report.status === 'ready' ? (
+        <>
+          <section className="admin-card admin-card-owner" aria-labelledby="dashboard-profit-heading">
+            <div className="admin-card-head">
+              <h2 id="dashboard-profit-heading">Деньги</h2>
+              <span className="admin-owner-tag">Видите только вы</span>
+            </div>
+            <ProfitReport summary={report.profit} />
+          </section>
+
+          <section className="admin-card" aria-labelledby="dashboard-report-heading">
+            <h2 id="dashboard-report-heading">Заявки и начисления отелям</h2>
             <SettlementReport summary={report.overall} />
             <h3>По отелям</h3>
             <OwnerPayouts hotels={report.byHotel} />
@@ -141,9 +190,9 @@ export default function AdminDashboardPage() {
               Начисляются только выполненные заявки, по ставке, зафиксированной в момент расчёта.
               Суммы в разных валютах не складываются.
             </p>
-          </>
-        ) : null}
-      </section>
+          </section>
+        </>
+      ) : null}
     </main>
   );
 }

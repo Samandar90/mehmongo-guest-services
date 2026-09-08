@@ -102,11 +102,6 @@ function errorCode(error: unknown): string | undefined {
 }
 
 /**
- * What the hotel is owed, recomputed as the owner types. Silent while the
- * amount is unreadable: a red field error already says why, and a stale figure
- * beside a wrong amount is worse than none.
- */
-/**
  * The amount is our turnover, and nothing else reads it: the hotel is paid a
  * fixed rate per request. Saying so under the field is worth more than the old
  * percentage preview, which invited the amount to be read as the hotel's base.
@@ -135,7 +130,8 @@ function settledView(row: AdminRequestRow, settlement: Settlement | undefined) {
   const currency = settlement ? settlement.settledCurrency : row.settledCurrency;
   const rateMinor = settlement ? settlement.hotelRateMinor : row.hotelRateMinor;
   const rateCurrency = settlement ? settlement.hotelRateCurrency : row.hotelRateCurrency;
-  return { status, amount, currency, rateMinor, rateCurrency };
+  const costMinor = settlement ? settlement.costMinor : row.costMinor;
+  return { status, amount, currency, rateMinor, rateCurrency, costMinor };
 }
 
 export function RequestTable({
@@ -150,7 +146,7 @@ export function RequestTable({
   const [error, setError] = useState<string | null>(null);
   const [settlements, setSettlements] = useState<Record<string, Settlement>>({});
   const [settling, setSettling] = useState<string[]>([]);
-  const [drafts, setDrafts] = useState<Record<string, { status: RequestStatus; amount: string; currency: SettlementCurrency }>>({});
+  const [drafts, setDrafts] = useState<Record<string, { status: RequestStatus; amount: string; currency: SettlementCurrency; cost: string }>>({});
   const [panelError, setPanelError] = useState<Record<string, string>>({});
   const [panelNotice, setPanelNotice] = useState<Record<string, string>>({});
   const [amountError, setAmountError] = useState<Record<string, string>>({});
@@ -196,6 +192,7 @@ export function RequestTable({
       amount: view.amount === null ? '' : formatMinorInput(view.amount, view.currency ?? 'UZS'),
       // Som by default: the payable amount is agreed in som, so the daily case costs no taps.
       currency: (view.currency === 'USD' ? 'USD' : 'UZS') as SettlementCurrency,
+      cost: view.costMinor === null ? '' : formatMinorInput(view.costMinor, view.currency ?? 'UZS'),
     };
   };
 
@@ -375,6 +372,22 @@ export function RequestTable({
                             <>
                               <div><dt>Итог</dt><dd>{settledLabel}</dd></div>
                               <div>
+                                <dt>Закупка</dt>
+                                <dd>
+                                  {view.costMinor === null
+                                    ? <span className="admin-hint">не записана</span>
+                                    : formatMinorAmount(view.costMinor, view.currency ?? 'UZS')}
+                                </dd>
+                              </div>
+                              <div>
+                                <dt>Маржа</dt>
+                                <dd>
+                                  {view.costMinor === null || view.amount === null
+                                    ? <span className="admin-hint">появится, когда впишете закупку</span>
+                                    : <strong>{formatMinorAmount(view.amount - view.costMinor, view.currency ?? 'UZS')}</strong>}
+                                </dd>
+                              </div>
+                              <div>
                                 <dt>Ставка отелю</dt>
                                 <dd>
                                   {view.rateMinor === null
@@ -395,7 +408,7 @@ export function RequestTable({
                           onSubmit={(event) => {
                             event.preventDefault();
                             void settle(row, draft.status === 'completed'
-                              ? { requestId: row.id, status: 'completed', amount: draft.amount, currency: draft.currency }
+                              ? { requestId: row.id, status: 'completed', amount: draft.amount, currency: draft.currency, cost: draft.cost }
                               : { requestId: row.id, status: draft.status });
                           }}
                         >
@@ -434,6 +447,18 @@ export function RequestTable({
                                 {amountError[row.id] ? (
                                   <p id={`settle-amount-${row.id}-error`} className="field-error">{amountError[row.id]}</p>
                                 ) : null}
+                              </div>
+                              <div className="admin-field">
+                                <label htmlFor={`settle-cost-${row.id}`}>Закупка</label>
+                                <input
+                                  id={`settle-cost-${row.id}`}
+                                  inputMode="decimal"
+                                  placeholder="не обязательно"
+                                  value={draft.cost}
+                                  disabled={savingSettlement}
+                                  onChange={(event) => setDrafts((current) => ({ ...current, [row.id]: { ...draft, cost: event.target.value } }))}
+                                />
+                                <p className="admin-hint">Сколько отдали поставщику. Можно вписать позже — пустое поле не стирает то, что уже записано.</p>
                               </div>
                               <div className="admin-field">
                                 <label htmlFor={`settle-currency-${row.id}`}>Валюта</label>

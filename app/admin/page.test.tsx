@@ -5,6 +5,7 @@ import AdminDashboardPage from './page';
 import { getDashboardMetrics } from '@/lib/admin/requests';
 import { listHotels } from '@/lib/admin/hotels';
 import { getSettlementSummary } from '@/lib/admin/summary';
+import { getProfitSummary } from '@/lib/admin/profit';
 
 vi.mock('@/lib/admin/requests', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/admin/requests')>()),
@@ -24,11 +25,19 @@ vi.mock('@/lib/admin/summary', async (importOriginal) => ({
   getSettlementSummary: vi.fn(),
 }));
 
+// The margin report loads beside the settlement totals. Left real, its browser
+// client throws and a second alert appears next to the one under test.
+vi.mock('@/lib/admin/profit', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/admin/profit')>()),
+  getProfitSummary: vi.fn(),
+}));
+
 describe('AdminDashboardPage', () => {
   beforeEach(() => {
     vi.mocked(getDashboardMetrics).mockReset();
     vi.mocked(listHotels).mockReset().mockResolvedValue([]);
     vi.mocked(getSettlementSummary).mockReset().mockResolvedValue([]);
+    vi.mocked(getProfitSummary).mockReset().mockResolvedValue([]);
   });
 
   it('loads and renders the metrics', async () => {

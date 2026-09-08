@@ -11,19 +11,19 @@ select function_returns('public'::name, 'settle_request'::name, 'setof record', 
 
 select function_privs_are(
   'public'::name, 'settle_request'::name,
-  array['uuid', 'text', 'bigint', 'text']::name[],
+  array['uuid', 'text', 'bigint', 'text', 'bigint']::name[],
   'anon'::name, array[]::text[],
   'anon cannot execute it'
 );
 select function_privs_are(
   'public'::name, 'settle_request'::name,
-  array['uuid', 'text', 'bigint', 'text']::name[],
+  array['uuid', 'text', 'bigint', 'text', 'bigint']::name[],
   'service_role'::name, array[]::text[],
   'the key that bypasses RLS cannot execute it either'
 );
 select function_privs_are(
   'public'::name, 'settle_request'::name,
-  array['uuid', 'text', 'bigint', 'text']::name[],
+  array['uuid', 'text', 'bigint', 'text', 'bigint']::name[],
   'authenticated'::name, array['EXECUTE']::text[],
   'authenticated may call it, and is authorized inside'
 );

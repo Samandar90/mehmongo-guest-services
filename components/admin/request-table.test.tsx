@@ -34,6 +34,7 @@ const adminRequestFixture: AdminRequestRow = {
   settledAmountMinor: null,
   settledCurrency: null,
   completedAt: null,
+  costMinor: null,
   hotelRateMinor: null,
   hotelRateCurrency: null,
 };
@@ -365,7 +366,8 @@ describe('RequestTable settlement', () => {
   it('saves a completed settlement and shows it on the row without a reload', async () => {
     const settle = vi.fn().mockResolvedValue({
       status: 'completed', settledAmountMinor: 2_500_000, settledCurrency: 'UZS',
-      settledCommissionBps: 1500, hotelPayoutMinor: 375_000,
+      completedAt: '2026-09-07T09:00:00.000Z', costMinor: null,
+      hotelRateMinor: 200, hotelRateCurrency: 'USD',
     });
     render(<RequestTable rows={[adminRequestFixture]} retryTelegram={vi.fn()} settleRequest={settle} />);
     await userEvent.click(screen.getByRole('button', { name: /Подробнее MG-ABCDEFGH/ }));
@@ -374,7 +376,9 @@ describe('RequestTable settlement', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Сохранить итог' }));
 
     expect(settle).toHaveBeenCalledWith({
-      requestId: 'request-1', status: 'completed', amount: '2500000', currency: 'UZS',
+      // The cost field was left alone, so it goes as an empty string and the
+      // routine keeps whatever it had rather than clearing it.
+      requestId: 'request-1', status: 'completed', amount: '2500000', currency: 'UZS', cost: '',
     });
     // The panel stays open, so its radio label carries the same word: assert on
     // the row badge, which is what someone scanning the list actually reads.

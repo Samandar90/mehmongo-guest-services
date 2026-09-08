@@ -276,6 +276,7 @@ const settledRpcRow = {
   request_status: 'completed',
   amount_minor: 2_500_000,
   currency_code: 'UZS',
+  cost_minor: 1_800_000,
   completed_at: '2026-09-07T09:00:00.000Z',
   rate_minor: 200,
   rate_currency_code: 'USD',
@@ -336,7 +337,7 @@ describe('settleRequest', () => {
   it('records an outcome that carries no money', async () => {
     const { client, rpc } = rpcClient([{
       request_status: 'confirmed', amount_minor: null, currency_code: null,
-      completed_at: null, rate_minor: null, rate_currency_code: null,
+      cost_minor: null, completed_at: null, rate_minor: null, rate_currency_code: null,
     }]);
 
     const result = await settleRequest({ requestId: 'request-1', status: 'confirmed' }, client);
@@ -346,10 +347,11 @@ describe('settleRequest', () => {
       new_status: 'confirmed',
       new_amount_minor: null,
       new_currency: null,
+      new_cost_minor: null,
     });
     expect(result).toEqual({
       status: 'confirmed', settledAmountMinor: null, settledCurrency: null,
-      completedAt: null, hotelRateMinor: null, hotelRateCurrency: null,
+      completedAt: null, costMinor: null, hotelRateMinor: null, hotelRateCurrency: null,
     });
   });
 
@@ -363,6 +365,8 @@ describe('settleRequest', () => {
       new_status: 'completed',
       new_amount_minor: 2_500_000,
       new_currency: 'UZS',
+      // Blank means "not known yet", so the routine keeps whatever it had.
+      new_cost_minor: null,
     });
   });
 
@@ -380,7 +384,8 @@ describe('settleRequest', () => {
     // the amount nothing at all.
     expect(result).toEqual({
       status: 'completed', settledAmountMinor: 2_500_000, settledCurrency: 'UZS',
-      completedAt: '2026-09-07T09:00:00.000Z', hotelRateMinor: 200, hotelRateCurrency: 'USD',
+      completedAt: '2026-09-07T09:00:00.000Z', costMinor: 1_800_000,
+      hotelRateMinor: 200, hotelRateCurrency: 'USD',
     });
   });
 
