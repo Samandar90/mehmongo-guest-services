@@ -2,6 +2,7 @@
 
 import { useState, type SubmitEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { BrandLockup } from '@/components/brand-lockup';
 import { adminHome, getAdminIdentity, signInAdmin, type AdminIdentity } from '@/lib/admin/auth';
 
 type Router = Pick<ReturnType<typeof useRouter>, 'replace'>;
@@ -47,19 +48,28 @@ export function LoginForm({
 
   return (
     <main className="admin-login">
-      <h1>Вход в админку</h1>
-      <form onSubmit={submit}>
-        <div className="admin-field">
-          <label htmlFor="admin-email">Email</label>
-          <input id="admin-email" type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+      {/* The card gives the form edges. Two labelled fields floating on an
+          empty page read as a page that failed to finish loading, and this is
+          the first screen a partner hotel ever sees of the product. */}
+      <div className="admin-login-card">
+        <BrandLockup />
+        <div className="admin-login-head">
+          <h1>Вход в админку</h1>
+          <p>Для владельца и подключённых отелей</p>
         </div>
-        <div className="admin-field">
-          <label htmlFor="admin-password">Пароль</label>
-          <input id="admin-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
-        </div>
-        {error ? <p role="alert" className="admin-form-error">{error}</p> : null}
-        <button type="submit" disabled={submitting}>{submitting ? 'Вход…' : 'Войти'}</button>
-      </form>
+        <form onSubmit={submit}>
+          <div className="admin-field">
+            <label htmlFor="admin-email">Email</label>
+            <input id="admin-email" type="email" autoComplete="email" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+          </div>
+          <div className="admin-field">
+            <label htmlFor="admin-password">Пароль</label>
+            <input id="admin-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required />
+          </div>
+          {error ? <p role="alert" className="admin-form-error">{error}</p> : null}
+          <button type="submit" disabled={submitting}>{submitting ? 'Вход…' : 'Войти'}</button>
+        </form>
+      </div>
     </main>
   );
 }
