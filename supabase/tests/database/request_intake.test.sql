@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(29);
 select has_table('public'::name, 'admin_users'::name);
 select has_table('public'::name, 'hotels'::name);
 select has_table('public'::name, 'rooms'::name);
@@ -56,14 +56,14 @@ select throws_ok(
 );
 
 select ok(
-  to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb)') is not null,
+  to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text)') is not null,
   'atomic submit function exists'
 );
 
 select ok(
   has_function_privilege(
     'service_role',
-    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb)'),
+    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text)'),
     'EXECUTE'
   ),
   'service_role can execute atomic submit function'
@@ -72,7 +72,7 @@ select ok(
 select ok(
   not has_function_privilege(
     'anon',
-    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb)'),
+    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text)'),
     'EXECUTE'
   ),
   'anon cannot execute atomic submit function'
@@ -81,14 +81,14 @@ select ok(
 select ok(
   not has_function_privilege(
     'authenticated',
-    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb)'),
+    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text)'),
     'EXECUTE'
   ),
   'authenticated cannot execute atomic submit function'
 );
 
 select ok(
-  pg_get_functiondef(to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb)'))
+  pg_get_functiondef(to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text)'))
     like '%pg_advisory_xact_lock%',
   'atomic submit function takes an advisory transaction lock'
 );
@@ -173,6 +173,56 @@ select results_eq(
   $$,
   $$values ('rate_limited'::text, null::text)$$,
   'atomic submit rejects the sixth matching request'
+);
+
+select has_column('public'::name, 'service_requests'::name, 'guest_locale'::name, 'service_requests has guest_locale');
+
+select is(
+  (select guest_locale from public.service_requests where reference = 'MG-ATOMICAB'),
+  'en',
+  'a request that does not say its language is English'
+);
+
+select results_eq(
+  $$
+    select outcome
+    from public.submit_guest_request(
+      'MG-LOCALEZH',
+      '40000000-0000-4000-8000-000000000002',
+      'atomic-locale-rate-key',
+      '30000000-0000-4000-8000-000000000001',
+      '30000000-0000-4000-8000-000000000003',
+      'transport', '', 'Hotel A', 'Airport', '2099-12-31', '14:30', 2, 'Alex', '+998901234567', '',
+      null, null, 'zh'
+    )
+  $$,
+  $$values ('created'::text)$$,
+  'atomic submit accepts the language the guest was reading'
+);
+
+-- Read in a statement of its own: a scalar subquery beside the call sees the
+-- snapshot from before the function ran, not the row it inserted.
+select is(
+  (select guest_locale from public.service_requests where reference = 'MG-LOCALEZH'),
+  'zh',
+  'atomic submit stores the language the guest was reading'
+);
+
+select throws_ok(
+  $$
+    select * from public.submit_guest_request(
+      'MG-LOCALEDE',
+      '40000000-0000-4000-8000-000000000003',
+      'atomic-locale-rate-key',
+      '30000000-0000-4000-8000-000000000001',
+      '30000000-0000-4000-8000-000000000003',
+      'transport', '', 'Hotel A', 'Airport', '2099-12-31', '14:30', 2, 'Alex', '+998901234567', '',
+      null, null, 'de'
+    )
+  $$,
+  '23514'::char(5),
+  null,
+  'a language the site does not speak is refused by the constraint'
 );
 select * from finish();
 rollback;

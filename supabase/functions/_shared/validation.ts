@@ -1,5 +1,7 @@
 import {
+  isGuestLocale,
   REQUEST_FIELD_MAX_LENGTHS,
+  type GuestLocale,
   type GuestRequestFields,
   type ServiceId,
 } from './contracts.ts';
@@ -26,9 +28,11 @@ export type ValidatedRequest = {
   note: string;
   /** Catalogue offer the guest chose, or null for restaurant/custom/legacy requests. */
   offerId: string | null;
+  /** Language the guest read the site in; English for a client that did not say. */
+  guestLocale: GuestLocale;
 };
 
-const payloadKeys = ['roomToken', 'idempotencyKey', 'service', 'fields', 'website', 'offerId'] as const;
+const payloadKeys = ['roomToken', 'idempotencyKey', 'service', 'fields', 'website', 'offerId', 'guestLocale'] as const;
 const fieldKeys = ['choice', 'pickup', 'destination', 'date', 'time', 'count', 'guestName', 'contact', 'note'] as const;
 const services = new Set<ServiceId>(['tours', 'transport', 'restaurants', 'tickets']);
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -136,6 +140,13 @@ function validateOfferId(value: unknown): string | null {
   return offerId;
 }
 
+/** Older clients never sent a language; they were English. Anything unknown is refused, not guessed. */
+function validateGuestLocale(value: unknown): GuestLocale {
+  if (value === undefined || value === null) return 'en';
+  if (!isGuestLocale(value)) fail('guestLocale is invalid');
+  return value;
+}
+
 export function validateSubmitPayload(input: unknown): ValidatedRequest {
   const payload = record(input, 'payload');
   hasOnlyKeys(payload, payloadKeys, 'payload');
@@ -150,6 +161,7 @@ export function validateSubmitPayload(input: unknown): ValidatedRequest {
   if (website !== '') fail('website must be empty');
 
   const offerId = validateOfferId(payload.offerId);
+  const guestLocale = validateGuestLocale(payload.guestLocale);
   const offer = offerId ? findOfferInAnyCatalog(offerId) : null;
   if (offerId && !offer) fail('offerId is not part of the catalogue');
   if (offer && offer.category !== service) fail('service does not match the offer');
@@ -179,5 +191,6 @@ export function validateSubmitPayload(input: unknown): ValidatedRequest {
     contact: fields.contact,
     note: fields.note,
     offerId,
+    guestLocale,
   };
 }

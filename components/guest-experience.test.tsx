@@ -162,3 +162,62 @@ describe('GuestExperience', () => {
     expect(await screen.findByText('MG-PENDING1')).toBeVisible();
   });
 });
+
+describe('GuestExperience languages', () => {
+  it('renders in the language the server resolved', () => {
+    render(<GuestExperience context={context} locale="ru" />);
+
+    expect(screen.getByText('Комната 205')).toBeVisible();
+    expect(screen.getByRole('button', { name: /Транспорт/ })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Язык: Русский' })).toBeVisible();
+    expect(screen.getByRole('main')).toHaveAttribute('lang', 'ru');
+  });
+
+  it('switches language in place and keeps what the guest typed', async () => {
+    const user = userEvent.setup();
+    render(<GuestExperience context={context} />);
+
+    await user.click(screen.getByRole('button', { name: /Transport/i }));
+    await user.type(screen.getByLabelText('Destination'), 'Airport');
+
+    await user.click(screen.getByRole('button', { name: 'Language: English' }));
+    await user.click(screen.getByRole('menuitemradio', { name: /中文/ }));
+
+    expect(screen.getByRole('heading', { name: '交通申请' })).toBeInTheDocument();
+    expect(screen.getByLabelText('目的地')).toHaveValue('Airport');
+    expect(screen.getByRole('main')).toHaveAttribute('lang', 'zh-Hans');
+    expect(document.documentElement.lang).toBe('zh-Hans');
+    expect(document.cookie).toContain('mg_lang=zh');
+  });
+
+  it('validates in the language the guest is reading', async () => {
+    const user = userEvent.setup();
+    render(<GuestExperience context={context} locale="uz" />);
+
+    await user.click(screen.getByRole('button', { name: /Transport/i }));
+    await user.click(screen.getByRole('button', { name: 'Soʻrov yuborish' }));
+
+    expect(screen.getByText('Qayerdan olib ketishimizni kiriting')).toBeVisible();
+    expect(screen.getByText('Ismingizni kiriting')).toBeVisible();
+  });
+
+  it('sends the language the guest was reading with the request', async () => {
+    const user = userEvent.setup();
+    server.submit.mockResolvedValue({ reference: 'MG-ABCDEFGH', telegramStatus: 'sent' });
+    render(<GuestExperience context={context} locale="uz" />);
+
+    await user.click(screen.getByRole('button', { name: /Transport/i }));
+    await user.type(screen.getByLabelText('Qayerdan olib ketamiz'), 'Kamilovs Hotel');
+    await user.type(screen.getByLabelText('Qayerga'), 'Airport');
+    await user.type(screen.getByLabelText('Qulay sana'), acceptableDate());
+    await user.type(screen.getByLabelText('Qulay vaqt'), '18:30');
+    await user.type(screen.getByLabelText('Ismingiz'), 'Amir Khan');
+    await user.type(screen.getByLabelText('Telefon yoki messenjer'), '@amir');
+    await user.click(screen.getByRole('button', { name: 'Soʻrov yuborish' }));
+
+    expect(await screen.findByText('MG-ABCDEFGH')).toBeVisible();
+    expect(screen.getByText('Soʻrov qabul qilindi')).toBeVisible();
+    expect(screen.getByText('Kamilovs Hotel · 205-xona')).toBeVisible();
+    expect(server.submit).toHaveBeenCalledWith(expect.objectContaining({ guestLocale: 'uz', service: 'transport' }));
+  });
+});

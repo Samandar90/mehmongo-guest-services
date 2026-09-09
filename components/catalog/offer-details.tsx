@@ -3,6 +3,7 @@
 import { X } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { OfferImage, offerPriceLabel } from '@/components/catalog/offer-card';
+import { useI18n } from '@/lib/i18n/context';
 import type { CatalogOffer } from '@/supabase/functions/_shared/catalog';
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -16,6 +17,7 @@ export function OfferDetails({ offer, onClose, onRequest }: {
   onClose: () => void;
   onRequest: (offer: CatalogOffer) => void;
 }) {
+  const { t } = useI18n();
   const panelRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const openerRef = useRef<Element | null>(null);
@@ -49,9 +51,9 @@ export function OfferDetails({ offer, onClose, onRequest }: {
 
   return (
     <div className="offer-overlay" onKeyDown={onKeyDown} role="presentation">
-      <button className="offer-overlay-close" type="button" aria-label="Close details" onClick={onClose} />
+      <button className="offer-overlay-close" type="button" aria-label={t.catalog.closeDetails} onClick={onClose} />
       <dialog className="offer-dialog" open aria-modal="true" aria-labelledby="offer-details-title" ref={panelRef}>
-        <button className="offer-dialog-dismiss" type="button" onClick={onClose} aria-label="Close details">
+        <button className="offer-dialog-dismiss" type="button" onClick={onClose} aria-label={t.catalog.closeDetails}>
           <X aria-hidden="true" />
         </button>
         <OfferImage offer={offer} eager />
@@ -59,19 +61,19 @@ export function OfferDetails({ offer, onClose, onRequest }: {
           <p className="offer-eyebrow">{offer.eyebrow}</p>
           <h2 id="offer-details-title" ref={headingRef} tabIndex={-1}>{offer.title}</h2>
           <p className="offer-price">
-            <strong>{offerPriceLabel(offer)}</strong>
+            <strong>{offerPriceLabel(offer, t.catalog)}</strong>
             <span>{offer.price.unit}</span>
           </p>
           <p className="offer-description">{offer.description}</p>
           {offer.imageCaption ? <p className="offer-caption">{offer.imageCaption}</p> : null}
 
-          <h3>What is included</h3>
+          <h3>{t.catalog.included}</h3>
           <ul>{offer.includes.map((item) => <li key={item}>{item}</li>)}</ul>
 
-          <h3>Quoted separately</h3>
+          <h3>{t.catalog.extras}</h3>
           <ul>{offer.extras.map((item) => <li key={item}>{item}</li>)}</ul>
 
-          <h3>We confirm before payment</h3>
+          <h3>{t.catalog.confirmBefore}</h3>
           <ul>{offer.confirmBeforePayment.map((item) => <li key={item}>{item}</li>)}</ul>
 
           {offer.timing ? <p className="offer-timing">{offer.timing}</p> : null}

@@ -1,0 +1,185 @@
+/**
+ * Every guest-facing string that is not part of the catalogue, in English.
+ * The other languages are typed against this object, so a string added here
+ * without its translations fails to compile rather than falling back silently.
+ *
+ * The catalogue itself (offers, page copy, form copy, FAQ) lives in
+ * content/catalog.<locale>.json and is localised separately.
+ */
+export const en = {
+  language: {
+    button: 'Language',
+    title: 'Choose a language',
+  },
+  common: {
+    room: (label: string) => `Room ${label}`,
+    backToServices: 'Back to services',
+    yourDetails: 'Your details',
+    optional: 'Optional',
+    concierge: 'Local concierge team available',
+    photoCredits: 'Photo credits',
+  },
+  services: {
+    tours: { title: 'Tours', description: 'Explore with a trusted local guide' },
+    transport: { title: 'Transport', description: 'Airport, station and city rides' },
+    restaurants: { title: 'Restaurants', description: 'Recommendations and table bookings' },
+    tickets: { title: 'Tickets', description: 'Train, flight and event assistance' },
+    listLabel: 'Available services',
+  },
+  welcome: {
+    eyebrow: 'Guest services',
+    // Two lines; the second is set in the accent serif.
+    title: ['Good stay,', 'made simple.'] as [string, string],
+    intro: 'Choose what you need. Our local team will take care of the rest.',
+    heading: 'How can we help?',
+    count: (n: number) => (n === 1 ? '1 service' : `${n} services`),
+  },
+  form: {
+    eyebrow: 'A few details',
+    title: {
+      tours: 'Tour request',
+      transport: 'Transport request',
+      restaurants: 'Restaurant request',
+      tickets: 'Ticket request',
+    },
+    intro: 'Tell us what you need. Our team will confirm the details with you.',
+    pickup: 'Pickup point',
+    pickupPlaceholder: 'Hotel, airport or address',
+    destination: 'Destination',
+    destinationPlaceholder: 'Where would you like to go?',
+    choice: {
+      tours: 'Tour or destination',
+      restaurants: 'Restaurant or cuisine',
+      tickets: 'Ticket type or destination',
+    },
+    choicePlaceholder: 'Type your preference',
+    date: 'Preferred date',
+    time: 'Preferred time',
+    guests: 'Guests',
+    passengers: 'Passengers',
+    name: 'Your name',
+    namePlaceholder: 'How should we address you?',
+    contact: 'Phone or messenger',
+    contactPlaceholder: 'WhatsApp, Telegram or phone',
+    note: 'Anything else?',
+    notePlaceholder: 'Add any useful details',
+    submit: 'Send request',
+    sending: 'Sending request…',
+    errors: {
+      ROOM_UNAVAILABLE: 'This room link is unavailable.',
+      RATE_LIMITED: 'Too many requests were sent. Please contact the hotel reception.',
+      REQUEST_FAILED: 'We could not send your request. Please try again.',
+    },
+  },
+  validation: {
+    choice: {
+      tours: 'Enter a tour or destination',
+      restaurants: 'Enter a restaurant or cuisine',
+      tickets: 'Enter a ticket type or destination',
+    },
+    pickup: 'Enter a pickup point',
+    destination: 'Enter a destination',
+    date: 'Choose a date',
+    validDate: 'Choose a valid date',
+    futureDate: 'Choose today or a future date',
+    time: 'Choose a time',
+    name: 'Enter your name',
+    contact: 'Enter a phone number or messenger contact',
+    atLeastOneGuest: 'Enter at least 1 guest',
+    atLeastOnePassenger: 'Enter at least 1 passenger',
+    guestRange: 'Enter 1 to 50 guests',
+    passengerRange: 'Enter 1 to 50 passengers',
+  },
+  success: {
+    eyebrow: 'All set',
+    title: 'Request received',
+    text: 'Our concierge team will contact you shortly to confirm the details.',
+    reference: 'Reference',
+    stay: 'Stay',
+    willMessage: 'We will message the contact you provided',
+    hint: 'Our team will confirm availability and the full price.',
+    another: 'Request another service',
+  },
+  catalog: {
+    filterLegend: 'Filter services',
+    fromPrice: (amount: string) => `From ${amount}`,
+    getQuote: 'Get a quote',
+    goodToKnow: 'Good to know',
+    closeDetails: 'Close details',
+    included: 'What is included',
+    extras: 'Quoted separately',
+    confirmBefore: 'We confirm before payment',
+  },
+  offerForm: {
+    seatsUpTo: (n: number) => `This option seats up to ${n}. We will prepare an individual quote for your group.`,
+    direction: 'Direction',
+    whereTo: 'Where would you like to go?',
+    chooseDirection: 'Choose a direction',
+    travelBy: 'Travel by',
+    chooseTravel: 'Choose how you travel',
+    from: 'From',
+    to: 'To',
+    cityOrStation: 'City or station',
+    cityPickup: 'Pickup point in Tashkent',
+    cityPickupPlaceholder: 'Hotel lobby or address',
+    cityPlaces: 'Places you would like to include (optional)',
+    cityPlacesPlaceholder: 'Old city, museums, bazaar',
+    intercityPickup: 'Pickup address in Tashkent',
+    intercityDestination: 'Destination in Samarkand',
+    hotelOrAddress: 'Hotel or address',
+    interests: 'What interests you? (optional)',
+    interestsPlaceholder: 'Old city, food, history',
+    guideLanguage: 'Preferred language (optional)',
+    guideLanguagePlaceholder: 'English, Russian…',
+    flight: 'Flight number (optional)',
+    luggage: 'Luggage (optional)',
+    luggagePlaceholder: '2 large bags',
+    validation: {
+      date: 'Choose a date',
+      futureDate: 'Choose today or a future date',
+      travellers: 'Enter 1 to 50 travellers',
+      name: 'Enter your name',
+      contact: 'Enter one way to reach you',
+      direction: 'Choose a direction',
+      travelMode: 'Choose how you travel',
+      start: 'Enter where you start',
+      going: 'Enter where you are going',
+      pickup: 'Enter a pickup point',
+      tashkentPickup: 'Enter your Tashkent pickup address',
+      samarkandDestination: 'Enter your Samarkand destination',
+      time: 'Choose a time',
+    },
+  },
+  /**
+   * Labels for the fixed choices the server validates. Keyed by the English
+   * value that is stored and sent to the team, so a guest choosing «Аэропорт →
+   * отель» still submits «Airport → hotel».
+   */
+  choices: {
+    'Chimgan': 'Chimgan',
+    'Charvak': 'Charvak',
+    'Amirsoy': 'Amirsoy',
+    'Help me choose': 'Help me choose',
+    'Airport → hotel': 'Airport → hotel',
+    'Hotel → airport': 'Hotel → airport',
+    'Flight': 'Flight',
+    'Train': 'Train',
+    'Bus': 'Bus',
+  } as Record<string, string>,
+  notice: {
+    root: {
+      eyebrow: 'Guest services',
+      title: 'Scan the code in your room',
+      first: 'MehmonGo turns the QR code in your hotel room into tours, transport, restaurant tables and tickets. There is no app to install and no account to create.',
+      second: 'Each code opens the services for one room, so this page has nothing to show on its own. If the code in your room does not work, reception can give you the current one.',
+    },
+    unavailable: {
+      eyebrow: 'Room link',
+      title: 'This room link is unavailable',
+      first: 'The code you scanned is no longer active for this room.',
+      second: 'Please ask reception for the current code. Nothing you entered was sent, and no request was created.',
+    },
+  },
+};
+
+export type Messages = typeof en;

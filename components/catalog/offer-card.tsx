@@ -2,13 +2,17 @@
 
 import { ArrowUpRight } from 'lucide-react';
 import { catalogImages } from '@/lib/catalog-images';
+import { useI18n } from '@/lib/i18n/context';
+import type { Messages } from '@/lib/i18n/messages';
 import type { CatalogOffer } from '@/supabase/functions/_shared/catalog';
 
+type PriceLabels = Pick<Messages['catalog'], 'fromPrice' | 'getQuote'>;
+
 /** "From $120" for a published option, "Get a quote" when the price is individual. */
-export function offerPriceLabel(offer: Pick<CatalogOffer, 'price'>): string {
-  if (offer.price.mode === 'quote' || offer.price.amount === null) return 'Get a quote';
+export function offerPriceLabel(offer: Pick<CatalogOffer, 'price'>, labels: PriceLabels): string {
+  if (offer.price.mode === 'quote' || offer.price.amount === null) return labels.getQuote;
   const currency = offer.price.currency === 'USD' ? '$' : `${offer.price.currency ?? ''} `;
-  return `From ${currency}${offer.price.amount}`;
+  return labels.fromPrice(`${currency}${offer.price.amount}`);
 }
 
 function imageName(image: string | null): string | null {
@@ -42,6 +46,7 @@ export function OfferImage({ offer, eager }: { offer: CatalogOffer; eager: boole
 }
 
 export function OfferCard({ offer, eager, onOpen }: { offer: CatalogOffer; eager: boolean; onOpen: (offer: CatalogOffer) => void }) {
+  const { t } = useI18n();
   return (
     <article className="offer-card" aria-label={offer.title}>
       <OfferImage offer={offer} eager={eager} />
@@ -50,7 +55,7 @@ export function OfferCard({ offer, eager, onOpen }: { offer: CatalogOffer; eager
         <h3>{offer.title}</h3>
         <p className="offer-summary">{offer.summary}</p>
         <p className="offer-price">
-          <strong>{offerPriceLabel(offer)}</strong>
+          <strong>{offerPriceLabel(offer, t.catalog)}</strong>
           {offer.price.mode === 'from' ? <span>{offer.price.unit}</span> : null}
         </p>
         <button className="offer-cta" type="button" onClick={() => onOpen(offer)}>

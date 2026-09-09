@@ -1,0 +1,419 @@
+{
+  "version": "mehmongo-tashkent-2026-09-05-final",
+  "locale": "zh",
+  "departureCity": "塔什干",
+  "currency": "USD",
+  "page": {
+    "eyebrow": "您的旅程，您做主",
+    "title": "稍作规划，尽享塔什干。",
+    "intro": "本地向导、山间一日游或下一程出行。选择您需要的服务，让 MehmonGo 为您安排细节。",
+    "primaryCta": "浏览服务",
+    "trustItems": [
+      "无需注册账户",
+      "付款前确认价格",
+      "我们的团队全程协助"
+    ],
+    "sectionTitle": "什么能让您的入住更美好？",
+    "sectionIntro": "从一个想法开始，细节交给我们。",
+    "filters": [
+      {
+        "id": "all",
+        "label": "全部服务"
+      },
+      {
+        "id": "tours",
+        "label": "游览与向导"
+      },
+      {
+        "id": "transport",
+        "label": "专车接送"
+      },
+      {
+        "id": "tickets",
+        "label": "机票、火车票与巴士"
+      }
+    ],
+    "stepsTitle": "从想法到计划",
+    "steps": [
+      {
+        "title": "选择服务",
+        "text": "选择一次出行、一段体验或一项票务需求。"
+      },
+      {
+        "title": "我们确认细节",
+        "text": "我们的团队将与您联系，告知可用性、全部费用及付款方式。"
+      },
+      {
+        "title": "确认并尽情享受",
+        "text": "按约定付款后，即可收到接送或预订详情。"
+      }
+    ],
+    "priceNote": "起价以美元计，对应所述选项。付款前我们将确认最终价格及以乌兹别克苏姆支付的金额。额外服务另行报价。",
+    "paymentNote": "本网站不收取任何款项。您的申请不构成已确认的预订。",
+    "customTitle": "有其他想法？",
+    "customText": "人数较多、路线不同或有特别需求？告诉我们您的计划，我们来为您寻找方案。",
+    "customCta": "申请单独报价",
+    "restaurantTitle": "为您的晚餐订一张桌",
+    "restaurantText": "告诉我们您偏好的菜品、时间和人数。我们将确认空位及预订条件。",
+    "restaurantCta": "申请餐厅订座",
+    "emptyCategory": "您所在酒店目前没有此类服务。"
+  },
+  "offers": [
+    {
+      "id": "tashkent-private-guide",
+      "category": "tours",
+      "featured": true,
+      "title": "跟随本地向导游览塔什干",
+      "eyebrow": "私人导览 · 塔什干",
+      "summary": "让一次城市漫步，变成值得带回家的故事。告诉我们您的兴趣，我们将按您的计划安排导览。",
+      "description": "对老城、本地美食或日常生活感兴趣？可按您的兴趣定制路线。付款前我们会确认向导、语言、时长和人数。",
+      "price": {
+        "mode": "from",
+        "amount": 120,
+        "currency": "USD",
+        "unit": "每次约定的导览",
+        "billingUnit": "excursion"
+      },
+      "image": "assets/tashkent-tv-tower.jpg",
+      "imageAlt": "日落时分从高处俯瞰塔什干，电视塔矗立在城市上方",
+      "imageFit": "cover",
+      "imageCaption": "塔什干灵感图。您的路线将另行商定。",
+      "facts": [
+        "私人向导",
+        "语言提前商定",
+        "路线按您的兴趣定制"
+      ],
+      "includes": [
+        "一次约定导览的向导服务"
+      ],
+      "extras": [
+        "交通、景点门票及餐饮（除非已包含在您的报价中）"
+      ],
+      "confirmBeforePayment": [
+        "向导的可用性及语言",
+        "导览时长、路线及集合地点",
+        "人数及最终总价"
+      ],
+      "requestProfile": "guide",
+      "cta": "申请此导览"
+    },
+    {
+      "id": "tashkent-mountains-base",
+      "category": "tours",
+      "featured": true,
+      "title": "离开城市，走进山间",
+      "eyebrow": "山间一日游 · 从塔什干出发",
+      "summary": "清新空气、开阔景色和不一样的节奏。向我们咨询前往奇姆干、恰尔瓦克或阿米尔索伊的路线。",
+      "description": "告诉我们您偏好山景、湖畔停留还是度假村之行。我们将为您从塔什干出发的一日游确认路线和车辆。起价仅包含一条约定路线，而非所有目的地。",
+      "price": {
+        "mode": "from",
+        "amount": 160,
+        "currency": "USD",
+        "unit": "每车 · 约定的一日游路线",
+        "billingUnit": "vehicle_route"
+      },
+      "image": "assets/charvak-lake.jpg",
+      "imageAlt": "塔什干附近群山脚下碧绿的恰尔瓦克水库",
+      "imageFit": "cover",
+      "imageCaption": "恰尔瓦克灵感图。停留地点取决于确认的路线。",
+      "facts": [
+        "从塔什干出发",
+        "私人专车含司机",
+        "路线与您共同确认"
+      ],
+      "includes": [
+        "约定山间路线的私人专车及司机"
+      ],
+      "extras": [
+        "缆车、景点门票、向导及餐饮（除非已包含在您的报价中）"
+      ],
+      "confirmBeforePayment": [
+        "具体路线、停留地点及返程安排",
+        "行程时间、路况及天气情况",
+        "车辆、乘客及行李容量",
+        "全部费用，包括停车费或路桥费"
+      ],
+      "requestProfile": "mountains",
+      "cta": "规划我的山间之旅"
+    },
+    {
+      "id": "tashkent-city-car",
+      "category": "tours",
+      "featured": true,
+      "title": "您的节奏，您的城市一日。",
+      "eyebrow": "私人专车含司机 · 塔什干",
+      "summary": "为您想看的地方留出时间。私人专车和司机带您在约定的市内景点之间往返。",
+      "description": "按您的兴趣规划一天，无需在每一站重新叫车。这是塔什干市内的包车服务，服务时间为约定的 09:00–18:00。观光向导可另行报价。",
+      "price": {
+        "mode": "from",
+        "amount": 140,
+        "currency": "USD",
+        "unit": "每车 · 09:00–18:00",
+        "billingUnit": "vehicle_day"
+      },
+      "image": "assets/tashkent-chorsu-bazaar.jpg",
+      "imageAlt": "塔什干楚苏集市的蓝色瓷砖穹顶，入口处有购物的人群",
+      "imageFit": "cover",
+      "imageCaption": "城市灵感图。停留地点在确认前商定。",
+      "facts": [
+        "专车及司机",
+        "09:00–18:00",
+        "含燃油及停车费"
+      ],
+      "includes": [
+        "09:00–18:00 塔什干市内私人专车及司机",
+        "约定市内服务的燃油及停车费"
+      ],
+      "extras": [
+        "专业向导、景点门票及餐饮",
+        "额外时长或约定区域以外的行程"
+      ],
+      "confirmBeforePayment": [
+        "日期、上车地点及市内行程",
+        "车辆及乘客容量",
+        "任何额外时长及其费用"
+      ],
+      "requestProfile": "city",
+      "cta": "规划我的城市一日"
+    },
+    {
+      "id": "tashkent-airport-sedan",
+      "category": "transport",
+      "featured": true,
+      "title": "您的机场接送，已安排妥当",
+      "eyebrow": "机场接送 · 最多 3 位乘客",
+      "summary": "以机场与酒店之间的私人接送，开启或结束您的塔什干之行。",
+      "description": "告诉我们您的航班、接送方向和行李情况。我们将确认接机地点和车辆，让您心中有数。需要举牌迎接？请选择单独的举牌接机选项。",
+      "price": {
+        "mode": "from",
+        "amount": 30,
+        "currency": "USD",
+        "unit": "每车 · 单程",
+        "billingUnit": "vehicle_one_way"
+      },
+      "image": "assets/airport-sedan.jpg",
+      "imageAlt": "供应商车辆目录中的轿车",
+      "imageFit": "contain",
+      "imageCaption": "车辆示例；实际派车另行确认。",
+      "facts": [
+        "私人轿车",
+        "最多 3 位乘客",
+        "机场 ↔ 塔什干酒店"
+      ],
+      "includes": [
+        "确认方向的一次私人机场接送"
+      ],
+      "extras": [
+        "额外停靠、等候及特殊需求（如有报价）",
+        "举牌接机为单独选项"
+      ],
+      "confirmBeforePayment": [
+        "航班、日期及接送时间",
+        "乘客及行李是否合适",
+        "接机地点、等候政策及全部费用"
+      ],
+      "requestProfile": "airport",
+      "cta": "安排我的机场接送"
+    },
+    {
+      "id": "tashkent-airport-minivan",
+      "category": "transport",
+      "featured": true,
+      "title": "一同抵达，一同出行",
+      "eyebrow": "机场商务车 · 最多 5 位乘客",
+      "summary": "为您的家庭或小团队安排一次私人接送。告诉我们出行人数和行李件数。",
+      "description": "让您的团队在塔什干机场与酒店之间同车出行。仅凭乘客人数无法保证行李空间：确认车辆前，我们会同时核实两者。",
+      "price": {
+        "mode": "from",
+        "amount": 40,
+        "currency": "USD",
+        "unit": "每车 · 单程",
+        "billingUnit": "vehicle_one_way"
+      },
+      "image": "assets/family-minivan.jpg",
+      "imageAlt": "供应商目录中的起亚嘉华商务车",
+      "imageFit": "contain",
+      "imageCaption": "车辆示例；车型及行李容量另行确认。",
+      "facts": [
+        "私人商务车",
+        "最多 5 位乘客",
+        "先核实行李空间"
+      ],
+      "includes": [
+        "确认方向的一次私人机场接送"
+      ],
+      "extras": [
+        "额外停靠、等候及儿童座椅（如有并报价）",
+        "举牌接机为单独选项"
+      ],
+      "confirmBeforePayment": [
+        "航班、方向及接送时间",
+        "乘客、行李及儿童座椅需求",
+        "车辆、等候政策及最终价格"
+      ],
+      "requestProfile": "airport",
+      "cta": "安排我们的商务车"
+    },
+    {
+      "id": "tashkent-samarkand-one-way",
+      "category": "tours",
+      "featured": true,
+      "title": "下一站：撒马尔罕",
+      "eyebrow": "塔什干 → 撒马尔罕 · 单程",
+      "summary": "私人司机让您的下一程轻松简单。上车地点和目的地由我们与您共同安排。",
+      "description": "准备好开启旅程的下一段了吗？请发送您在塔什干的上车地址和撒马尔罕的目的地。这是一次城际接送，不含观光，也不含返程。",
+      "price": {
+        "mode": "from",
+        "amount": 200,
+        "currency": "USD",
+        "unit": "每车 · 单程",
+        "billingUnit": "vehicle_one_way"
+      },
+      "image": "assets/samarkand-registan-square.jpg",
+      "imageAlt": "晴空下撒马尔罕雷吉斯坦广场的三座经学院",
+      "imageFit": "cover",
+      "imageCaption": "目的地灵感图。雷吉斯坦门票及观光不包含在内。",
+      "facts": [
+        "私人司机",
+        "塔什干上车",
+        "撒马尔罕下车"
+      ],
+      "includes": [
+        "从塔什干到撒马尔罕约定目的地的一次私人接送"
+      ],
+      "extras": [
+        "观光、景点门票、向导、餐饮及返程",
+        "计划外绕行或额外停靠"
+      ],
+      "confirmBeforePayment": [
+        "上车及下车地址、日期和时间",
+        "车辆、行李及乘客容量",
+        "约定的停靠点及全部费用"
+      ],
+      "requestProfile": "intercity",
+      "cta": "安排我的撒马尔罕之行"
+    },
+    {
+      "id": "tashkent-airport-welcome",
+      "category": "transport",
+      "featured": false,
+      "title": "塔什干举牌接机",
+      "eyebrow": "机场抵达 · 举牌迎接",
+      "summary": "希望有人举着您的名字迎接？申请举牌接机及前往塔什干酒店的私人接送。",
+      "description": "付款前，我们的团队将确认便于到达的接机地点、您的抵达信息及车辆。这是一个独立的接送套餐，价格并非轿车或商务车价格的附加项。",
+      "price": {
+        "mode": "from",
+        "amount": 45,
+        "currency": "USD",
+        "unit": "每车 · 抵达套餐",
+        "billingUnit": "vehicle_arrival_package"
+      },
+      "image": "assets/family-minivan.jpg",
+      "imageAlt": "供应商目录中的示意车辆",
+      "imageFit": "contain",
+      "imageCaption": "示意车辆；此套餐不保证提供商务车。",
+      "facts": [
+        "举牌迎接",
+        "机场 → 塔什干酒店",
+        "接机地点已确认"
+      ],
+      "includes": [
+        "在约定的便利地点举牌迎接",
+        "前往约定塔什干酒店的私人接送"
+      ],
+      "extras": [
+        "额外停靠、等候或其他附加项（如有报价）"
+      ],
+      "confirmBeforePayment": [
+        "供应商可用性、车辆及容量",
+        "航班及便于到达的接机地点",
+        "等候条件及总价"
+      ],
+      "requestProfile": "airport_arrival",
+      "cta": "申请举牌接机"
+    },
+    {
+      "id": "ticket-assistance",
+      "category": "tickets",
+      "featured": true,
+      "title": "下一站去哪里？",
+      "eyebrow": "机票 · 火车票 · 巴士票",
+      "summary": "告诉我们您的路线和出行日期。我们将搜索可用选项，帮您买到合适的票。",
+      "description": "没有一种价格适用于所有行程。我们会核实余票，并在您决定前发送包含服务费在内的完整报价。您只需在同意可用选项及其预订条件后付款。",
+      "price": {
+        "mode": "quote",
+        "amount": null,
+        "currency": null,
+        "unit": "付款前确认全部费用",
+        "billingUnit": null
+      },
+      "image": null,
+      "imageAlt": null,
+      "imageFit": null,
+      "imageCaption": null,
+      "facts": [
+        "机票、火车票或巴士票",
+        "按您的路线查询选项",
+        "付款前提供完整报价"
+      ],
+      "includes": [
+        "协助搜索可用选项",
+        "协助预订您认可的选项"
+      ],
+      "extras": [
+        "票价及服务费包含在您的单独报价中",
+        "改签、退票及退款取决于所选票种的规则"
+      ],
+      "confirmBeforePayment": [
+        "路线、日期、余票及乘客信息",
+        "票价、行李（如适用）、服务费及总价",
+        "预计出票时间及改签/退款条件"
+      ],
+      "timing": "在核实座位及乘客信息后，我们力争在付款确认后 15–30 分钟内出票。付款前我们会确认预计出票时间。",
+      "requestProfile": "tickets",
+      "cta": "帮我找票"
+    }
+  ],
+  "form": {
+    "title": "让我们来安排细节",
+    "intro": "告诉我们您的计划。我们的团队将与您联系，确认可用性及全部费用。",
+    "nameLabel": "您的姓名",
+    "contactLabel": "一种联系方式",
+    "contactPlaceholder": "带国家代码的电话、Telegram @用户名或电子邮箱",
+    "dateLabel": "期望日期",
+    "timeLabel": "期望时间",
+    "countLabel": "出行人数",
+    "noteLabel": "还有其他需求吗？（选填）",
+    "submit": "发送我的申请",
+    "sending": "正在发送您的申请…",
+    "back": "返回服务",
+    "priceLabel": "起价 — 并非确认的总价",
+    "quoteLabel": "单独报价 — 现在无需付款",
+    "privacy": "我们仅使用您的姓名、联系方式和申请内容来安排服务。请勿在此输入护照或银行卡信息。",
+    "payment": "提交此表单不会向您收费，也不构成确认的预订。",
+    "successTitle": "您的申请已提交。",
+    "successText": "请保存您的申请编号。我们的团队将通过您提供的联系方式与您联系，确认可用性、全部费用及付款方式。",
+    "networkError": "我们无法确认已收到您的申请。您的信息仍保留在此，请重试。",
+    "rateLimitError": "近期已发送多个申请。请等待几分钟后再试。",
+    "inactiveRoom": "此房间链接不可用。请向酒店索取最新的 MehmonGo 二维码。",
+    "helpHint": "如需帮助联系 MehmonGo，请咨询酒店前台。"
+  },
+  "faq": [
+    {
+      "question": "我需要在本网站付款吗？",
+      "answer": "不需要。请先发送申请。我们的团队会确认可用性、总金额及付款方式。您的酒店前台可能会按约定安排代收款项。"
+    },
+    {
+      "question": "价格是按人计算的吗？",
+      "answer": "专车接送按所示选项以每车计价。向导价格按每次约定的导览计算。付款前我们会确认人数及任何额外费用。"
+    },
+    {
+      "question": "发送申请后预订就确认了吗？",
+      "answer": "还没有。我们会与您联系，商定细节并说明如何确认预订。"
+    },
+    {
+      "question": "可以更改或取消吗？",
+      "answer": "条件取决于服务和供应商。付款前我们会说明任何更改或取消条款。"
+    }
+  ]
+}

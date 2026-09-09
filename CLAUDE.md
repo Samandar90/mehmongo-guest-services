@@ -2,9 +2,9 @@
 
 ## Product and language
 
-MehmonGo is a hotel guest-services platform. Guests scan a room-specific QR code, use an English site without registration, and submit tours, transport, restaurant, or ticket requests. Requests are stored in Supabase and sent in Russian to one Telegram group. The super-admin interface is Russian and owner-only.
+MehmonGo is a hotel guest-services platform. Guests scan a room-specific QR code, use the site without registration in English, Russian, Uzbek (Latin) or Chinese (Simplified), and submit tours, transport, restaurant, or ticket requests. Requests are stored in Supabase and sent in Russian to one Telegram group. The super-admin interface is Russian and owner-only.
 
-The user's messages should be answered in Russian. Guest-facing website copy stays English.
+The user's messages should be answered in Russian. Guest-facing copy exists in all four languages (added 2026-09-09; see "Guest languages" below); a new guest string is added to every language or it does not compile.
 
 ## Work in this checkout
 
@@ -114,6 +114,42 @@ Rulings this created, which later work must not undo:
 - `hotels.commission_bps` and `service_requests.hotel_commission_bps` still
   exist and are still written, but nothing reads them for money any more. They
   are dropped in a later migration, once no screen mentions them.
+
+## Guest languages, added 2026-09-09
+
+The guest site speaks `en`, `ru`, `uz` (Latin) and `zh` (Simplified). The
+header pill is `components/language-menu.tsx`; the choice is a cookie
+(`mg_lang`, one year) and the server renders the first paint in it:
+`lib/i18n/server.ts` resolves `?lang=` → cookie → `Accept-Language` → `en`,
+so `?lang=zh` on a room link is a way to demo a language.
+
+- Interface strings: `lib/i18n/messages/{en,ru,uz,zh}.ts`, typed against the
+  English object. Components read them through `useI18n()`
+  (`lib/i18n/context.tsx`); with no provider they are English, which is why
+  the older tests still pass unchanged.
+- Catalogue: `content/catalog.{ru,uz,zh}.json` mirror `catalog.en.json` file
+  for file. `scripts/build-catalog-data.mjs` now also writes
+  `lib/i18n/catalog-translations.ts`; `lib/i18n/catalog.test.ts` fails on
+  drift and holds ids, prices, profiles and list lengths equal to English.
+  `localiseCatalog` overlays text only: prices, ids, capacity and image paths
+  always come from the English catalogue, and the Edge Functions still read
+  English alone.
+- Fixed choices (`Airport → hotel`, `Chimgan`, `Train`…) are shown through
+  `messages.<locale>.choices` but submitted as the English value the server
+  validates and the team reads.
+- `service_requests.guest_locale` (migration `20260909100000_guest_locale.sql`,
+  check constraint mirroring `GUEST_LOCALES` in `_shared/contracts.ts`) stores
+  the language the guest was reading; `submit_guest_request` gained
+  `p_guest_locale text default 'en'` (old signature dropped, grants restated).
+  Telegram prints `🌐 Язык гостя: …` on every request and the admin shows it in
+  the guest cell and the details. Deploy order when this changes again:
+  migration, then `submit-request`/`retry-telegram`, then the Worker — the old
+  validator rejects an unknown payload key.
+- Uzbek uses the typographic apostrophes (ʻ U+02BB, ʼ U+02BC), never ASCII;
+  a test enforces it. Chinese headings get `word-break: keep-all` and no
+  negative tracking via `:lang(zh)` rules at the end of `globals.css`; the
+  page root carries `lang` so those rules and the CJK font selection apply
+  from the first paint. Geist is loaded with the `cyrillic` subset.
 
 ## Known limitations recorded in the ledgers
 

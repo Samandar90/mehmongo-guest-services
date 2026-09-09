@@ -1,0 +1,419 @@
+{
+  "version": "mehmongo-tashkent-2026-09-05-final",
+  "locale": "uz",
+  "departureCity": "Toshkent",
+  "currency": "USD",
+  "page": {
+    "eyebrow": "SIZNING DAM OLISHINGIZ, SIZNING REJALARINGIZ",
+    "title": "Ozgina reja. Koʻproq Toshkent.",
+    "intro": "Mahalliy gid, togʻlarga sayohat yoki keyingi safaringiz. Kerakli xizmatni tanlang, tafsilotlarni MehmonGo hal qiladi.",
+    "primaryCta": "Xizmatlarni koʻrish",
+    "trustItems": [
+      "Roʻyxatdan oʻtish shart emas",
+      "Narx toʻlovdan oldin tasdiqlanadi",
+      "Jamoamiz yordami"
+    ],
+    "sectionTitle": "Dam olishingizni nima yaxshilaydi?",
+    "sectionIntro": "Gʻoyadan boshlang. Tafsilotlarda biz yordam beramiz.",
+    "filters": [
+      {
+        "id": "all",
+        "label": "Barcha xizmatlar"
+      },
+      {
+        "id": "tours",
+        "label": "Sayohatlar va gidlar"
+      },
+      {
+        "id": "transport",
+        "label": "Shaxsiy transport"
+      },
+      {
+        "id": "tickets",
+        "label": "Samolyot, poyezd va avtobus"
+      }
+    ],
+    "stepsTitle": "Gʻoyadan rejagacha",
+    "steps": [
+      {
+        "title": "Xizmatni tanlang",
+        "text": "Safar, sayohat yoki chipta boʻyicha soʻrov yuboring."
+      },
+      {
+        "title": "Biz tafsilotlarni tasdiqlaymiz",
+        "text": "Jamoamiz siz bilan bogʻlanib, mavjudlik, toʻliq narx va toʻlov tartibini aytadi."
+      },
+      {
+        "title": "Tasdiqlang va bahra oling",
+        "text": "Kelishilganidek toʻlang va olib ketish yoki bron tafsilotlarini oling."
+      }
+    ],
+    "priceNote": "Boshlangʻich narxlar tavsiflangan variant uchun USD da koʻrsatilgan. Yakuniy narx va soʻmda toʻlanadigan summani toʻlovdan oldin tasdiqlaymiz. Qoʻshimcha xizmatlar alohida hisoblanadi.",
+    "paymentNote": "Bu saytda toʻlov qabul qilinmaydi. Soʻrovingiz tasdiqlangan bron emas.",
+    "customTitle": "Boshqa narsa kerakmi?",
+    "customText": "Katta guruh, boshqa yoʻnalish yoki maxsus istakmi? Rejalaringizni ayting, biz variantlarni koʻrib chiqamiz.",
+    "customCta": "Alohida narx soʻrash",
+    "restaurantTitle": "Kechki ovqat uchun stol",
+    "restaurantText": "Qanday taom, vaqt va necha kishi ekanini ayting. Biz boʻsh joy va bron shartlarini tekshiramiz.",
+    "restaurantCta": "Restoranda stol band qilish",
+    "emptyCategory": "Hozircha bu toifada mehmonxonangiz uchun xizmatlar yoʻq."
+  },
+  "offers": [
+    {
+      "id": "tashkent-private-guide",
+      "category": "tours",
+      "featured": true,
+      "title": "Toshkentni mahalliy gid bilan koʻring",
+      "eyebrow": "SHAXSIY EKSKURSIYA · TOSHKENT",
+      "summary": "Shahar boʻylab sayrni esda qoladigan hikoyalarga aylantiring. Sizni nima qiziqtirishini ayting, biz ekskursiyani rejalaringizga moslaymiz.",
+      "description": "Eski shahar, mahalliy taomlar yoki kundalik hayot qiziqtiradimi? Qiziqishlaringizga mos marshrut soʻrang. Gid, til, davomiylik va guruh hajmini toʻlovdan oldin tasdiqlaymiz.",
+      "price": {
+        "mode": "from",
+        "amount": 120,
+        "currency": "USD",
+        "unit": "kelishilgan ekskursiya uchun",
+        "billingUnit": "excursion"
+      },
+      "image": "assets/tashkent-tv-tower.jpg",
+      "imageAlt": "Quyosh botishida yuqoridan koʻringan Toshkent va shahar uzra teleminora",
+      "imageFit": "cover",
+      "imageCaption": "Toshkent ilhomi. Marshrutingiz alohida kelishiladi.",
+      "facts": [
+        "Shaxsiy gid",
+        "Til oldindan kelishiladi",
+        "Marshrut qiziqishlaringizga mos"
+      ],
+      "includes": [
+        "Bitta kelishilgan ekskursiya uchun gid"
+      ],
+      "extras": [
+        "Transport, kirish chiptalari va ovqat, agar hisobingizga kiritilmagan boʻlsa"
+      ],
+      "confirmBeforePayment": [
+        "Gid mavjudligi va tili",
+        "Ekskursiya davomiyligi, marshrut va uchrashuv joyi",
+        "Guruh hajmi va yakuniy summa"
+      ],
+      "requestProfile": "guide",
+      "cta": "Ekskursiyaga soʻrov yuborish"
+    },
+    {
+      "id": "tashkent-mountains-base",
+      "category": "tours",
+      "featured": true,
+      "title": "Shahardan togʻ manzaralariga",
+      "eyebrow": "TOGʻLARGA BIR KUNLIK SAYOHAT · TOSHKENTDAN",
+      "summary": "Toza havo, keng manzaralar va boshqa ritm. Chimyon, Chorvoq yoki Amirsoy tomon marshrut haqida soʻrang.",
+      "description": "Togʻ manzaralari, koʻl boʻyida toʻxtash yoki kurortga tashrif — qaysi biri sizga yoqishini ayting. Toshkentdan bir kunlik sayohatingiz uchun marshrut va avtomobilni tasdiqlaymiz. Boshlangʻich narx bitta kelishilgan marshrut uchun, barcha yoʻnalishlar birgalikda emas.",
+      "price": {
+        "mode": "from",
+        "amount": 160,
+        "currency": "USD",
+        "unit": "avtomobil uchun · kelishilgan bir kunlik marshrut",
+        "billingUnit": "vehicle_route"
+      },
+      "image": "assets/charvak-lake.jpg",
+      "imageAlt": "Toshkent yaqinidagi togʻlar ostidagi moviy Chorvoq suv ombori",
+      "imageFit": "cover",
+      "imageCaption": "Chorvoq ilhomi. Toʻxtash joylari tasdiqlangan marshrutga bogʻliq.",
+      "facts": [
+        "Toshkentdan joʻnash",
+        "Haydovchili shaxsiy avtomobil",
+        "Marshrut siz bilan tasdiqlanadi"
+      ],
+      "includes": [
+        "Kelishilgan togʻ marshruti uchun haydovchili shaxsiy avtomobil"
+      ],
+      "extras": [
+        "Arqon yoʻllar, kirish chiptalari, gid va ovqat, agar hisobingizga kiritilmagan boʻlsa"
+      ],
+      "confirmBeforePayment": [
+        "Aniq marshrut, toʻxtash joylari va qaytish tartibi",
+        "Jadval, yoʻl va ob-havo sharoiti",
+        "Avtomobil, yoʻlovchi va yuk sigʻimi",
+        "Toʻliq narx, shu jumladan avtoturargoh va yoʻl toʻlovlari"
+      ],
+      "requestProfile": "mountains",
+      "cta": "Togʻ kunimni rejalashtirish"
+    },
+    {
+      "id": "tashkent-city-car",
+      "category": "tours",
+      "featured": true,
+      "title": "Oʻz tempingiz. Oʻz shahar kuningiz.",
+      "eyebrow": "HAYDOVCHILI SHAXSIY AVTOMOBIL · TOSHKENT",
+      "summary": "Koʻrmoqchi boʻlgan joylaringizga vaqt ajrating. Haydovchili shaxsiy avtomobil sizni kelishilgan shahar nuqtalari orasida olib yuradi.",
+      "description": "Har bir toʻxtashda yangi transport qidirmasdan, kunni qiziqishlaringiz boʻyicha rejalashtiring. Bu Toshkent ichida kelishilgan 09:00–18:00 jadvalidagi haydovchili avtomobil xizmati. Ekskursiya gidi alohida hisoblanishi mumkin.",
+      "price": {
+        "mode": "from",
+        "amount": 140,
+        "currency": "USD",
+        "unit": "avtomobil uchun · 09:00–18:00",
+        "billingUnit": "vehicle_day"
+      },
+      "image": "assets/tashkent-chorsu-bazaar.jpg",
+      "imageAlt": "Toshkentdagi Chorsu bozorining moviy gumbazi va kiraverishdagi xaridorlar",
+      "imageFit": "cover",
+      "imageCaption": "Shahar ilhomi. Toʻxtash joylari tasdiqlashdan oldin kelishiladi.",
+      "facts": [
+        "Avtomobil va haydovchi",
+        "09:00–18:00",
+        "Yoqilgʻi va avtoturargoh narxga kiradi"
+      ],
+      "includes": [
+        "Toshkent ichida 09:00–18:00 uchun haydovchili shaxsiy avtomobil",
+        "Kelishilgan shahar xizmati uchun yoqilgʻi va avtoturargoh"
+      ],
+      "extras": [
+        "Professional gid, kirish chiptalari va ovqat",
+        "Qoʻshimcha soatlar yoki kelishilgan hududdan tashqari safarlar"
+      ],
+      "confirmBeforePayment": [
+        "Sana, olib ketish joyi va shahar marshruti",
+        "Avtomobil va yoʻlovchilar soni",
+        "Qoʻshimcha soatlar va ularning narxi"
+      ],
+      "requestProfile": "city",
+      "cta": "Shahar kunimni rejalashtirish"
+    },
+    {
+      "id": "tashkent-airport-sedan",
+      "category": "transport",
+      "featured": true,
+      "title": "Aeroport transferingiz tayyor",
+      "eyebrow": "AEROPORT TRANSFERI · 3 YOʻLOVCHIGACHA",
+      "summary": "Toshkentdagi safaringizni aeroport va mehmonxona orasidagi shaxsiy transfer bilan boshlang yoki yakunlang.",
+      "description": "Reys, yoʻnalish va yuk haqida maʼlumot bering. Nimani kutishingizni bilishingiz uchun uchrashuv joyi va avtomobilni tasdiqlaymiz. Ismingiz yozilgan taxtacha bilan kutib olish kerakmi? Alohida kutib olish variantini tanlang.",
+      "price": {
+        "mode": "from",
+        "amount": 30,
+        "currency": "USD",
+        "unit": "avtomobil uchun · bir tomonga",
+        "billingUnit": "vehicle_one_way"
+      },
+      "image": "assets/airport-sedan.jpg",
+      "imageAlt": "Yetkazib beruvchi avtomobillar katalogidagi sedan",
+      "imageFit": "contain",
+      "imageCaption": "Avtomobil namunasi; aniq mashina alohida tasdiqlanadi.",
+      "facts": [
+        "Shaxsiy sedan",
+        "3 yoʻlovchigacha",
+        "Aeroport ↔ Toshkentdagi mehmonxona"
+      ],
+      "includes": [
+        "Tasdiqlangan yoʻnalishda bitta shaxsiy aeroport transferi"
+      ],
+      "extras": [
+        "Qoʻshimcha toʻxtashlar, kutish va maxsus istaklar — hisob boʻyicha",
+        "Taxtacha bilan kutib olish — alohida variant"
+      ],
+      "confirmBeforePayment": [
+        "Reys, sana va olib ketish vaqti",
+        "Yoʻlovchilar va yuk sigʻimi",
+        "Uchrashuv joyi, kutish shartlari va toʻliq narx"
+      ],
+      "requestProfile": "airport",
+      "cta": "Aeroport transferini buyurtma qilish"
+    },
+    {
+      "id": "tashkent-airport-minivan",
+      "category": "transport",
+      "featured": true,
+      "title": "Birga keling, birga boring",
+      "eyebrow": "AEROPORT MINIVENI · 5 YOʻLOVCHIGACHA",
+      "summary": "Oilangiz yoki kichik guruhingiz uchun bitta shaxsiy transfer. Necha kishi va necha sumka borishini ayting.",
+      "description": "Toshkent aeroporti va mehmonxona orasida guruhingiz birga boradi. Yoʻlovchilar sonining oʻzi yuk uchun joyni kafolatlamaydi: avtomobilni tasdiqlashdan oldin ikkalasini ham tekshiramiz.",
+      "price": {
+        "mode": "from",
+        "amount": 40,
+        "currency": "USD",
+        "unit": "avtomobil uchun · bir tomonga",
+        "billingUnit": "vehicle_one_way"
+      },
+      "image": "assets/family-minivan.jpg",
+      "imageAlt": "Yetkazib beruvchi katalogidagi Kia Carnival miniveni",
+      "imageFit": "contain",
+      "imageCaption": "Avtomobil namunasi; model va yuk sigʻimi tasdiqlanadi.",
+      "facts": [
+        "Shaxsiy miniven",
+        "5 yoʻlovchigacha",
+        "Avval yuk uchun joy tekshiriladi"
+      ],
+      "includes": [
+        "Tasdiqlangan yoʻnalishda bitta shaxsiy aeroport transferi"
+      ],
+      "extras": [
+        "Qoʻshimcha toʻxtashlar, kutish va bolalar oʻrindiqlari — mavjud boʻlsa va hisob boʻyicha",
+        "Taxtacha bilan kutib olish — alohida variant"
+      ],
+      "confirmBeforePayment": [
+        "Reys, yoʻnalish va olib ketish vaqti",
+        "Yoʻlovchilar, sumkalar va bolalar oʻrindigʻi soʻrovi",
+        "Avtomobil, kutish shartlari va yakuniy narx"
+      ],
+      "requestProfile": "airport",
+      "cta": "Miniven buyurtma qilish"
+    },
+    {
+      "id": "tashkent-samarkand-one-way",
+      "category": "tours",
+      "featured": true,
+      "title": "Keyingi bekat: Samarqand",
+      "eyebrow": "TOSHKENT → SAMARQAND · BIR TOMONGA",
+      "summary": "Shaxsiy haydovchi bilan keyingi safaringizni oson qiling. Olib ketish joyi va manzilni siz bilan kelishamiz.",
+      "description": "Sayohatning keyingi qismiga tayyormisiz? Toshkentdagi olib ketish manzili va Samarqanddagi manzilni yuboring. Bu shaharlararo transfer, ekskursiya yoki qaytish safari emas.",
+      "price": {
+        "mode": "from",
+        "amount": 200,
+        "currency": "USD",
+        "unit": "avtomobil uchun · bir tomonga",
+        "billingUnit": "vehicle_one_way"
+      },
+      "image": "assets/samarkand-registan-square.jpg",
+      "imageAlt": "Samarqanddagi Registon maydonining uchta madrasasi ochiq osmon ostida",
+      "imageFit": "cover",
+      "imageCaption": "Manzil ilhomi. Registonga kirish va ekskursiya narxga kirmaydi.",
+      "facts": [
+        "Shaxsiy haydovchi",
+        "Toshkentdan olib ketish",
+        "Samarqandda tushirish"
+      ],
+      "includes": [
+        "Toshkentdan Samarqanddagi kelishilgan manzilgacha bitta shaxsiy transfer"
+      ],
+      "extras": [
+        "Ekskursiya, kirish chiptalari, gid, ovqat va qaytish yoʻli",
+        "Rejalashtirilmagan aylanma yoʻllar yoki qoʻshimcha toʻxtashlar"
+      ],
+      "confirmBeforePayment": [
+        "Olib ketish va tushirish manzillari, sana va vaqt",
+        "Avtomobil, yuk va yoʻlovchilar sigʻimi",
+        "Kelishilgan toʻxtashlar va toʻliq narx"
+      ],
+      "requestProfile": "intercity",
+      "cta": "Samarqandga transfer buyurtma qilish"
+    },
+    {
+      "id": "tashkent-airport-welcome",
+      "category": "transport",
+      "featured": false,
+      "title": "Toshkentda taxtacha bilan kutib olish",
+      "eyebrow": "AEROPORTGA KELISH · KUTIB OLISH",
+      "summary": "Sizni ismingiz bilan kutib olishlarini xohlaysizmi? Kutib olish va Toshkentdagi mehmonxonangizgacha shaxsiy transfer soʻrang.",
+      "description": "Jamoamiz toʻlovdan oldin qulay uchrashuv joyi, kelish tafsilotlari va avtomobilni tasdiqlaydi. Bu alohida transfer paketi; narx sedan yoki miniven narxiga qoʻshimcha emas.",
+      "price": {
+        "mode": "from",
+        "amount": 45,
+        "currency": "USD",
+        "unit": "avtomobil uchun · kelish paketi",
+        "billingUnit": "vehicle_arrival_package"
+      },
+      "image": "assets/family-minivan.jpg",
+      "imageAlt": "Yetkazib beruvchi katalogidagi namunaviy avtomobil",
+      "imageFit": "contain",
+      "imageCaption": "Namunaviy avtomobil; bu paket minivenni kafolatlamaydi.",
+      "facts": [
+        "Taxtacha bilan kutib olish",
+        "Aeroport → Toshkentdagi mehmonxona",
+        "Uchrashuv joyi tasdiqlanadi"
+      ],
+      "includes": [
+        "Kelishilgan qulay joyda ism yozilgan taxtacha bilan kutib olish",
+        "Toshkentdagi kelishilgan mehmonxonagacha shaxsiy transfer"
+      ],
+      "extras": [
+        "Qoʻshimcha toʻxtashlar, kutish yoki boshqa qoʻshimchalar — hisob boʻyicha"
+      ],
+      "confirmBeforePayment": [
+        "Yetkazib beruvchi mavjudligi, avtomobil va sigʻim",
+        "Reys va qulay uchrashuv joyi",
+        "Kutish shartlari va umumiy narx"
+      ],
+      "requestProfile": "airport_arrival",
+      "cta": "Kutib olish bilan transfer soʻrash"
+    },
+    {
+      "id": "ticket-assistance",
+      "category": "tickets",
+      "featured": true,
+      "title": "Keyin qayerga?",
+      "eyebrow": "SAMOLYOT · POYEZD · AVTOBUS",
+      "summary": "Yoʻnalish va sayohat sanasini ayting. Mavjud variantlarni qidirib, rejalaringizga mos chiptani sotib olishga yordam beramiz.",
+      "description": "Har bir safar uchun yagona narx yoʻq. Mavjudlikni tekshirib, qaror qilishingizdan oldin xizmat haqi bilan toʻliq hisobni yuboramiz. Faqat mavjud variant va uning bron shartlariga rozi boʻlgach toʻlaysiz.",
+      "price": {
+        "mode": "quote",
+        "amount": null,
+        "currency": null,
+        "unit": "Toʻliq narx toʻlovdan oldin tasdiqlanadi",
+        "billingUnit": null
+      },
+      "image": null,
+      "imageAlt": null,
+      "imageFit": null,
+      "imageCaption": null,
+      "facts": [
+        "Samolyot, poyezd yoki avtobus",
+        "Yoʻnalishingiz boʻyicha variantlar",
+        "Toʻlovdan oldin toʻliq hisob"
+      ],
+      "includes": [
+        "Mavjud variantlarni qidirishda yordam",
+        "Siz maʼqullagan variantni bron qilishda yordam"
+      ],
+      "extras": [
+        "Chipta narxi va xizmat haqi alohida hisobingizga kiradi",
+        "Oʻzgartirish, bekor qilish va qaytarish tanlangan chipta qoidalariga bogʻliq"
+      ],
+      "confirmBeforePayment": [
+        "Yoʻnalish, sana, mavjudlik va yoʻlovchi maʼlumotlari",
+        "Tarif, kerak boʻlsa yuk, xizmat haqi va jami",
+        "Chipta berishning kutilayotgan vaqti va oʻzgartirish/qaytarish shartlari"
+      ],
+      "timing": "Joylar va yoʻlovchi maʼlumotlari tekshirilgach, toʻlov tasdiqlanganidan keyin 15–30 daqiqa ichida chiptani rasmiylashtirishga harakat qilamiz. Kutilayotgan muddatni toʻlovdan oldin tasdiqlaymiz.",
+      "requestProfile": "tickets",
+      "cta": "Chiptamni topish"
+    }
+  ],
+  "form": {
+    "title": "Keling, tafsilotlarni kelishamiz",
+    "intro": "Rejalaringizni ayting. Jamoamiz mavjudlik va toʻliq narxni tasdiqlash uchun siz bilan bogʻlanadi.",
+    "nameLabel": "Ismingiz",
+    "contactLabel": "Siz bilan bogʻlanish usuli",
+    "contactPlaceholder": "Davlat kodi bilan telefon, Telegram @username yoki email",
+    "dateLabel": "Qulay sana",
+    "timeLabel": "Qulay vaqt",
+    "countLabel": "Sayohatchilar soni",
+    "noteLabel": "Yana biror narsa? (ixtiyoriy)",
+    "submit": "Soʻrovimni yuborish",
+    "sending": "Soʻrovingiz yuborilmoqda…",
+    "back": "Xizmatga qaytish",
+    "priceLabel": "Boshlangʻich narx — yakuniy summa emas",
+    "quoteLabel": "Alohida hisob — hozir toʻlov yoʻq",
+    "privacy": "Ismingiz, kontaktingiz va soʻrovingizdan faqat xizmatni tashkil qilish uchun foydalanamiz. Bu yerga pasport yoki karta maʼlumotlarini kiritmang.",
+    "payment": "Bu formani yuborish sizdan pul yechmaydi va bronni tasdiqlamaydi.",
+    "successTitle": "Soʻrovingiz qabul qilindi.",
+    "successText": "Soʻrov raqamini saqlab qoʻying. Jamoamiz mavjudlik, toʻliq narx va toʻlov tartibini tasdiqlash uchun siz koʻrsatgan maʼlumotlar orqali bogʻlanadi.",
+    "networkError": "Soʻrovingiz qabul qilinganini tasdiqlay olmadik. Maʼlumotlaringiz shu yerda saqlanadi — qayta urinib koʻring.",
+    "rateLimitError": "Yaqinda bir nechta soʻrov yuborildi. Bir necha daqiqa kutib, qayta urinib koʻring.",
+    "inactiveRoom": "Bu xona havolasi mavjud emas. Mehmonxonadan joriy MehmonGo QR kodini soʻrang.",
+    "helpHint": "MehmonGo bilan bogʻlanishda yordam kerak boʻlsa, mehmonxona qabulxonasiga murojaat qiling."
+  },
+  "faq": [
+    {
+      "question": "Bu saytda toʻlov qilamanmi?",
+      "answer": "Yoʻq. Avval soʻrov yuboring. Jamoamiz mavjudlik, umumiy summa va toʻlov tartibini tasdiqlaydi. Mehmonxona qabulxonasi kelishilgan tartibda toʻlovni qabul qilishi mumkin."
+    },
+    {
+      "question": "Narx bir kishi uchunmi?",
+      "answer": "Shaxsiy transport koʻrsatilgan variant uchun avtomobil boʻyicha hisoblanadi. Gid narxi — kelishilgan ekskursiya uchun. Guruh hajmi va qoʻshimcha xarajatlarni toʻlovdan oldin tasdiqlaymiz."
+    },
+    {
+      "question": "Soʻrov yuborganimda bron tasdiqlanadimi?",
+      "answer": "Hali yoʻq. Tafsilotlarni kelishish va bronni qanday tasdiqlashni tushuntirish uchun siz bilan bogʻlanamiz."
+    },
+    {
+      "question": "Oʻzgartirish yoki bekor qilish mumkinmi?",
+      "answer": "Shartlar xizmat va yetkazib beruvchiga bogʻliq. Oʻzgartirish yoki bekor qilish shartlarini toʻlovdan oldin tushuntiramiz."
+    }
+  ]
+}

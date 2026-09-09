@@ -1,19 +1,20 @@
 import Link from 'next/link';
 import { GuestNotice } from '@/components/guest-notice';
+import { messages } from '@/lib/i18n/messages';
+import { pageLocale } from '@/lib/i18n/server';
 
-export default function Home() {
+type SearchParams = Record<string, string | string[] | undefined>;
+
+export default async function Home({ searchParams }: { searchParams?: SearchParams | Promise<SearchParams> }) {
+  const locale = await pageLocale(searchParams);
+  const t = messages[locale];
+
   return (
-    <GuestNotice eyebrow="Guest services" title="Scan the code in your room">
+    <GuestNotice locale={locale} eyebrow={t.notice.root.eyebrow} title={t.notice.root.title}>
+      <p>{t.notice.root.first}</p>
+      <p>{t.notice.root.second}</p>
       <p>
-        MehmonGo turns the QR code in your hotel room into tours, transport, restaurant tables and tickets.
-        There is no app to install and no account to create.
-      </p>
-      <p>
-        Each code opens the services for one room, so this page has nothing to show on its own.
-        If the code in your room does not work, reception can give you the current one.
-      </p>
-      <p>
-        <Link href="/photo-credits">Photo credits</Link>
+        <Link href="/photo-credits">{t.common.photoCredits}</Link>
       </p>
     </GuestNotice>
   );

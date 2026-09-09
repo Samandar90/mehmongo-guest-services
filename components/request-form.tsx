@@ -12,17 +12,8 @@ import {
   type RequestFields,
   type ServiceId,
 } from '@/lib/guest-request';
+import { useI18n } from '@/lib/i18n/context';
 import { REQUEST_FIELD_MAX_LENGTHS, type SubmitRequestResult } from '@/supabase/functions/_shared/contracts';
-
-const serviceNames: Record<ServiceId, string> = {
-  tours: 'Tour', transport: 'Transport', restaurants: 'Restaurant', tickets: 'Ticket',
-};
-
-const choiceLabels: Record<Exclude<ServiceId, 'transport'>, string> = {
-  tours: 'Tour or destination',
-  restaurants: 'Restaurant or cuisine',
-  tickets: 'Ticket type or destination',
-};
 
 type FieldProps = {
   id: keyof RequestFields;
@@ -47,12 +38,6 @@ function RequestField({ id, label, type = 'text', placeholder, min, max, maxLeng
   );
 }
 
-const guestErrorMessages = {
-  ROOM_UNAVAILABLE: 'This room link is unavailable.',
-  RATE_LIMITED: 'Too many requests were sent. Please contact the hotel reception.',
-  REQUEST_FAILED: 'We could not send your request. Please try again.',
-} as const;
-
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -63,6 +48,8 @@ export function RequestForm({ service, onBack, onComplete, onSubmit }: {
   onComplete: (reference: string) => void;
   onSubmit: (fields: RequestFields, idempotencyKey: string) => Promise<SubmitRequestResult>;
 }) {
+  const { t } = useI18n();
+  const copy = t.form;
   const [fields, setFields] = useState<RequestFields>(emptyRequest);
   const [errors, setErrors] = useState<RequestErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -85,7 +72,7 @@ export function RequestForm({ service, onBack, onComplete, onSubmit }: {
   const submit = async (event: SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmittingRef.current) return;
-    const nextErrors = validateRequest(service, fields);
+    const nextErrors = validateRequest(service, fields, t.validation);
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length) return;
     isSubmittingRef.current = true;
@@ -98,41 +85,43 @@ export function RequestForm({ service, onBack, onComplete, onSubmit }: {
       idempotencyKeyRef.current = null;
       onComplete(result.reference);
     } catch (error) {
-      const code = error instanceof Error && error.message in guestErrorMessages ? error.message as keyof typeof guestErrorMessages : 'REQUEST_FAILED';
-      setSubmitError(guestErrorMessages[code]);
+      const code = error instanceof Error && error.message in copy.errors ? error.message as keyof typeof copy.errors : 'REQUEST_FAILED';
+      setSubmitError(copy.errors[code]);
     } finally {
       isSubmittingRef.current = false;
       setSubmitting(false);
     }
   };
 
+  const countLabel = service === 'tours' || service === 'restaurants' ? copy.guests : copy.passengers;
+
   return (
     <section className="request-panel">
-      <button className="back-button" type="button" onClick={onBack}><ArrowLeft /> Back to services</button>
-      <p className="eyebrow">A few details</p>
-      <h1 className="form-title" ref={headingRef} tabIndex={-1}>{serviceNames[service]} request</h1>
-      <p className="form-intro">Tell us what you need. Our team will confirm the details with you.</p>
+      <button className="back-button" type="button" onClick={onBack}><ArrowLeft /> {t.common.backToServices}</button>
+      <p className="eyebrow">{copy.eyebrow}</p>
+      <h1 className="form-title" ref={headingRef} tabIndex={-1}>{copy.title[service]}</h1>
+      <p className="form-intro">{copy.intro}</p>
 
       <form onSubmit={submit} noValidate>
         {submitError ? <p className="field-error" role="alert" aria-label={submitError} tabIndex={-1} ref={submitErrorRef}>{submitError}</p> : null}
         {service === 'transport' ? (
-          <div className="form-pair"><RequestField id="pickup" label="Pickup point" placeholder="Hotel, airport or address" maxLength={REQUEST_FIELD_MAX_LENGTHS.pickup} fields={fields} errors={errors} onChange={setField} /><RequestField id="destination" label="Destination" placeholder="Where would you like to go?" maxLength={REQUEST_FIELD_MAX_LENGTHS.destination} fields={fields} errors={errors} onChange={setField} /></div>
+          <div className="form-pair"><RequestField id="pickup" label={copy.pickup} placeholder={copy.pickupPlaceholder} maxLength={REQUEST_FIELD_MAX_LENGTHS.pickup} fields={fields} errors={errors} onChange={setField} /><RequestField id="destination" label={copy.destination} placeholder={copy.destinationPlaceholder} maxLength={REQUEST_FIELD_MAX_LENGTHS.destination} fields={fields} errors={errors} onChange={setField} /></div>
         ) : (
-          <RequestField id="choice" label={choiceLabels[service]} placeholder="Type your preference" maxLength={REQUEST_FIELD_MAX_LENGTHS.choice} fields={fields} errors={errors} onChange={setField} />
+          <RequestField id="choice" label={copy.choice[service]} placeholder={copy.choicePlaceholder} maxLength={REQUEST_FIELD_MAX_LENGTHS.choice} fields={fields} errors={errors} onChange={setField} />
         )}
         {service === 'transport' || service === 'restaurants' ? (
-          <div className="form-pair"><RequestField id="date" label="Preferred date" type="date" min={todayIso()} fields={fields} errors={errors} onChange={setField} /><RequestField id="time" label="Preferred time" type="time" fields={fields} errors={errors} onChange={setField} /></div>
-        ) : <RequestField id="date" label="Preferred date" type="date" min={todayIso()} fields={fields} errors={errors} onChange={setField} />}
-        <RequestField id="count" label={service === 'tours' || service === 'restaurants' ? 'Guests' : 'Passengers'} type="number" min="1" max="50" fields={fields} errors={errors} onChange={setField} />
-        <div className="form-divider"><span>Your details</span></div>
-        <RequestField id="guestName" label="Your name" placeholder="How should we address you?" maxLength={REQUEST_FIELD_MAX_LENGTHS.guestName} fields={fields} errors={errors} onChange={setField} />
-        <RequestField id="contact" label="Phone or messenger" placeholder="WhatsApp, Telegram or phone" maxLength={REQUEST_FIELD_MAX_LENGTHS.contact} fields={fields} errors={errors} onChange={setField} />
+          <div className="form-pair"><RequestField id="date" label={copy.date} type="date" min={todayIso()} fields={fields} errors={errors} onChange={setField} /><RequestField id="time" label={copy.time} type="time" fields={fields} errors={errors} onChange={setField} /></div>
+        ) : <RequestField id="date" label={copy.date} type="date" min={todayIso()} fields={fields} errors={errors} onChange={setField} />}
+        <RequestField id="count" label={countLabel} type="number" min="1" max="50" fields={fields} errors={errors} onChange={setField} />
+        <div className="form-divider"><span>{t.common.yourDetails}</span></div>
+        <RequestField id="guestName" label={copy.name} placeholder={copy.namePlaceholder} maxLength={REQUEST_FIELD_MAX_LENGTHS.guestName} fields={fields} errors={errors} onChange={setField} />
+        <RequestField id="contact" label={copy.contact} placeholder={copy.contactPlaceholder} maxLength={REQUEST_FIELD_MAX_LENGTHS.contact} fields={fields} errors={errors} onChange={setField} />
         <div className="form-field">
-          <label htmlFor="note">Anything else? <span className="optional">Optional</span></label>
-          <Textarea id="note" name="note" maxLength={REQUEST_FIELD_MAX_LENGTHS.note} value={fields.note} onChange={(event) => setField('note', event.target.value)} placeholder="Add any useful details" />
+          <label htmlFor="note">{copy.note} <span className="optional">{t.common.optional}</span></label>
+          <Textarea id="note" name="note" maxLength={REQUEST_FIELD_MAX_LENGTHS.note} value={fields.note} onChange={(event) => setField('note', event.target.value)} placeholder={copy.notePlaceholder} />
         </div>
-        <Button className="submit-button" type="submit" disabled={submitting} aria-label={submitting ? 'Sending request…' : 'Send request'}>
-          {submitting ? 'Sending request…' : 'Send request'}
+        <Button className="submit-button" type="submit" disabled={submitting} aria-label={submitting ? copy.sending : copy.submit}>
+          {submitting ? copy.sending : copy.submit}
         </Button>
       </form>
     </section>

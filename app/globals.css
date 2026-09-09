@@ -18,11 +18,29 @@ button, input, textarea, select { font: inherit; }
 button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 3px solid color-mix(in srgb, var(--magenta) 70%, transparent); outline-offset: 3px; }
 .guest-shell { width: min(100%, 760px); min-height: 100svh; margin: 0 auto; padding: 22px 20px 30px; position: relative; overflow: hidden; }
 .guest-shell::before { content: ''; position: absolute; width: 320px; height: 320px; border: 82px solid rgba(211,34,106,.055); border-radius: 50%; top: -180px; right: -190px; pointer-events: none; }
-.site-header { display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1; }
+/* Above the hero and the sections, which are z-index 1 later in the DOM: the language menu drops over them. */
+.site-header { display:flex; align-items:center; justify-content:space-between; position:relative; z-index:5; }
 .brand-lockup { display:inline-flex; align-items:center; gap:9px; font-size:22px; font-weight:780; letter-spacing:-1.2px; }
 .brand-symbol { width:50px; height:40px; display:block; background:url('/mehmongo-mark.svg') center/contain no-repeat; }
 .brand-lockup span span { color:var(--magenta); }
-.language-pill { display:grid; place-items:center; min-width:44px; height:44px; border:1px solid var(--line); border-radius:999px; background:rgba(255,255,255,.55); font-size:12px; font-weight:750; letter-spacing:.08em; }
+.language-menu { position:relative; }
+.language-pill { min-height:44px; padding:0 14px 0 11px; display:inline-flex; align-items:center; gap:7px; border:1px solid var(--line); border-radius:999px; background:rgba(255,255,255,.55); color:var(--navy); font:inherit; font-size:12px; font-weight:750; letter-spacing:.08em; cursor:pointer; transition:background 160ms ease,border-color 160ms ease,color 160ms ease; }
+.language-pill svg { width:17px; height:17px; stroke-width:1.9; color:var(--magenta); }
+.language-pill:hover { border-color:rgba(16,43,78,.35); background:rgba(255,255,255,.85); }
+.language-pill[aria-expanded='true'] { border-color:var(--navy); background:var(--navy); color:#fff; }
+.language-pill[aria-expanded='true'] svg { color:#f56fa0; }
+.language-popover { position:absolute; top:calc(100% + 8px); right:0; z-index:6; width:min(252px, calc(100vw - 40px)); padding:8px; border:1px solid var(--line); border-radius:20px; background:var(--paper); box-shadow:0 18px 48px rgba(16,43,78,.18), 0 2px 6px rgba(16,43,78,.06); transform-origin:top right; animation:language-pop 160ms cubic-bezier(.2,.8,.3,1); }
+@keyframes language-pop { from { opacity:0; transform:translateY(-6px) scale(.96); } to { opacity:1; transform:none; } }
+.language-popover-title { margin:4px 10px 6px; color:var(--magenta); font-size:11px; font-weight:780; text-transform:uppercase; letter-spacing:.14em; }
+.language-option { width:100%; min-height:50px; padding:6px 10px; display:grid; grid-template-columns:38px 1fr 20px; align-items:center; gap:10px; border:0; border-radius:13px; background:transparent; color:var(--navy); font:inherit; text-align:left; cursor:pointer; }
+.language-option:hover, .language-option:focus-visible { background:var(--secondary); outline-offset:-3px; }
+.language-option[aria-checked='true'] { background:rgba(16,43,78,.06); }
+.language-option-code { display:grid; place-items:center; height:28px; border-radius:9px; background:rgba(16,43,78,.08); font-size:11px; font-weight:750; letter-spacing:.08em; }
+.language-option[aria-checked='true'] .language-option-code { background:var(--navy); color:#fff; }
+.language-option-names { display:grid; gap:1px; line-height:1.2; }
+.language-option-names strong { font-size:15px; font-weight:650; letter-spacing:-.01em; }
+.language-option-names small { color:var(--ink-soft); font-size:12px; }
+.language-option-check { width:18px; height:18px; color:var(--magenta); stroke-width:2.4; }
 .welcome-panel { padding:46px 0 40px; position:relative; }
 .stay-context { display:inline-flex; align-items:center; gap:8px; padding:9px 13px; border:1px solid var(--line); border-radius:999px; background:rgba(255,255,255,.68); color:#4b5c70; font-size:12px; font-weight:650; }
 .eyebrow { margin:32px 0 12px; color:var(--magenta); font-size:12px; font-weight:780; text-transform:uppercase; letter-spacing:.16em; }
@@ -427,3 +445,11 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
   .admin-metric-value { font-size: 22px; }
   .admin-metric-title { font-size: 10px; letter-spacing: .05em; }
 }
+
+/* ---------- Han script ---------- */
+/* Chinese has no tight tracking and needs more leading than the Latin display sizes; the serif accent word has no Han glyphs. */
+:lang(zh) h1, :lang(zh) h2, :lang(zh) h3, :lang(zh) .form-title, :lang(zh) .offer-dialog-body h2, :lang(zh) .language-option-names strong { letter-spacing: 0; }
+:lang(zh) h1 { line-height: 1.15; }
+:lang(zh) h1 em { font-family: inherit; font-weight: inherit; }
+:lang(zh) .eyebrow, :lang(zh) .offer-eyebrow, :lang(zh) .form-divider, :lang(zh) .language-popover-title, :lang(zh) .offer-dialog-body h3 { letter-spacing: .08em; }
+:lang(zh) h1, :lang(zh) h2, :lang(zh) h3, :lang(zh) .form-title { word-break: keep-all; overflow-wrap: anywhere; }

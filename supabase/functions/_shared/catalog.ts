@@ -57,15 +57,108 @@ export type CatalogOffer = {
   maxPassengers: number | null;
 };
 
+export type CatalogFilter = { id: 'all' | ServiceId; label: string };
+export type CatalogStep = { title: string; text: string };
+
+/** The copy around the offers: hero, filters, steps, notes and side cards. */
+export type CatalogPage = {
+  eyebrow: string;
+  title: string;
+  intro: string;
+  primaryCta: string;
+  trustItems: readonly string[];
+  sectionTitle: string;
+  sectionIntro: string;
+  filters: readonly CatalogFilter[];
+  stepsTitle: string;
+  steps: readonly CatalogStep[];
+  priceNote: string;
+  paymentNote: string;
+  customTitle: string;
+  customText: string;
+  customCta: string;
+  restaurantTitle: string;
+  restaurantText: string;
+  restaurantCta: string;
+  emptyCategory: string;
+};
+
+/** Labels and messages of the request form for a catalogue offer. */
+export type CatalogForm = {
+  title: string;
+  intro: string;
+  nameLabel: string;
+  contactLabel: string;
+  contactPlaceholder: string;
+  dateLabel: string;
+  timeLabel: string;
+  countLabel: string;
+  noteLabel: string;
+  submit: string;
+  sending: string;
+  back: string;
+  priceLabel: string;
+  quoteLabel: string;
+  privacy: string;
+  payment: string;
+  successTitle: string;
+  successText: string;
+  networkError: string;
+  rateLimitError: string;
+  inactiveRoom: string;
+  helpHint: string;
+};
+
+export type CatalogFaqEntry = { question: string; answer: string };
+
+/** One offer as written in content/catalog.<locale>.json. */
+export type CatalogSourceOffer = {
+  id: string;
+  category: ServiceId;
+  featured: boolean;
+  title: string;
+  eyebrow: string;
+  summary: string;
+  description: string;
+  price: OfferPrice;
+  image: string | null;
+  imageAlt: string | null;
+  imageFit: 'cover' | 'contain' | null;
+  imageCaption: string | null;
+  facts: readonly string[];
+  includes: readonly string[];
+  extras: readonly string[];
+  confirmBeforePayment: readonly string[];
+  timing?: string | null;
+  requestProfile: RequestProfile;
+  cta: string;
+};
+
+/**
+ * The shape of every content/catalog.<locale>.json. The English file is the
+ * source of prices and ids; the translations repeat them only so a file reads
+ * whole on its own, and a test holds them equal.
+ */
+export type CatalogSource = {
+  version: string;
+  locale: string;
+  departureCity: string;
+  currency: string;
+  page: CatalogPage;
+  offers: readonly CatalogSourceOffer[];
+  form: CatalogForm;
+  faq: readonly CatalogFaqEntry[];
+};
+
 export type GuestCatalog = {
   id: GuestCatalogId;
   version: string;
   locale: string;
   departureCity: string;
   currency: string;
-  page: typeof catalogData.page;
-  faq: typeof catalogData.faq;
-  form: typeof catalogData.form;
+  page: CatalogPage;
+  faq: readonly CatalogFaqEntry[];
+  form: CatalogForm;
   offers: readonly CatalogOffer[];
 };
 
@@ -79,17 +172,17 @@ const offerCapacity: Record<string, number> = {
   'tashkent-airport-minivan': 5,
 };
 
-function toOffer(offer: (typeof catalogData.offers)[number]): CatalogOffer {
+function toOffer(offer: CatalogSourceOffer): CatalogOffer {
   return {
     id: offer.id,
-    category: offer.category as ServiceId,
+    category: offer.category,
     featured: offer.featured,
     title: offer.title,
     eyebrow: offer.eyebrow,
     summary: offer.summary,
     description: offer.description,
     price: {
-      mode: offer.price.mode as OfferPrice['mode'],
+      mode: offer.price.mode,
       amount: offer.price.amount,
       currency: offer.price.currency,
       unit: offer.price.unit,
@@ -97,29 +190,33 @@ function toOffer(offer: (typeof catalogData.offers)[number]): CatalogOffer {
     },
     image: offer.image,
     imageAlt: offer.imageAlt,
-    imageFit: offer.imageFit as CatalogOffer['imageFit'],
+    imageFit: offer.imageFit,
     imageCaption: offer.imageCaption,
     facts: offer.facts,
     includes: offer.includes,
     extras: offer.extras,
     confirmBeforePayment: offer.confirmBeforePayment,
-    timing: 'timing' in offer ? offer.timing : null,
-    requestProfile: offer.requestProfile as RequestProfile,
+    timing: offer.timing ?? null,
+    requestProfile: offer.requestProfile,
     cta: offer.cta,
     maxPassengers: offerCapacity[offer.id] ?? null,
   };
 }
 
+// Typed through CatalogSource so the literal types of the generated `as const`
+// data never leak into GuestCatalog, which the translated catalogues share.
+const englishSource: CatalogSource = catalogData;
+
 const tashkentCatalog: GuestCatalog = {
   id: 'tashkent-v1',
-  version: catalogData.version,
-  locale: catalogData.locale,
-  departureCity: catalogData.departureCity,
-  currency: catalogData.currency,
-  page: catalogData.page,
-  faq: catalogData.faq,
-  form: catalogData.form,
-  offers: catalogData.offers.map(toOffer),
+  version: englishSource.version,
+  locale: englishSource.locale,
+  departureCity: englishSource.departureCity,
+  currency: englishSource.currency,
+  page: englishSource.page,
+  faq: englishSource.faq,
+  form: englishSource.form,
+  offers: englishSource.offers.map(toOffer),
 };
 
 const catalogues: Record<GuestCatalogId, GuestCatalog> = { 'tashkent-v1': tashkentCatalog };

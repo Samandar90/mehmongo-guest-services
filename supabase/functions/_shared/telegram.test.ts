@@ -110,3 +110,10 @@ Deno.test('keeps the abort timeout active while a Telegram response body stalls'
     globalThis.setTimeout = originalSetTimeout;
   }
 });
+
+Deno.test('tells the team which language to answer the guest in', () => {
+  assertStringIncludes(formatTelegramRequest(transportFixture, 'Asia/Tashkent'), '🌐 Язык гостя: английский');
+  assertStringIncludes(formatTelegramRequest({ ...transportFixture, guestLocale: 'zh' }, 'Asia/Tashkent'), '🌐 Язык гостя: китайский');
+  assertStringIncludes(formatTelegramRequest({ ...transportFixture, guestLocale: 'uz' }, 'Asia/Tashkent'), '🌐 Язык гостя: узбекский');
+  assertStringIncludes(formatTelegramRequest({ ...transportFixture, guestLocale: 'ru' }, 'Asia/Tashkent'), '🌐 Язык гостя: русский');
+});

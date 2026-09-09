@@ -3,6 +3,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { emptyResponse, jsonResponse } from '../_shared/http.ts';
 import { readOfferSnapshot } from '../_shared/catalog.ts';
+import { isGuestLocale } from '../_shared/contracts.ts';
 import {
   formatTelegramRequest,
   sendTelegramMessage,
@@ -123,6 +124,7 @@ function readRequest(data: unknown): RetryRequest | null {
     note: request.note,
     // The stored snapshot, not today's catalogue price.
     offer: readOfferSnapshot(request.offer_snapshot),
+    guestLocale: isGuestLocale(request.guest_locale) ? request.guest_locale : 'en',
   };
 }
 
@@ -169,7 +171,7 @@ function repositoryFor(client: RetryTelegramClient): RetryTelegramRepository {
     async findRequest(requestId) {
       const { data, error } = await client
         .from('service_requests')
-        .select('id, reference, service_type, choice, pickup, destination, requested_date, requested_time, party_size, guest_name, guest_contact, note, offer_snapshot, rooms!inner(label, hotels!inner(name))')
+        .select('id, reference, service_type, choice, pickup, destination, requested_date, requested_time, party_size, guest_name, guest_contact, note, offer_snapshot, guest_locale, rooms!inner(label, hotels!inner(name))')
         .eq('id', requestId)
         .maybeSingle();
       if (error) throw error;

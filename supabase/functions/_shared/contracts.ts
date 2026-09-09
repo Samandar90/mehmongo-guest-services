@@ -3,6 +3,18 @@ export type ServiceId = 'tours' | 'transport' | 'restaurants' | 'tickets';
 /** Service categories a guest can request. */
 export const GUEST_SERVICE_IDS: ServiceId[] = ['tours', 'transport', 'restaurants', 'tickets'];
 
+/**
+ * Languages the guest site speaks. Stored with each request so the team
+ * answers a guest in the language they were reading, and checked by the
+ * database, so the list here and the constraint must move together.
+ */
+export const GUEST_LOCALES = ['en', 'ru', 'uz', 'zh'] as const;
+export type GuestLocale = (typeof GUEST_LOCALES)[number];
+
+export function isGuestLocale(value: unknown): value is GuestLocale {
+  return typeof value === 'string' && (GUEST_LOCALES as readonly string[]).includes(value);
+}
+
 export const REQUEST_FIELD_MAX_LENGTHS = {
   choice: 200,
   pickup: 200,
@@ -35,6 +47,8 @@ export type SubmitRequestPayload = {
    * older clients; the price is never taken from the client either way.
    */
   offerId?: string | null;
+  /** Language the guest was reading the site in. Absent from older clients, which were English. */
+  guestLocale?: GuestLocale;
 };
 
 export type SubmitRequestResult = {

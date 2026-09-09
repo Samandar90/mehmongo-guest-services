@@ -105,3 +105,19 @@ Deno.test('enforces category requirements and configured field lengths after tri
     fields: { ...validFields, note: 'x'.repeat(1001) },
   }));
 });
+
+Deno.test('a client that does not say its language is English', () => {
+  assertEquals(validateSubmitPayload(validTransportPayload()).guestLocale, 'en');
+  assertEquals(validateSubmitPayload({ ...validTransportPayload(), guestLocale: null }).guestLocale, 'en');
+});
+
+Deno.test('keeps the language the guest was reading', () => {
+  assertEquals(validateSubmitPayload({ ...validTransportPayload(), guestLocale: 'zh' }).guestLocale, 'zh');
+  assertEquals(validateSubmitPayload({ ...validTransportPayload(), guestLocale: 'uz' }).guestLocale, 'uz');
+});
+
+Deno.test('refuses a language the site does not speak', () => {
+  assertThrows(() => validateSubmitPayload({ ...validTransportPayload(), guestLocale: 'de' }));
+  assertThrows(() => validateSubmitPayload({ ...validTransportPayload(), guestLocale: 'EN' }));
+  assertThrows(() => validateSubmitPayload({ ...validTransportPayload(), guestLocale: 7 }));
+});

@@ -1,0 +1,157 @@
+-- The guest site now speaks English, Russian, Uzbek and Chinese. The language
+-- a guest was reading is stored with the request so the team calls them back
+-- in it. Older rows were written by the English-only site and default to it.
+--
+-- The list here mirrors GUEST_LOCALES in supabase/functions/_shared/contracts.ts;
+-- a language added to one must be added to the other.
+
+alter table public.service_requests
+  add column guest_locale text not null default 'en'
+    check (guest_locale in ('en', 'ru', 'uz', 'zh'));
+
+comment on column public.service_requests.guest_locale is
+  'Language the guest was reading the site in when the request was sent. The team answers in it.';
+
+-- A new parameter is a new signature: create or replace would leave the old
+-- function beside this one, so the old one is dropped and the grants restated.
+drop function if exists public.submit_guest_request(
+  text, uuid, text, uuid, uuid, text, text, text, text, date, time without time zone, integer, text, text, text, text, jsonb
+);
+
+create function public.submit_guest_request(
+  p_reference text,
+  p_idempotency_key uuid,
+  p_rate_limit_key text,
+  p_hotel_id uuid,
+  p_room_id uuid,
+  p_service_type text,
+  p_choice text,
+  p_pickup text,
+  p_destination text,
+  p_requested_date date,
+  p_requested_time time without time zone,
+  p_party_size integer,
+  p_guest_name text,
+  p_guest_contact text,
+  p_note text,
+  p_offer_id text default null,
+  p_offer_snapshot jsonb default null,
+  p_guest_locale text default 'en'
+)
+returns table (outcome text, request_id uuid, reference text)
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  existing_request_id uuid;
+  existing_reference text;
+  recent_request_count bigint;
+  conflicting_constraint text;
+begin
+  select request.id, request.reference
+  into existing_request_id, existing_reference
+  from public.service_requests as request
+  where request.idempotency_key = p_idempotency_key;
+
+  if found then
+    return query select 'existing'::text, existing_request_id, existing_reference;
+    return;
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(p_rate_limit_key, 0));
+
+  select request.id, request.reference
+  into existing_request_id, existing_reference
+  from public.service_requests as request
+  where request.idempotency_key = p_idempotency_key;
+
+  if found then
+    return query select 'existing'::text, existing_request_id, existing_reference;
+    return;
+  end if;
+
+  select count(*)
+  into recent_request_count
+  from public.service_requests as request
+  where request.rate_limit_key = p_rate_limit_key
+    and request.created_at >= now() - interval '10 minutes';
+
+  if recent_request_count >= 5 then
+    return query select 'rate_limited'::text, null::uuid, null::text;
+    return;
+  end if;
+
+  begin
+    insert into public.service_requests as inserted (
+      reference,
+      idempotency_key,
+      rate_limit_key,
+      hotel_id,
+      room_id,
+      service_type,
+      choice,
+      pickup,
+      destination,
+      requested_date,
+      requested_time,
+      party_size,
+      guest_name,
+      guest_contact,
+      note,
+      offer_id,
+      offer_snapshot,
+      guest_locale
+    ) values (
+      p_reference,
+      p_idempotency_key,
+      p_rate_limit_key,
+      p_hotel_id,
+      p_room_id,
+      p_service_type,
+      p_choice,
+      p_pickup,
+      p_destination,
+      p_requested_date,
+      p_requested_time,
+      p_party_size,
+      p_guest_name,
+      p_guest_contact,
+      p_note,
+      p_offer_id,
+      p_offer_snapshot,
+      p_guest_locale
+    )
+    returning inserted.id, inserted.reference into existing_request_id, existing_reference;
+  exception when unique_violation then
+    get stacked diagnostics conflicting_constraint = constraint_name;
+    if conflicting_constraint = 'service_requests_idempotency_key_key' then
+      select request.id, request.reference
+      into existing_request_id, existing_reference
+      from public.service_requests as request
+      where request.idempotency_key = p_idempotency_key;
+
+      if found then
+        return query select 'existing'::text, existing_request_id, existing_reference;
+        return;
+      end if;
+    end if;
+    raise;
+  end;
+
+  insert into public.telegram_deliveries (request_id, attempt, status)
+  values (existing_request_id, 1, 'pending');
+
+  return query select 'created'::text, existing_request_id, existing_reference;
+end;
+$$;
+
+revoke all on function public.submit_guest_request(
+  text, uuid, text, uuid, uuid, text, text, text, text, date, time without time zone, integer, text, text, text, text, jsonb, text
+) from public;
+revoke all on function public.submit_guest_request(
+  text, uuid, text, uuid, uuid, text, text, text, text, date, time without time zone, integer, text, text, text, text, jsonb, text
+) from anon, authenticated;
+grant execute on function public.submit_guest_request(
+  text, uuid, text, uuid, uuid, text, text, text, text, date, time without time zone, integer, text, text, text, text, jsonb, text
+) to service_role;

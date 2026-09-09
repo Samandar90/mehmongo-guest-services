@@ -1,5 +1,5 @@
 import type { OfferSnapshot } from './catalog.ts';
-import type { ServiceId } from './contracts.ts';
+import type { GuestLocale, ServiceId } from './contracts.ts';
 
 const TELEGRAM_PARSE_MODE = 'HTML';
 const TELEGRAM_TIMEOUT_MS = 8_000;
@@ -20,7 +20,19 @@ export type TelegramRequest = {
   note: string;
   /** Snapshot stored with the request; retries reuse it instead of today's catalogue. */
   offer?: OfferSnapshot | null;
+  /** The language the guest was reading; the team answers in it. Absent means English. */
+  guestLocale?: GuestLocale | null;
 };
+
+/** In Russian, for the team: the language to call the guest back in. */
+export function guestLanguageLabel(locale: GuestLocale | null | undefined): string {
+  return {
+    en: 'английский',
+    ru: 'русский',
+    uz: 'узбекский',
+    zh: 'китайский',
+  }[locale ?? 'en'];
+}
 
 export type TelegramFetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
@@ -96,6 +108,9 @@ export function formatTelegramRequest(request: TelegramRequest, timeZone: string
   if (request.partySize !== null) lines.push(`👥 Гостей: ${escapeHtml(request.partySize)}`);
   lines.push(`👤 Гость: ${escapeHtml(request.guestName)}`);
   lines.push(`📞 Контакт: ${escapeHtml(request.contact)}`);
+  // Printed for every request, so a guest who read the site in Chinese is
+  // called back in Chinese and not in the language the team assumed.
+  lines.push(`🌐 Язык гостя: ${guestLanguageLabel(request.guestLocale)}`);
   if (request.note) lines.push(`💬 Комментарий: ${escapeHtml(request.note)}`);
 
   return lines.join('\n');

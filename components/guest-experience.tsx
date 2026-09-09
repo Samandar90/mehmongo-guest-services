@@ -1,17 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BrandLockup } from '@/components/brand-lockup';
 import { OfferDetails } from '@/components/catalog/offer-details';
 import { OfferRequestForm, emptyCatalogDraft, type CatalogDraft } from '@/components/catalog/offer-request-form';
 import { ServiceCatalog } from '@/components/catalog/service-catalog';
+import { LanguageMenu, rememberLocale } from '@/components/language-menu';
 import { RequestForm } from '@/components/request-form';
 import { RequestSuccess } from '@/components/request-success';
 import { ServiceGrid } from '@/components/service-grid';
 import type { GuestContext, ServiceId } from '@/lib/guest-request';
+import { getLocalisedCatalog } from '@/lib/i18n/catalog';
+import { I18nProvider, useI18n } from '@/lib/i18n/context';
+import { defaultLocale, localeInfo, LOCALE_PARAM, type Locale } from '@/lib/i18n/locale';
 import { submitGuestRequest } from '@/lib/requests/api';
-import { getGuestCatalog, type CatalogOffer } from '@/supabase/functions/_shared/catalog';
+import type { CatalogOffer } from '@/supabase/functions/_shared/catalog';
 
 type CatalogView =
   | { step: 'catalog' }
@@ -19,12 +23,51 @@ type CatalogView =
   | { step: 'offer-form'; offer: CatalogOffer }
   | { step: 'custom-category' };
 
-export function GuestExperience({ context }: { context: GuestContext }) {
-  const catalog = getGuestCatalog(context.catalogId);
+/**
+ * The guest site for one room. The language starts as the server resolved it
+ * — from the link, the cookie or the browser — and a change here is instant:
+ * the same screen re-renders in the new language with everything the guest
+ * has typed still in place.
+ */
+export function GuestExperience({ context, locale: initialLocale = defaultLocale }: {
+  context: GuestContext;
+  locale?: Locale;
+}) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
+
+  const setLocale = (next: Locale) => {
+    setLocaleState(next);
+    rememberLocale(next);
+    // A ?lang= the owner put in a demo link follows the guest's choice; a
+    // plain room link stays plain.
+    const url = new URL(window.location.href);
+    if (url.searchParams.has(LOCALE_PARAM)) {
+      url.searchParams.set(LOCALE_PARAM, next);
+      window.history.replaceState(window.history.state, '', url);
+    }
+  };
+
+  // The document follows the choice too, so the browser picks the right glyph
+  // forms and a screen reader the right voice beyond this component's root.
+  useEffect(() => {
+    document.documentElement.lang = localeInfo[locale].tag;
+  }, [locale]);
+
+  return (
+    <I18nProvider locale={locale} setLocale={setLocale}>
+      <GuestScreens context={context} />
+    </I18nProvider>
+  );
+}
+
+function GuestScreens({ context }: { context: GuestContext }) {
+  const { locale, t } = useI18n();
+  const catalog = getLocalisedCatalog(context.catalogId, locale);
   const [service, setService] = useState<ServiceId | null>(null);
   const [reference, setReference] = useState<string | null>(null);
   const [view, setView] = useState<CatalogView>({ step: 'catalog' });
   const [draft, setDraft] = useState<CatalogDraft>(emptyCatalogDraft);
+  const lang = localeInfo[locale].tag;
 
   const restart = () => {
     setService(null);
@@ -33,12 +76,12 @@ export function GuestExperience({ context }: { context: GuestContext }) {
   };
 
   const submitLegacy = (chosen: ServiceId) => (fields: Parameters<typeof submitGuestRequest>[0]['fields'], idempotencyKey: string) =>
-    submitGuestRequest({ roomToken: context.roomToken, idempotencyKey, service: chosen, fields, website: '' });
+    submitGuestRequest({ roomToken: context.roomToken, idempotencyKey, service: chosen, fields, website: '', guestLocale: locale });
 
   if (reference) {
     return (
-      <main className="guest-shell">
-        <header className="site-header"><BrandLockup /><span className="language-pill">EN</span></header>
+      <main className="guest-shell" lang={lang}>
+        <GuestHeader />
         <RequestSuccess context={context} reference={reference} onRestart={restart} catalog={catalog} />
         <GuestFooter />
       </main>
@@ -47,8 +90,8 @@ export function GuestExperience({ context }: { context: GuestContext }) {
 
   if (service) {
     return (
-      <main className="guest-shell">
-        <header className="site-header"><BrandLockup /><span className="language-pill">EN</span></header>
+      <main className="guest-shell" lang={lang}>
+        <GuestHeader />
         <RequestForm
           service={service}
           onBack={() => { setService(null); setView({ step: 'catalog' }); }}
@@ -62,26 +105,26 @@ export function GuestExperience({ context }: { context: GuestContext }) {
 
   if (!catalog) {
     return (
-      <main className="guest-shell">
-        <header className="site-header"><BrandLockup /><span className="language-pill">EN</span></header>
+      <main className="guest-shell" lang={lang}>
+        <GuestHeader />
         <section className="welcome-panel">
-          <div className="stay-context"><span>{context.hotelName}</span><span aria-hidden="true">•</span><span>Room {context.roomLabel}</span></div>
-          <p className="eyebrow">Guest services</p>
-          <h1>Good stay,<br /><em>made simple.</em></h1>
-          <p className="intro">Choose what you need. Our local team will take care of the rest.</p>
+          <div className="stay-context"><span>{context.hotelName}</span><span aria-hidden="true">•</span><span>{t.common.room(context.roomLabel)}</span></div>
+          <p className="eyebrow">{t.welcome.eyebrow}</p>
+          <h1>{t.welcome.title[0]}<br /><em>{t.welcome.title[1]}</em></h1>
+          <p className="intro">{t.welcome.intro}</p>
         </section>
         <section className="services-section" aria-labelledby="services-title">
-          <div className="section-heading"><h2 id="services-title">How can we help?</h2><span>{context.services.length} services</span></div>
+          <div className="section-heading"><h2 id="services-title">{t.welcome.heading}</h2><span>{t.welcome.count(context.services.length)}</span></div>
           <ServiceGrid onSelect={setService} allowedServices={context.services} />
         </section>
-        <footer><span className="status-dot" aria-hidden="true" />Local concierge team available</footer>
+        <footer><span className="status-dot" aria-hidden="true" />{t.common.concierge}</footer>
       </main>
     );
   }
 
   return (
-    <main className="guest-shell catalog-shell">
-      <header className="site-header"><BrandLockup /><span className="language-pill">EN</span></header>
+    <main className="guest-shell catalog-shell" lang={lang}>
+      <GuestHeader />
 
       {view.step === 'offer-form' ? (
         <OfferRequestForm
@@ -98,13 +141,14 @@ export function GuestExperience({ context }: { context: GuestContext }) {
               fields,
               website: '',
               offerId,
+              guestLocale: locale,
             });
             setReference(result.reference);
           }}
         />
       ) : view.step === 'custom-category' ? (
         <section className="request-panel">
-          <button className="back-button" type="button" onClick={() => setView({ step: 'catalog' })}>Back to services</button>
+          <button className="back-button" type="button" onClick={() => setView({ step: 'catalog' })}>{t.common.backToServices}</button>
           <p className="eyebrow">{catalog.page.customTitle}</p>
           <h1 className="form-title">{catalog.page.customCta}</h1>
           <p className="form-intro">{catalog.page.customText}</p>
@@ -135,12 +179,23 @@ export function GuestExperience({ context }: { context: GuestContext }) {
   );
 }
 
+function GuestHeader() {
+  const { locale, setLocale } = useI18n();
+  return (
+    <header className="site-header">
+      <BrandLockup />
+      <LanguageMenu locale={locale} onChange={setLocale} />
+    </header>
+  );
+}
+
 function GuestFooter() {
+  const { t } = useI18n();
   return (
     <footer className="guest-footer">
       <span className="status-dot" aria-hidden="true" />
-      <span>Local concierge team available</span>
-      <Link href="/photo-credits">Photo credits</Link>
+      <span>{t.common.concierge}</span>
+      <Link href="/photo-credits">{t.common.photoCredits}</Link>
     </footer>
   );
 }

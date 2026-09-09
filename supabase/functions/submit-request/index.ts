@@ -12,7 +12,7 @@ import {
   readOfferSnapshot,
   type OfferSnapshot,
 } from '../_shared/catalog.ts';
-import { GUEST_SERVICE_IDS } from '../_shared/contracts.ts';
+import { GUEST_SERVICE_IDS, isGuestLocale } from '../_shared/contracts.ts';
 import {
   formatTelegramRequest,
   sendTelegramMessage,
@@ -176,6 +176,7 @@ function readDeliveryRequest(data: unknown): DeliveryRequest | null {
     contact: request.guest_contact,
     note: request.note,
     offer: readOfferSnapshot(request.offer_snapshot),
+    guestLocale: isGuestLocale(request.guest_locale) ? request.guest_locale : 'en',
   };
 }
 
@@ -301,6 +302,7 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
         p_note: request.note,
         p_offer_id: request.offerId,
         p_offer_snapshot: request.offerSnapshot,
+        p_guest_locale: request.guestLocale,
       });
       const conflict = uniqueConflict(error);
       if (conflict === 'reference_conflict') return { kind: conflict };
@@ -321,7 +323,7 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
     async findByReference(reference) {
       const { data, error } = await client
         .from('service_requests')
-        .select('id, reference, service_type, choice, pickup, destination, requested_date, requested_time, party_size, guest_name, guest_contact, note, offer_snapshot, rooms!inner(label, hotels!inner(name))')
+        .select('id, reference, service_type, choice, pickup, destination, requested_date, requested_time, party_size, guest_name, guest_contact, note, offer_snapshot, guest_locale, rooms!inner(label, hotels!inner(name))')
         .eq('reference', reference)
         .maybeSingle();
       if (error) throw error;

@@ -335,6 +335,7 @@ Deno.test('production persistence reports failed until Telegram delivery exists'
     note: '',
     room: ACTIVE_ROOM,
     offerId: null,
+    guestLocale: 'en',
     offerSnapshot: null,
     rateKey: 'hashed-rate-key',
     reference: 'MG-DURABLEA',
@@ -362,6 +363,7 @@ Deno.test('production persistence reports failed until Telegram delivery exists'
     p_note: '',
     p_offer_id: null,
     p_offer_snapshot: null,
+    p_guest_locale: 'en',
   });
 });
 
@@ -387,6 +389,7 @@ Deno.test('production persistence classifies a unique reference collision', asyn
     note: '',
     room: ACTIVE_ROOM,
     offerId: null,
+    guestLocale: 'en',
     offerSnapshot: null,
     rateKey: 'hashed-rate-key',
     reference: 'MG-DURABLEA',
@@ -427,6 +430,7 @@ Deno.test('production persistence resolves an atomic response without a request 
     note: '',
     room: ACTIVE_ROOM,
     offerId: null,
+    guestLocale: 'en',
     offerSnapshot: null,
     rateKey: 'hashed-rate-key',
     reference: 'MG-DURABLEA',
@@ -476,6 +480,7 @@ Deno.test('production persistence fetches the winner of an idempotency unique ra
     note: '',
     room: ACTIVE_ROOM,
     offerId: null,
+    guestLocale: 'en',
     offerSnapshot: null,
     rateKey: 'hashed-rate-key',
     reference: 'MG-DURABLEA',

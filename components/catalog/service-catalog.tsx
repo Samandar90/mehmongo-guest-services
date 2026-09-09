@@ -3,6 +3,7 @@
 import { ArrowUpRight, Ticket, Utensils } from 'lucide-react';
 import { useState } from 'react';
 import { OfferCard } from '@/components/catalog/offer-card';
+import { useI18n } from '@/lib/i18n/context';
 import type { CatalogOffer, GuestCatalog } from '@/supabase/functions/_shared/catalog';
 import type { ServiceId } from '@/supabase/functions/_shared/contracts';
 
@@ -21,6 +22,7 @@ export function ServiceCatalog({ catalog, services, hotelName, roomLabel, onOpen
   onRestaurant: () => void;
   onCustomQuote: () => void;
 }) {
+  const { t } = useI18n();
   const [filter, setFilter] = useState<FilterId>('all');
   const page = catalog.page;
 
@@ -41,7 +43,7 @@ export function ServiceCatalog({ catalog, services, hotelName, roomLabel, onOpen
     <>
       <section className="catalog-hero">
         <div className="stay-context">
-          <span>{hotelName}</span><span aria-hidden="true">•</span><span>Room {roomLabel}</span>
+          <span>{hotelName}</span><span aria-hidden="true">•</span><span>{t.common.room(roomLabel)}</span>
         </div>
         <p className="eyebrow">{page.eyebrow}</p>
         <h1>{page.title}</h1>
@@ -66,14 +68,14 @@ export function ServiceCatalog({ catalog, services, hotelName, roomLabel, onOpen
 
         {filters.length > 1 ? (
           <fieldset className="catalog-filters">
-            <legend className="visually-hidden">Filter services</legend>
+            <legend className="visually-hidden">{t.catalog.filterLegend}</legend>
             {filters.map((entry) => (
               <button
                 key={entry.id}
                 type="button"
                 className="catalog-filter"
                 aria-pressed={activeFilter === entry.id}
-                onClick={() => setFilter(entry.id as FilterId)}
+                onClick={() => setFilter(entry.id)}
               >
                 {entry.label}
               </button>
@@ -99,7 +101,7 @@ export function ServiceCatalog({ catalog, services, hotelName, roomLabel, onOpen
               <h3>{ticketOffer.title}</h3>
               <p className="offer-summary">{ticketOffer.summary}</p>
               <ul className="ticket-facts">{ticketOffer.facts.map((fact) => <li key={fact}>{fact}</li>)}</ul>
-              <p className="offer-price"><strong>Get a quote</strong><span>{ticketOffer.price.unit}</span></p>
+              <p className="offer-price"><strong>{t.catalog.getQuote}</strong><span>{ticketOffer.price.unit}</span></p>
             </div>
             <button className="offer-cta" type="button" onClick={() => onOpenOffer(ticketOffer)}>
               {ticketOffer.cta}
@@ -149,7 +151,7 @@ export function ServiceCatalog({ catalog, services, hotelName, roomLabel, onOpen
       </section>
 
       <section className="catalog-faq" aria-labelledby="catalog-faq-title">
-        <h2 id="catalog-faq-title">Good to know</h2>
+        <h2 id="catalog-faq-title">{t.catalog.goodToKnow}</h2>
         <dl>
           {catalog.faq.map((entry) => (
             <div key={entry.question}>

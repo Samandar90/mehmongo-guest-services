@@ -408,3 +408,11 @@ describe('settleRequest', () => {
     await expect(settleRequest({ requestId: 'request-1', status: 'confirmed' }, client)).rejects.toBeInstanceOf(AdminRequestError);
   });
 });
+
+it('reads the language the guest was reading, and treats older rows as English', async () => {
+  const chinese = await listRequests({}, requestQueryClient([{ ...requestRowFixture, guest_locale: 'zh' }]).client);
+  expect(chinese.items[0].guestLocale).toBe('zh');
+
+  const older = await listRequests({}, requestQueryClient([requestRowFixture]).client);
+  expect(older.items[0].guestLocale).toBe('en');
+});

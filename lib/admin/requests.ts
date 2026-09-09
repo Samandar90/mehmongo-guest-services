@@ -3,7 +3,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { AdminRequestError } from '@/lib/admin/errors';
 import { parseSettledAmount, type SettlementCurrency } from '@/lib/admin/money';
 import { readOfferSnapshot, type OfferSnapshot } from '@/supabase/functions/_shared/catalog';
-import type { ServiceId } from '@/supabase/functions/_shared/contracts';
+import { isGuestLocale, type GuestLocale, type ServiceId } from '@/supabase/functions/_shared/contracts';
 
 export type TelegramStatus = 'pending' | 'sent' | 'failed';
 export type RequestStatus = 'new' | 'confirmed' | 'completed' | 'cancelled';
@@ -38,6 +38,8 @@ export type AdminRequestRow = {
   guestName: string;
   contact: string;
   note: string;
+  /** The language the guest was reading the site in; the one to answer in. */
+  guestLocale: GuestLocale;
   telegramStatus: TelegramStatus | 'none';
   telegramAttempt: number;
   telegramErrorCode: string | null;
@@ -83,7 +85,7 @@ export const requestPageSize = 100;
 const requestColumns = [
   'id', 'reference', 'service_type', 'status', 'choice', 'pickup', 'destination',
   'requested_date', 'requested_time', 'party_size', 'guest_name', 'guest_contact', 'note',
-  'hotel_id', 'room_id', 'created_at', 'offer_id', 'offer_snapshot',
+  'hotel_id', 'room_id', 'created_at', 'offer_id', 'offer_snapshot', 'guest_locale',
   'settled_amount_minor', 'settled_currency', 'settled_at', 'cost_amount_minor',
   'hotel_rate_minor', 'hotel_rate_currency',
   'hotels!inner(name)', 'rooms!inner(label)',
@@ -111,6 +113,7 @@ type RequestRow = {
   created_at: string;
   offer_id: string | null;
   offer_snapshot: unknown;
+  guest_locale: string | null;
   settled_amount_minor: number | null;
   settled_currency: string | null;
   settled_at: string | null;
@@ -189,6 +192,7 @@ function toRow(row: RequestRow): AdminRequestRow {
     guestName: row.guest_name,
     contact: row.guest_contact,
     note: row.note,
+    guestLocale: isGuestLocale(row.guest_locale) ? row.guest_locale : 'en',
     telegramStatus: delivery?.status ?? 'none',
     telegramAttempt: delivery?.attempt ?? 0,
     telegramErrorCode: delivery?.error_code ?? null,

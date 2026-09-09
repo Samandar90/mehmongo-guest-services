@@ -2,9 +2,11 @@ import type { Metadata } from 'next';
 import { Geist } from 'next/font/google';
 import './globals.css';
 
+// Cyrillic for the Russian guest site and the admin; Chinese falls through to
+// the system's Han font, which is what the lang attribute on the page selects.
 const geistSans = Geist({
   variable: '--font-geist-sans',
-  subsets: ['latin'],
+  subsets: ['latin', 'cyrillic'],
 });
 
 export const metadata: Metadata = {

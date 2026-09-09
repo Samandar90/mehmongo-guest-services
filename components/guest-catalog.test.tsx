@@ -296,3 +296,41 @@ describe('idempotency across services', () => {
     expect(secondCall.idempotencyKey).not.toBe(failedKey);
   });
 });
+
+describe('guest catalogue languages', () => {
+  it('shows the catalogue in the chosen language with the English prices', () => {
+    render(<GuestExperience context={catalogContext} locale="zh" />);
+
+    expect(screen.getByRole('heading', { name: '跟随本地向导游览塔什干' })).toBeInTheDocument();
+    expect(screen.getByText('$120 起')).toBeInTheDocument();
+    expect(screen.getByText('205 号房')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '专车接送' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '温馨提示' })).toBeInTheDocument();
+  });
+
+  it('submits the canonical choice behind a translated label, with the language', async () => {
+    const user = userEvent.setup();
+    server.submit.mockResolvedValue({ reference: 'MG-ABCDEFGH', telegramStatus: 'sent' });
+    render(<GuestExperience context={catalogContext} locale="ru" />);
+
+    await user.click(screen.getByRole('button', { name: 'Заказать трансфер' }));
+    const details = screen.getByRole('dialog');
+    expect(within(details).getByText('Что входит')).toBeInTheDocument();
+    await user.click(within(details).getByRole('button', { name: 'Заказать трансфер' }));
+
+    await user.selectOptions(screen.getByLabelText('Направление'), 'Hotel → airport');
+    expect((screen.getByRole('option', { name: 'Отель → аэропорт' }) as HTMLOptionElement).selected).toBe(true);
+    await user.type(screen.getByLabelText('Желаемая дата'), '2099-12-31');
+    await user.type(screen.getByLabelText('Желаемое время'), '05:15');
+    await user.type(screen.getByLabelText('Ваше имя'), 'Амир');
+    await user.type(screen.getByLabelText('Как с вами связаться'), '@amir');
+    await user.click(screen.getByRole('button', { name: 'Отправить заявку' }));
+
+    expect(await screen.findByText('Ваша заявка принята.')).toBeInTheDocument();
+    expect(server.submit).toHaveBeenCalledWith(expect.objectContaining({
+      guestLocale: 'ru',
+      offerId: 'tashkent-airport-sedan',
+      fields: expect.objectContaining({ choice: 'Hotel → airport' }),
+    }));
+  });
+});

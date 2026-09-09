@@ -42,6 +42,7 @@ const requestRow: AdminRequestRow = {
   guestName: 'Alex',
   contact: '+998901234567',
   note: '',
+  guestLocale: 'en',
   telegramStatus: 'sent',
   telegramAttempt: 1,
   telegramErrorCode: null,

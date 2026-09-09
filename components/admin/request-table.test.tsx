@@ -25,6 +25,7 @@ const adminRequestFixture: AdminRequestRow = {
   guestName: 'Alex',
   contact: '+998901234567',
   note: 'Two suitcases',
+  guestLocale: 'en',
   telegramStatus: 'failed',
   telegramAttempt: 2,
   telegramErrorCode: 'TELEGRAM_API_ERROR',

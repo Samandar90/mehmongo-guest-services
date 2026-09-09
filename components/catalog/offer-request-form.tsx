@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { offerPriceLabel } from '@/components/catalog/offer-card';
+import { useI18n } from '@/lib/i18n/context';
 import {
   airportDirections,
   arrivalDirection,
@@ -52,7 +53,10 @@ function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/** Optional refinements travel as labelled lines in the shared note column. */
+/**
+ * Optional refinements travel as labelled lines in the shared note column.
+ * The labels stay English: they are read by the team, not by the guest.
+ */
 function buildNote(offer: CatalogOffer, fields: OfferFields, note: string): string {
   const lines: string[] = [];
   if (offer.requestProfile === 'guide' && fields.language) lines.push(`Language: ${fields.language}`);
@@ -72,7 +76,9 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
   onBack: () => void;
   onSubmit: (fields: GuestRequestFields, offerId: string, idempotencyKey: string) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const copy = catalog.form;
+  const labels = t.offerForm;
   const [fields, setFields] = useState<OfferFields>(emptyOfferFields);
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -104,28 +110,29 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
   };
 
   const validate = (): Errors => {
+    const messages = labels.validation;
     const next: Errors = {};
-    if (!draft.date) next.date = 'Choose a date';
-    else if (draft.date < todayIso()) next.date = 'Choose today or a future date';
+    if (!draft.date) next.date = messages.date;
+    else if (draft.date < todayIso()) next.date = messages.futureDate;
     const count = Number(draft.count);
-    if (!Number.isInteger(count) || count < 1 || count > 50) next.count = 'Enter 1 to 50 travellers';
-    if (!draft.guestName.trim()) next.guestName = 'Enter your name';
-    if (!draft.contact.trim()) next.contact = 'Enter one way to reach you';
+    if (!Number.isInteger(count) || count < 1 || count > 50) next.count = messages.travellers;
+    if (!draft.guestName.trim()) next.guestName = messages.name;
+    if (!draft.contact.trim()) next.contact = messages.contact;
 
-    if (profile === 'mountains' && !fields.choice) next.choice = 'Choose a direction';
-    if (profile === 'airport' && !fields.choice) next.choice = 'Choose a direction';
+    if (profile === 'mountains' && !fields.choice) next.choice = messages.direction;
+    if (profile === 'airport' && !fields.choice) next.choice = messages.direction;
     if (profile === 'tickets') {
-      if (!fields.choice) next.choice = 'Choose how you travel';
-      if (!fields.pickup.trim()) next.pickup = 'Enter where you start';
-      if (!fields.destination.trim()) next.destination = 'Enter where you are going';
+      if (!fields.choice) next.choice = messages.travelMode;
+      if (!fields.pickup.trim()) next.pickup = messages.start;
+      if (!fields.destination.trim()) next.destination = messages.going;
     }
-    if (profile === 'city' && !fields.pickup.trim()) next.pickup = 'Enter a pickup point';
+    if (profile === 'city' && !fields.pickup.trim()) next.pickup = messages.pickup;
     if (profile === 'intercity') {
-      if (!fields.pickup.trim()) next.pickup = 'Enter your Tashkent pickup address';
-      if (!fields.destination.trim()) next.destination = 'Enter your Samarkand destination';
+      if (!fields.pickup.trim()) next.pickup = messages.tashkentPickup;
+      if (!fields.destination.trim()) next.destination = messages.samarkandDestination;
     }
     if ((profile === 'airport' || profile === 'airport_arrival' || profile === 'intercity') && !fields.time) {
-      next.time = 'Choose a time';
+      next.time = messages.time;
     }
     return next;
   };
@@ -187,6 +194,8 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
     </div>
   );
 
+  // The option text is the guest's language; the value sent is the English
+  // one the server validates and the team reads.
   const selectField = (key: keyof OfferFields, label: string, choices: readonly string[], placeholder: string) => (
     <div className="form-field">
       <label htmlFor={key}>{label}</label>
@@ -200,7 +209,7 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
         onChange={(event) => setOfferField(key, event.target.value)}
       >
         <option value="">{placeholder}</option>
-        {choices.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
+        {choices.map((choice) => <option key={choice} value={choice}>{t.choices[choice] ?? choice}</option>)}
       </select>
       {fieldError(key)}
     </div>
@@ -222,41 +231,39 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
       <h1 className="form-title" ref={headingRef} tabIndex={-1}>{copy.title}</h1>
       <p className="offer-chosen">{offer.title}</p>
       <p className="offer-price-note">
-        <strong>{overCapacity ? 'Get a quote' : offerPriceLabel(offer)}</strong>
+        <strong>{overCapacity ? t.catalog.getQuote : offerPriceLabel(offer, t.catalog)}</strong>
         <span>{overCapacity || offer.price.mode === 'quote' ? copy.quoteLabel : copy.priceLabel}</span>
       </p>
       {overCapacity && offer.maxPassengers !== null ? (
-        <output className="offer-capacity">
-          This option seats up to {offer.maxPassengers}. We will prepare an individual quote for your group.
-        </output>
+        <output className="offer-capacity">{labels.seatsUpTo(offer.maxPassengers)}</output>
       ) : null}
       <p className="form-intro">{copy.intro}</p>
 
       <form onSubmit={submit} noValidate>
         {submitError ? <p className="field-error" role="alert" tabIndex={-1} ref={errorRef}>{submitError}</p> : null}
 
-        {profile === 'mountains' ? selectField('choice', 'Where would you like to go?', mountainPreferences, 'Choose a direction') : null}
-        {profile === 'airport' ? selectField('choice', 'Direction', airportDirections, 'Choose a direction') : null}
+        {profile === 'mountains' ? selectField('choice', labels.whereTo, mountainPreferences, labels.chooseDirection) : null}
+        {profile === 'airport' ? selectField('choice', labels.direction, airportDirections, labels.chooseDirection) : null}
         {profile === 'airport_arrival' ? (
-          <p className="offer-fixed-field"><span>Direction</span><strong>{arrivalDirection}</strong></p>
+          <p className="offer-fixed-field"><span>{labels.direction}</span><strong>{t.choices[arrivalDirection] ?? arrivalDirection}</strong></p>
         ) : null}
-        {profile === 'tickets' ? selectField('choice', 'Travel by', ticketModes, 'Choose how you travel') : null}
+        {profile === 'tickets' ? selectField('choice', labels.travelBy, ticketModes, labels.chooseTravel) : null}
         {profile === 'tickets' ? (
           <div className="form-pair">
-            {textField('pickup', 'From', { placeholder: 'City or station', maxLength: REQUEST_FIELD_MAX_LENGTHS.pickup })}
-            {textField('destination', 'To', { placeholder: 'City or station', maxLength: REQUEST_FIELD_MAX_LENGTHS.destination })}
+            {textField('pickup', labels.from, { placeholder: labels.cityOrStation, maxLength: REQUEST_FIELD_MAX_LENGTHS.pickup })}
+            {textField('destination', labels.to, { placeholder: labels.cityOrStation, maxLength: REQUEST_FIELD_MAX_LENGTHS.destination })}
           </div>
         ) : null}
-        {profile === 'city' ? textField('pickup', 'Pickup point in Tashkent', { placeholder: 'Hotel lobby or address', maxLength: REQUEST_FIELD_MAX_LENGTHS.pickup }) : null}
-        {profile === 'city' ? textField('choice', 'Places you would like to include (optional)', { placeholder: 'Old city, museums, bazaar' }) : null}
+        {profile === 'city' ? textField('pickup', labels.cityPickup, { placeholder: labels.cityPickupPlaceholder, maxLength: REQUEST_FIELD_MAX_LENGTHS.pickup }) : null}
+        {profile === 'city' ? textField('choice', labels.cityPlaces, { placeholder: labels.cityPlacesPlaceholder }) : null}
         {profile === 'intercity' ? (
           <div className="form-pair">
-            {textField('pickup', 'Pickup address in Tashkent', { placeholder: 'Hotel or address', maxLength: REQUEST_FIELD_MAX_LENGTHS.pickup })}
-            {textField('destination', 'Destination in Samarkand', { placeholder: 'Hotel or address', maxLength: REQUEST_FIELD_MAX_LENGTHS.destination })}
+            {textField('pickup', labels.intercityPickup, { placeholder: labels.hotelOrAddress, maxLength: REQUEST_FIELD_MAX_LENGTHS.pickup })}
+            {textField('destination', labels.intercityDestination, { placeholder: labels.hotelOrAddress, maxLength: REQUEST_FIELD_MAX_LENGTHS.destination })}
           </div>
         ) : null}
-        {profile === 'guide' ? textField('choice', 'What interests you? (optional)', { placeholder: 'Old city, food, history' }) : null}
-        {profile === 'guide' ? textField('language', 'Preferred language (optional)', { placeholder: 'English, Russian…', maxLength: 60 }) : null}
+        {profile === 'guide' ? textField('choice', labels.interests, { placeholder: labels.interestsPlaceholder }) : null}
+        {profile === 'guide' ? textField('language', labels.guideLanguage, { placeholder: labels.guideLanguagePlaceholder, maxLength: 60 }) : null}
 
         <div className="form-pair">
           <div className="form-field">
@@ -277,12 +284,12 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
 
         {profile === 'airport' || profile === 'airport_arrival' ? (
           <div className="form-pair">
-            {textField('flight', 'Flight number (optional)', { placeholder: 'HY601', maxLength: 40 })}
-            {textField('luggage', 'Luggage (optional)', { placeholder: '2 large bags', maxLength: 80 })}
+            {textField('flight', labels.flight, { placeholder: 'HY601', maxLength: 40 })}
+            {textField('luggage', labels.luggage, { placeholder: labels.luggagePlaceholder, maxLength: 80 })}
           </div>
         ) : null}
 
-        <div className="form-divider"><span>Your details</span></div>
+        <div className="form-divider"><span>{t.common.yourDetails}</span></div>
 
         <div className="form-field">
           <label htmlFor="guestName">{copy.nameLabel}</label>

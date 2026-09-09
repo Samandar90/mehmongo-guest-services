@@ -21,7 +21,7 @@ import {
 } from '@/lib/admin/money';
 import type { Hotel } from '@/lib/admin/hotels';
 import type { Room } from '@/lib/admin/rooms';
-import type { ServiceId } from '@/supabase/functions/_shared/contracts';
+import type { GuestLocale, ServiceId } from '@/supabase/functions/_shared/contracts';
 
 export const serviceLabels: Record<ServiceId, string> = {
   tours: 'Туры',
@@ -40,6 +40,14 @@ export const requestStatusLabels: Record<RequestStatus, string> = {
   confirmed: 'Подтверждена',
   completed: 'Выполнена',
   cancelled: 'Отменена',
+};
+
+/** The language the guest read the site in — the one to call them back in. */
+export const guestLocaleLabels: Record<GuestLocale, string> = {
+  en: 'английский',
+  ru: 'русский',
+  uz: 'узбекский',
+  zh: 'китайский',
 };
 
 const settleMessages = {
@@ -292,6 +300,7 @@ export function RequestTable({
                   <td data-label="Гость">
                     <span>{row.guestName}</span>
                     <small>{maskContact(row.contact)}</small>
+                    <small>{guestLocaleLabels[row.guestLocale]}</small>
                   </td>
                   <td data-label="Статус">
                     <span className={`admin-badge admin-status-${view.status}`}>{requestStatusLabels[view.status]}</span>
@@ -342,6 +351,7 @@ export function RequestTable({
                           <div><dt>Когда</dt><dd>{formatRequestedAt(row)}</dd></div>
                           <div><dt>Гостей</dt><dd>{row.partySize ?? '—'}</dd></div>
                           <div><dt>Контакт</dt><dd>{row.contact}</dd></div>
+                          <div><dt>Язык гостя</dt><dd>{guestLocaleLabels[row.guestLocale]}</dd></div>
                           <div><dt>Комментарий</dt><dd>{row.note || '—'}</dd></div>
                           {row.offerTitle ? (
                             <div>
