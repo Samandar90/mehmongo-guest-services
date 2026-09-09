@@ -117,3 +117,10 @@ Deno.test('tells the team which language to answer the guest in', () => {
   assertStringIncludes(formatTelegramRequest({ ...transportFixture, guestLocale: 'uz' }, 'Asia/Tashkent'), '🌐 Язык гостя: узбекский');
   assertStringIncludes(formatTelegramRequest({ ...transportFixture, guestLocale: 'ru' }, 'Asia/Tashkent'), '🌐 Язык гостя: русский');
 });
+
+Deno.test('marks an as-soon-as-possible request in the title and the time line', () => {
+  const text = formatTelegramRequest({ ...transportFixture, requestedTime: null, asap: true }, 'Asia/Tashkent');
+  assertStringIncludes(text, '<b>🆕 Новая заявка MG-ABCDEFGH ⚡ срочно</b>');
+  assertStringIncludes(text, '🕒 Время: ⚡ как можно скорее');
+  assert(!formatTelegramRequest(transportFixture, 'Asia/Tashkent').includes('срочно'));
+});

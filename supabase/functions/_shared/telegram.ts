@@ -22,6 +22,8 @@ export type TelegramRequest = {
   offer?: OfferSnapshot | null;
   /** The language the guest was reading; the team answers in it. Absent means English. */
   guestLocale?: GuestLocale | null;
+  /** The guest asked for the nearest possible time; requestedTime is then null. */
+  asap?: boolean;
 };
 
 /** In Russian, for the team: the language to call the guest back in. */
@@ -85,7 +87,7 @@ export function formatOfferEstimate(offer: OfferSnapshot): string {
 
 export function formatTelegramRequest(request: TelegramRequest, timeZone: string): string {
   const lines = [
-    `<b>🆕 Новая заявка ${escapeHtml(request.reference)}</b>`,
+    `<b>🆕 Новая заявка ${escapeHtml(request.reference)}${request.asap ? ' ⚡ срочно' : ''}</b>`,
     `🏨 Отель: ${escapeHtml(request.hotelName)}`,
     `🚪 Комната: ${escapeHtml(request.roomLabel)}`,
     `🧭 Услуга: ${serviceLabel(request.service)}`,
@@ -104,7 +106,8 @@ export function formatTelegramRequest(request: TelegramRequest, timeZone: string
 
   const date = formatDate(request.requestedDate, timeZone);
   if (date) lines.push(`📅 Дата: ${escapeHtml(date)}`);
-  if (request.requestedTime) lines.push(`🕒 Время: ${escapeHtml(request.requestedTime)}`);
+  if (request.asap) lines.push('🕒 Время: ⚡ как можно скорее');
+  else if (request.requestedTime) lines.push(`🕒 Время: ${escapeHtml(request.requestedTime)}`);
   if (request.partySize !== null) lines.push(`👥 Гостей: ${escapeHtml(request.partySize)}`);
   lines.push(`👤 Гость: ${escapeHtml(request.guestName)}`);
   lines.push(`📞 Контакт: ${escapeHtml(request.contact)}`);

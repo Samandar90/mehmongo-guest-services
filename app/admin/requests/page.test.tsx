@@ -43,6 +43,7 @@ const requestRow: AdminRequestRow = {
   contact: '+998901234567',
   note: '',
   guestLocale: 'en',
+  asap: false,
   telegramStatus: 'sent',
   telegramAttempt: 1,
   telegramErrorCode: null,

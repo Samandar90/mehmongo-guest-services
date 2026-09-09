@@ -7,7 +7,7 @@ import { isGuestCatalogId } from '../_shared/catalog.ts';
 import { emptyResponse, jsonResponse } from '../_shared/http.ts';
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type ActiveRoomContext = Pick<PublicRoomContext, 'hotelName' | 'roomLabel' | 'catalogId'>;
+type ActiveRoomContext = Pick<PublicRoomContext, 'hotelName' | 'hotelAddress' | 'roomLabel' | 'catalogId'>;
 
 export type RoomContextRepository = {
   findActiveRoom: (token: string) => Promise<ActiveRoomContext | null>;
@@ -42,10 +42,16 @@ function readRoomContext(data: unknown): ActiveRoomContext | null {
   if (!hotel || typeof hotel !== 'object') return null;
 
   const hotelName = (hotel as { name?: unknown }).name;
+  const hotelAddress = (hotel as { address?: unknown }).address;
   const catalogId = (hotel as { guest_catalog_id?: unknown }).guest_catalog_id;
   if (typeof room.label !== 'string' || typeof hotelName !== 'string') return null;
   // Only a catalogue this build knows about is announced to the guest.
-  return { hotelName, roomLabel: room.label, catalogId: isGuestCatalogId(catalogId) ? catalogId : null };
+  return {
+    hotelName,
+    hotelAddress: typeof hotelAddress === 'string' ? hotelAddress : '',
+    roomLabel: room.label,
+    catalogId: isGuestCatalogId(catalogId) ? catalogId : null,
+  };
 }
 
 function getServerSecretKey(): string | undefined {
@@ -81,7 +87,7 @@ function repositoryFor(client: RoomContextClient): RoomContextRepository {
     async findActiveRoom(token) {
       const { data, error } = await client
         .from('rooms')
-        .select('label, hotels!inner(name, guest_catalog_id)')
+        .select('label, hotels!inner(name, address, guest_catalog_id)')
         .eq('public_token', token)
         .eq('active', true)
         .eq('hotels.active', true)

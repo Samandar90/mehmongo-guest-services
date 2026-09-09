@@ -22,7 +22,7 @@ function isSubmitRequestResult(value: unknown): value is SubmitRequestResult {
     && (result.telegramStatus === 'pending' || result.telegramStatus === 'sent' || result.telegramStatus === 'failed');
 }
 
-function isPublicRoomContext(value: unknown): value is Omit<PublicRoomContext, 'catalogId'> {
+function isPublicRoomContext(value: unknown): value is Omit<PublicRoomContext, 'catalogId' | 'hotelAddress'> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
 
   const context = value as Record<string, unknown>;
@@ -32,6 +32,12 @@ function isPublicRoomContext(value: unknown): value is Omit<PublicRoomContext, '
     && context.services.every((service) => (
       typeof service === 'string' && serviceIds.includes(service as ServiceId)
     ));
+}
+
+/** Older function builds send no address; the pickup field is then just the hotel name. */
+function readHotelAddress(value: unknown): string {
+  const address = value && typeof value === 'object' ? (value as { hotelAddress?: unknown }).hotelAddress : null;
+  return typeof address === 'string' ? address : '';
 }
 
 /** A response without the field, or with an unknown catalogue, keeps the previous guest form. */
@@ -63,7 +69,7 @@ export async function fetchRoomContext(token: string): Promise<RoomContextResult
   const context: unknown = await response.json();
   if (!isPublicRoomContext(context)) throw new GuestApiError('Invalid room context response');
 
-  return { ...context, catalogId: readCatalogId(context), roomToken: token };
+  return { ...context, hotelAddress: readHotelAddress(context), catalogId: readCatalogId(context), roomToken: token };
 }
 
 export async function submitGuestRequest(payload: SubmitRequestPayload): Promise<SubmitRequestResult> {

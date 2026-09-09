@@ -94,9 +94,10 @@ export function formatDateTime(iso: string): string {
 }
 
 function formatRequestedAt(row: AdminRequestRow): string {
-  if (!row.requestedDate) return '—';
+  if (!row.requestedDate) return row.asap ? '⚡ как можно скорее' : '—';
   const [year, month, day] = row.requestedDate.split('-');
   const date = `${day}.${month}.${year}`;
+  if (row.asap) return `${date}, ⚡ как можно скорее`;
   return row.requestedTime ? `${date}, ${row.requestedTime}` : date;
 }
 

@@ -416,3 +416,12 @@ it('reads the language the guest was reading, and treats older rows as English',
   const older = await listRequests({}, requestQueryClient([requestRowFixture]).client);
   expect(older.items[0].guestLocale).toBe('en');
 });
+
+it('reads the as-soon-as-possible flag, and treats older rows as timed', async () => {
+  const asap = await listRequests({}, requestQueryClient([{ ...requestRowFixture, asap: true, requested_time: null }]).client);
+  expect(asap.items[0].asap).toBe(true);
+  expect(asap.items[0].requestedTime).toBeNull();
+
+  const older = await listRequests({}, requestQueryClient([requestRowFixture]).client);
+  expect(older.items[0].asap).toBe(false);
+});

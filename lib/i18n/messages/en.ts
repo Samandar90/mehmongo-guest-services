@@ -18,6 +18,18 @@ export const en = {
     optional: 'Optional',
     concierge: 'Local concierge team available',
     photoCredits: 'Photo credits',
+    savePage: 'Save this page',
+    saveHint: 'Send the link to yourself and order again from anywhere.',
+    linkCopied: 'Link copied',
+    replyPromise: (minutes: number, from: string, to: string) =>
+      `We usually reply within ${minutes} minutes between ${from} and ${to}, Tashkent time. A request sent at night is answered from ${from}.`,
+  },
+  timing: {
+    legend: 'When do you need the ride?',
+    asap: 'As soon as possible',
+    pickTime: 'Choose date and time',
+    asapHint: 'We will contact you right away and confirm the nearest pickup time.',
+    pickupPrefilled: 'Your hotel is filled in — change it if you start elsewhere.',
   },
   services: {
     tours: { title: 'Tours', description: 'Explore with a trusted local guide' },
@@ -99,6 +111,10 @@ export const en = {
     willMessage: 'We will message the contact you provided',
     hint: 'Our team will confirm availability and the full price.',
     another: 'Request another service',
+    writeUs: 'Want to write to us yourself?',
+    whatsapp: 'Write on WhatsApp',
+    telegram: 'Write on Telegram',
+    contactMessage: (reference: string, hotel: string, room: string) => `Hello! My request is ${reference} (${hotel}, ${room}).`,
   },
   catalog: {
     filterLegend: 'Filter services',

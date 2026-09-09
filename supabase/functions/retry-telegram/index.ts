@@ -125,6 +125,7 @@ function readRequest(data: unknown): RetryRequest | null {
     // The stored snapshot, not today's catalogue price.
     offer: readOfferSnapshot(request.offer_snapshot),
     guestLocale: isGuestLocale(request.guest_locale) ? request.guest_locale : 'en',
+    asap: request.asap === true,
   };
 }
 
@@ -171,7 +172,7 @@ function repositoryFor(client: RetryTelegramClient): RetryTelegramRepository {
     async findRequest(requestId) {
       const { data, error } = await client
         .from('service_requests')
-        .select('id, reference, service_type, choice, pickup, destination, requested_date, requested_time, party_size, guest_name, guest_contact, note, offer_snapshot, guest_locale, rooms!inner(label, hotels!inner(name))')
+        .select('id, reference, service_type, choice, pickup, destination, requested_date, requested_time, party_size, guest_name, guest_contact, note, offer_snapshot, guest_locale, asap, rooms!inner(label, hotels!inner(name))')
         .eq('id', requestId)
         .maybeSingle();
       if (error) throw error;

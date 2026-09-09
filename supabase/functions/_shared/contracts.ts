@@ -49,6 +49,11 @@ export type SubmitRequestPayload = {
   offerId?: string | null;
   /** Language the guest was reading the site in. Absent from older clients, which were English. */
   guestLocale?: GuestLocale;
+  /**
+   * The guest wants the nearest possible time rather than one they named.
+   * Transfers only; the server then sets the date itself and requires no time.
+   */
+  asap?: boolean;
 };
 
 export type SubmitRequestResult = {
@@ -58,6 +63,8 @@ export type SubmitRequestResult = {
 
 export type RoomContextResult = {
   hotelName: string;
+  /** Street address as the owner entered it; empty when none. Pre-fills the pickup field. */
+  hotelAddress: string;
   roomLabel: string;
   roomToken: string;
   services: ServiceId[];

@@ -35,11 +35,24 @@ describe('fetchRoomContext', () => {
 
     await expect(fetchRoomContext(ACTIVE_ROOM_TOKEN)).resolves.toEqual({
       hotelName: 'Kamilovs Hotel',
+      hotelAddress: '',
       roomLabel: '205',
       roomToken: ACTIVE_ROOM_TOKEN,
       catalogId: null,
       services: ['transport'],
     });
+  });
+
+  it('carries the hotel address for the pickup field when the function sends one', async () => {
+    vi.stubEnv('VITE_SUPABASE_URL', 'https://example.supabase.co');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      hotelName: 'Kamilovs Hotel',
+      hotelAddress: 'Xromiy 7',
+      roomLabel: '205',
+      services: ['transport'],
+    }), { status: 200 })));
+
+    await expect(fetchRoomContext(ACTIVE_ROOM_TOKEN)).resolves.toMatchObject({ hotelAddress: 'Xromiy 7' });
   });
 
   it('reports a missing room link without exposing an API failure', async () => {

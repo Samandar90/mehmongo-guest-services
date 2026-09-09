@@ -151,6 +151,39 @@ so `?lang=zh` on a room link is a way to demo a language.
   page root carries `lang` so those rules and the CJK font selection apply
   from the first paint. Geist is loaded with the `cyrillic` subset.
 
+## Ordering from the room, added 2026-09-10
+
+Four conveniences for a guest with a phone in a hotel room:
+
+- **As soon as possible.** Rides (offer profiles `airport`, `airport_arrival`,
+  `intercity`, and the legacy `transport` form) carry a two-button choice
+  above the date and time. When chosen, the client sends `asap: true` with an
+  empty date and time; the server (`_shared/validation.ts`) accepts it only
+  for those rides, refuses a time next to it, and dates the request itself
+  with `tashkentToday()` — a phone still on home time is a day out at night.
+  Column `service_requests.asap` (migration `20260910100000_asap_requests.sql`)
+  with check `not asap or requested_time is null`; `submit_guest_request`
+  gained `p_asap boolean default false` (19 parameters now; the old signature
+  is dropped and grants restated). Telegram prints `⚡ срочно` in the title and
+  `🕒 Время: ⚡ как можно скорее`; the admin shows the same in the details.
+- **Pickup starts from the hotel.** `room-context` now returns `hotelAddress`
+  (`hotels.address`, may be empty); `hotelPickupLine()` in
+  `lib/guest-request.ts` makes "Hotel, address" (or the name alone) and the
+  `city`, `intercity` and legacy transport pickups start with it, editable,
+  with a hint underneath. Tickets do not: a journey starts wherever it starts.
+- **Write to us.** `content/contact.json` holds the WhatsApp number (digits
+  only), an optional Telegram username (button hidden while empty), and the
+  reply promise (`replyMinutes`, `hoursFrom`, `hoursTo`) printed under every
+  form and on the confirmation. The confirmation offers wa.me / t.me links
+  whose prefilled text is the guest's own first message in their language,
+  with the reference, hotel and room (`success.contactMessage`).
+- **Save this page.** `components/save-page-button.tsx`: the share sheet
+  with the room link plus `?lang=`, falling back to the clipboard. In the
+  footer of every guest screen and, larger, on the confirmation.
+
+Deploy order when these change again: migration, then the Edge Functions
+(`submit-request`, `retry-telegram`, `room-context`), then the Worker.
+
 ## Known limitations recorded in the ledgers
 
 - `retry-telegram` answers 409 for an already-sent delivery too; the UI says the delivery is already running and asks to refresh.

@@ -17,6 +17,18 @@ export const zh: Messages = {
     optional: '选填',
     concierge: '本地礼宾团队随时为您服务',
     photoCredits: '图片来源',
+    savePage: '保存此页面',
+    saveHint: '把链接发给自己，随时随地下单。',
+    linkCopied: '链接已复制',
+    replyPromise: (minutes, from, to) =>
+      `塔什干时间 ${from}–${to} 之间，我们通常在 ${minutes} 分钟内回复；夜间发送的申请将于 ${from} 起处理。`,
+  },
+  timing: {
+    legend: '您何时需要用车？',
+    asap: '尽快出发',
+    pickTime: '选择日期和时间',
+    asapHint: '我们会立即与您联系，确认最近的出发时间。',
+    pickupPrefilled: '已填入您的酒店，如从其他地点出发请修改。',
   },
   services: {
     tours: { title: '游览', description: '与可信赖的本地向导一同探索' },
@@ -97,6 +109,10 @@ export const zh: Messages = {
     willMessage: '我们将通过您留下的联系方式与您联络',
     hint: '我们的团队将确认可用性及全部费用。',
     another: '申请其他服务',
+    writeUs: '想直接联系我们？',
+    whatsapp: '通过 WhatsApp 联系',
+    telegram: '通过 Telegram 联系',
+    contactMessage: (reference, hotel, room) => `您好！我的申请编号是 ${reference}（${hotel}，${room}）。`,
   },
   catalog: {
     filterLegend: '筛选服务',

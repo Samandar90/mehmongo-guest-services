@@ -1,11 +1,12 @@
 'use client';
 
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, CalendarClock, Zap } from 'lucide-react';
 import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { offerPriceLabel } from '@/components/catalog/offer-card';
+import { guestContact } from '@/lib/contact';
 import { useI18n } from '@/lib/i18n/context';
 import {
   airportDirections,
@@ -15,6 +16,7 @@ import {
   ticketModes,
   type CatalogOffer,
   type GuestCatalog,
+  type RequestProfile,
 } from '@/supabase/functions/_shared/catalog';
 import { REQUEST_FIELD_MAX_LENGTHS, type GuestRequestFields } from '@/supabase/functions/_shared/contracts';
 
@@ -49,6 +51,12 @@ const submitErrors = {
   REQUEST_FAILED: 'networkError',
 } as const;
 
+/** Rides, where "as soon as possible" is something a driver can act on. The server holds the same list. */
+const asapProfiles: ReadonlySet<RequestProfile> = new Set(['airport', 'airport_arrival', 'intercity']);
+
+/** Profiles whose pickup is, nine times out of ten, the hotel the guest is standing in. */
+const hotelPickupProfiles: ReadonlySet<RequestProfile> = new Set(['city', 'intercity']);
+
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -68,18 +76,27 @@ function buildNote(offer: CatalogOffer, fields: OfferFields, note: string): stri
   return lines.join('\n').slice(0, REQUEST_FIELD_MAX_LENGTHS.note);
 }
 
-export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack, onSubmit }: {
+export function OfferRequestForm({ offer, catalog, draft, hotelPickup = '', onDraftChange, onBack, onSubmit }: {
   offer: CatalogOffer;
   catalog: GuestCatalog;
   draft: CatalogDraft;
+  /** "Hotel name, address" to start the pickup field with; the guest can change it. */
+  hotelPickup?: string;
   onDraftChange: (draft: CatalogDraft) => void;
   onBack: () => void;
-  onSubmit: (fields: GuestRequestFields, offerId: string, idempotencyKey: string) => Promise<void>;
+  onSubmit: (fields: GuestRequestFields, offerId: string, idempotencyKey: string, asap: boolean) => Promise<void>;
 }) {
   const { t } = useI18n();
   const copy = catalog.form;
   const labels = t.offerForm;
-  const [fields, setFields] = useState<OfferFields>(emptyOfferFields);
+  const profile = offer.requestProfile;
+  const asapOffered = asapProfiles.has(profile);
+  const pickupFromHotel = hotelPickupProfiles.has(profile) && hotelPickup !== '';
+  const [fields, setFields] = useState<OfferFields>(() => ({
+    ...emptyOfferFields,
+    pickup: pickupFromHotel ? hotelPickup : '',
+  }));
+  const [asap, setAsap] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -91,7 +108,6 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
   useEffect(() => { headingRef.current?.focus(); }, []);
   useEffect(() => { if (submitError) errorRef.current?.focus(); }, [submitError]);
 
-  const profile = offer.requestProfile;
   const partySize = Number(draft.count);
   const overCapacity = Number.isFinite(partySize) && exceedsOfferCapacity(offer, partySize);
 
@@ -109,11 +125,20 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
     setErrors((current) => ({ ...current, [key]: undefined }));
   };
 
+  const chooseAsap = (value: boolean) => {
+    setAsap(value);
+    idempotencyKeyRef.current = null;
+    setSubmitError(null);
+    setErrors((current) => ({ ...current, date: undefined, time: undefined }));
+  };
+
   const validate = (): Errors => {
     const messages = labels.validation;
     const next: Errors = {};
-    if (!draft.date) next.date = messages.date;
-    else if (draft.date < todayIso()) next.date = messages.futureDate;
+    if (!asap) {
+      if (!draft.date) next.date = messages.date;
+      else if (draft.date < todayIso()) next.date = messages.futureDate;
+    }
     const count = Number(draft.count);
     if (!Number.isInteger(count) || count < 1 || count > 50) next.count = messages.travellers;
     if (!draft.guestName.trim()) next.guestName = messages.name;
@@ -131,9 +156,7 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
       if (!fields.pickup.trim()) next.pickup = messages.tashkentPickup;
       if (!fields.destination.trim()) next.destination = messages.samarkandDestination;
     }
-    if ((profile === 'airport' || profile === 'airport_arrival' || profile === 'intercity') && !fields.time) {
-      next.time = messages.time;
-    }
+    if (asapOffered && !asap && !fields.time) next.time = messages.time;
     return next;
   };
 
@@ -150,17 +173,19 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
     const idempotencyKey = idempotencyKeyRef.current ?? crypto.randomUUID();
     idempotencyKeyRef.current = idempotencyKey;
     try {
+      // An asap request carries no date or time: the server dates it in
+      // Tashkent, where the guest is, rather than trusting a phone on home time.
       await onSubmit({
         choice: profile === 'airport_arrival' ? arrivalDirection : fields.choice,
         pickup: fields.pickup.trim(),
         destination: fields.destination.trim(),
-        date: draft.date,
-        time: fields.time,
+        date: asap ? '' : draft.date,
+        time: asap ? '' : fields.time,
         count: draft.count,
         guestName: draft.guestName.trim(),
         contact: draft.contact.trim(),
         note: buildNote(offer, fields, draft.note.trim()),
-      }, offer.id, idempotencyKey);
+      }, offer.id, idempotencyKey, asap);
       idempotencyKeyRef.current = null;
     } catch (error) {
       const code = error instanceof Error && error.message in submitErrors
@@ -177,7 +202,11 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
     ? <p className="field-error" id={`${key}-error`} role="alert">{errors[key]}</p>
     : null);
 
-  const textField = (key: keyof OfferFields, label: string, options: { placeholder?: string; maxLength?: number } = {}) => (
+  const textField = (
+    key: keyof OfferFields,
+    label: string,
+    options: { placeholder?: string; maxLength?: number; hint?: string } = {},
+  ) => (
     <div className="form-field">
       <label htmlFor={key}>{label}</label>
       <Input
@@ -187,10 +216,11 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
         placeholder={options.placeholder}
         maxLength={options.maxLength ?? REQUEST_FIELD_MAX_LENGTHS.choice}
         aria-invalid={Boolean(errors[key])}
-        aria-describedby={errors[key] ? `${key}-error` : undefined}
+        aria-describedby={errors[key] ? `${key}-error` : options.hint ? `${key}-hint` : undefined}
         onChange={(event) => setOfferField(key, event.target.value)}
       />
       {fieldError(key)}
+      {options.hint && !errors[key] ? <p className="form-hint" id={`${key}-hint`}>{options.hint}</p> : null}
     </div>
   );
 
@@ -224,6 +254,8 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
     </div>
   );
 
+  const pickupHint = pickupFromHotel ? t.timing.pickupPrefilled : undefined;
+
   return (
     <section className="request-panel offer-form">
       <button className="back-button" type="button" onClick={onBack}><ArrowLeft aria-hidden="true" /> {copy.back}</button>
@@ -254,26 +286,43 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
             {textField('destination', labels.to, { placeholder: labels.cityOrStation, maxLength: REQUEST_FIELD_MAX_LENGTHS.destination })}
           </div>
         ) : null}
-        {profile === 'city' ? textField('pickup', labels.cityPickup, { placeholder: labels.cityPickupPlaceholder, maxLength: REQUEST_FIELD_MAX_LENGTHS.pickup }) : null}
+        {profile === 'city' ? textField('pickup', labels.cityPickup, { placeholder: labels.cityPickupPlaceholder, maxLength: REQUEST_FIELD_MAX_LENGTHS.pickup, hint: pickupHint }) : null}
         {profile === 'city' ? textField('choice', labels.cityPlaces, { placeholder: labels.cityPlacesPlaceholder }) : null}
         {profile === 'intercity' ? (
           <div className="form-pair">
-            {textField('pickup', labels.intercityPickup, { placeholder: labels.hotelOrAddress, maxLength: REQUEST_FIELD_MAX_LENGTHS.pickup })}
+            {textField('pickup', labels.intercityPickup, { placeholder: labels.hotelOrAddress, maxLength: REQUEST_FIELD_MAX_LENGTHS.pickup, hint: pickupHint })}
             {textField('destination', labels.intercityDestination, { placeholder: labels.hotelOrAddress, maxLength: REQUEST_FIELD_MAX_LENGTHS.destination })}
           </div>
         ) : null}
         {profile === 'guide' ? textField('choice', labels.interests, { placeholder: labels.interestsPlaceholder }) : null}
         {profile === 'guide' ? textField('language', labels.guideLanguage, { placeholder: labels.guideLanguagePlaceholder, maxLength: 60 }) : null}
 
-        <div className="form-pair">
-          <div className="form-field">
-            <label htmlFor="date">{copy.dateLabel}</label>
-            <Input id="date" name="date" type="date" min={todayIso()} value={draft.date} aria-invalid={Boolean(errors.date)}
-              aria-describedby={errors.date ? 'date-error' : undefined} onChange={(event) => setDraftField('date', event.target.value)} />
-            {fieldError('date')}
+        {asapOffered ? (
+          <fieldset className="timing-choice">
+            <legend>{t.timing.legend}</legend>
+            <div className="timing-options">
+              <button type="button" className="timing-option" aria-pressed={asap} onClick={() => chooseAsap(true)}>
+                <Zap aria-hidden="true" />{t.timing.asap}
+              </button>
+              <button type="button" className="timing-option" aria-pressed={!asap} onClick={() => chooseAsap(false)}>
+                <CalendarClock aria-hidden="true" />{t.timing.pickTime}
+              </button>
+            </div>
+            {asap ? <p className="form-hint">{t.timing.asapHint}</p> : null}
+          </fieldset>
+        ) : null}
+
+        {asap ? null : (
+          <div className="form-pair">
+            <div className="form-field">
+              <label htmlFor="date">{copy.dateLabel}</label>
+              <Input id="date" name="date" type="date" min={todayIso()} value={draft.date} aria-invalid={Boolean(errors.date)}
+                aria-describedby={errors.date ? 'date-error' : undefined} onChange={(event) => setDraftField('date', event.target.value)} />
+              {fieldError('date')}
+            </div>
+            {asapOffered ? timeField : null}
           </div>
-          {profile === 'airport' || profile === 'airport_arrival' || profile === 'intercity' ? timeField : null}
-        </div>
+        )}
 
         <div className="form-field">
           <label htmlFor="count">{copy.countLabel}</label>
@@ -316,6 +365,7 @@ export function OfferRequestForm({ offer, catalog, draft, onDraftChange, onBack,
 
         <p className="form-legal">{copy.privacy}</p>
         <p className="form-legal">{copy.payment}</p>
+        <p className="form-legal">{t.common.replyPromise(guestContact.replyMinutes, guestContact.hoursFrom, guestContact.hoursTo)}</p>
 
         <Button className="submit-button" type="submit" disabled={submitting}>
           {submitting ? copy.sending : copy.submit}

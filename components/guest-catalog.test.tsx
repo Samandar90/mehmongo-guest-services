@@ -13,6 +13,7 @@ vi.mock('@/lib/requests/api', async (importOriginal) => ({
 
 const catalogContext: RoomContextResult = {
   hotelName: 'Kamilovs Hotel',
+  hotelAddress: 'Xromiy 7',
   roomLabel: '205',
   roomToken: '20000000-0000-4000-8000-000000000205',
   services: ['tours', 'transport', 'restaurants', 'tickets'],
@@ -284,8 +285,10 @@ describe('idempotency across services', () => {
     details = await openDetails(user, 'Plan my city day');
     await user.click(within(details).getByRole('button', { name: 'Plan my city day' }));
 
-    // The mountain preference must not travel to the city request.
-    expect(screen.getByLabelText('Pickup point in Tashkent')).toHaveValue('');
+    // The mountain preference must not travel to the city request: the pickup
+    // starts from the hotel the guest is in, and from nothing else.
+    expect(screen.getByLabelText('Pickup point in Tashkent')).toHaveValue('Kamilovs Hotel, Xromiy 7');
+    await user.clear(screen.getByLabelText('Pickup point in Tashkent'));
     await user.type(screen.getByLabelText('Pickup point in Tashkent'), 'Hotel lobby');
     server.submit.mockResolvedValue({ reference: 'MG-SECONDAA', telegramStatus: 'sent' });
     await user.click(screen.getByRole('button', { name: 'Send my request' }));

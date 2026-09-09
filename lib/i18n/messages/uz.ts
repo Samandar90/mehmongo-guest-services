@@ -17,6 +17,18 @@ export const uz: Messages = {
     optional: 'Ixtiyoriy',
     concierge: 'Mahalliy konsyerj jamoasi xizmatda',
     photoCredits: 'Fotosuratlar manbalari',
+    savePage: 'Sahifani saqlash',
+    saveHint: 'Havolani oʻzingizga yuboring — istalgan joydan buyurtma bering.',
+    linkCopied: 'Havola nusxalandi',
+    replyPromise: (minutes, from, to) =>
+      `Odatda Toshkent vaqti bilan ${from} dan ${to} gacha ${minutes} daqiqa ichida javob beramiz. Tungi soʻrovga ${from} dan boshlab javob beriladi.`,
+  },
+  timing: {
+    legend: 'Mashina qachon kerak?',
+    asap: 'Imkon qadar tezroq',
+    pickTime: 'Sana va vaqtni tanlash',
+    asapHint: 'Darhol siz bilan bogʻlanib, eng yaqin olib ketish vaqtini tasdiqlaymiz.',
+    pickupPrefilled: 'Mehmonxonangiz kiritilgan — boshqa joydan joʻnasangiz, oʻzgartiring.',
   },
   services: {
     tours: { title: 'Sayohatlar', description: 'Ishonchli mahalliy gid bilan sayohat qiling' },
@@ -97,6 +109,10 @@ export const uz: Messages = {
     willMessage: 'Siz koʻrsatgan kontaktga yozamiz',
     hint: 'Jamoamiz mavjudlik va toʻliq narxni tasdiqlaydi.',
     another: 'Boshqa xizmat soʻrash',
+    writeUs: 'Oʻzingiz yozmoqchimisiz?',
+    whatsapp: 'WhatsApp orqali yozish',
+    telegram: 'Telegram orqali yozish',
+    contactMessage: (reference, hotel, room) => `Assalomu alaykum! Mening soʻrovim ${reference} (${hotel}, ${room}).`,
   },
   catalog: {
     filterLegend: 'Xizmatlarni saralash',

@@ -11,6 +11,7 @@ import {
   profileRules,
   type CatalogOffer,
   type ProfileRules,
+  type RequestProfile,
 } from './catalog.ts';
 
 export type ValidatedRequest = {
@@ -30,9 +31,14 @@ export type ValidatedRequest = {
   offerId: string | null;
   /** Language the guest read the site in; English for a client that did not say. */
   guestLocale: GuestLocale;
+  /** The nearest possible time instead of a named one; the date is then today in Tashkent. */
+  asap: boolean;
 };
 
-const payloadKeys = ['roomToken', 'idempotencyKey', 'service', 'fields', 'website', 'offerId', 'guestLocale'] as const;
+const payloadKeys = ['roomToken', 'idempotencyKey', 'service', 'fields', 'website', 'offerId', 'guestLocale', 'asap'] as const;
+
+/** Offer profiles that are a ride, where "as soon as possible" means something to a driver. */
+const asapProfiles: ReadonlySet<RequestProfile> = new Set(['airport', 'airport_arrival', 'intercity']);
 const fieldKeys = ['choice', 'pickup', 'destination', 'date', 'time', 'count', 'guestName', 'contact', 'note'] as const;
 const services = new Set<ServiceId>(['tours', 'transport', 'restaurants', 'tickets']);
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -107,9 +113,11 @@ function applyRule(rule: ProfileRules[keyof ProfileRules], value: string, name: 
   return value;
 }
 
-function validateOfferFields(offer: CatalogOffer, fields: GuestRequestFields) {
+function validateOfferFields(offer: CatalogOffer, fields: GuestRequestFields, asap: boolean) {
   const rules = profileRules[offer.requestProfile];
-  const time = applyRule(rules.time, fields.time, 'fields.time');
+  if (asap && !asapProfiles.has(offer.requestProfile)) fail('asap is not offered for this service');
+  // An asap request names no time; the rule that would demand one is answered by the flag.
+  const time = asap ? '' : applyRule(rules.time, fields.time, 'fields.time');
   if (time && !timePattern.test(time)) fail('fields.time must use 24-hour time');
 
   return {
@@ -120,7 +128,8 @@ function validateOfferFields(offer: CatalogOffer, fields: GuestRequestFields) {
   };
 }
 
-function validateLegacyFields(service: ServiceId, fields: GuestRequestFields) {
+function validateLegacyFields(service: ServiceId, fields: GuestRequestFields, asap: boolean) {
+  if (asap && service !== 'transport') fail('asap is not offered for this service');
   if (fields.time && !timePattern.test(fields.time)) fail('fields.time must use 24-hour time');
   if (service === 'transport') {
     required(fields.pickup, 'fields.pickup');
@@ -128,9 +137,25 @@ function validateLegacyFields(service: ServiceId, fields: GuestRequestFields) {
   } else {
     required(fields.choice, 'fields.choice');
   }
-  if ((service === 'transport' || service === 'restaurants') && !fields.time) fail('fields.time is required');
+  if ((service === 'transport' || service === 'restaurants') && !fields.time && !asap) fail('fields.time is required');
 
   return { choice: fields.choice, pickup: fields.pickup, destination: fields.destination, time: fields.time };
+}
+
+function validateAsap(value: unknown): boolean {
+  if (value === undefined || value === null) return false;
+  if (typeof value !== 'boolean') fail('asap must be a boolean');
+  return value;
+}
+
+/**
+ * The date an asap request is for, decided here rather than on the phone: a
+ * guest whose phone still runs on home time can be a day out at night.
+ */
+export function tashkentToday(now = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Tashkent', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(now);
 }
 
 function validateOfferId(value: unknown): string | null {
@@ -166,16 +191,21 @@ export function validateSubmitPayload(input: unknown): ValidatedRequest {
   if (offerId && !offer) fail('offerId is not part of the catalogue');
   if (offer && offer.category !== service) fail('service does not match the offer');
 
+  const asap = validateAsap(payload.asap);
   const fields = validateFields(payload.fields);
-  if (!validDate(fields.date)) fail('fields.date must be an ISO date');
-  if (fields.date < new Date().toISOString().slice(0, 10)) fail('fields.date cannot be in the past');
+  if (asap) {
+    if (fields.time) fail('fields.time must be empty for an asap request');
+  } else {
+    if (!validDate(fields.date)) fail('fields.date must be an ISO date');
+    if (fields.date < new Date().toISOString().slice(0, 10)) fail('fields.date cannot be in the past');
+  }
   if (!countPattern.test(fields.count)) fail('fields.count must be an integer from 1 to 50');
   required(fields.guestName, 'fields.guestName');
   required(fields.contact, 'fields.contact');
 
   const routed = offer
-    ? validateOfferFields(offer, fields)
-    : validateLegacyFields(service as ServiceId, fields);
+    ? validateOfferFields(offer, fields, asap)
+    : validateLegacyFields(service as ServiceId, fields, asap);
 
   return {
     roomToken,
@@ -184,7 +214,7 @@ export function validateSubmitPayload(input: unknown): ValidatedRequest {
     choice: routed.choice,
     pickup: routed.pickup,
     destination: routed.destination,
-    date: fields.date,
+    date: asap ? tashkentToday() : fields.date,
     time: routed.time,
     partySize: Number(fields.count),
     guestName: fields.guestName,
@@ -192,5 +222,6 @@ export function validateSubmitPayload(input: unknown): ValidatedRequest {
     note: fields.note,
     offerId,
     guestLocale,
+    asap,
   };
 }

@@ -1,5 +1,5 @@
 begin;
-select plan(29);
+select plan(33);
 select has_table('public'::name, 'admin_users'::name);
 select has_table('public'::name, 'hotels'::name);
 select has_table('public'::name, 'rooms'::name);
@@ -56,14 +56,14 @@ select throws_ok(
 );
 
 select ok(
-  to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text)') is not null,
+  to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text,boolean)') is not null,
   'atomic submit function exists'
 );
 
 select ok(
   has_function_privilege(
     'service_role',
-    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text)'),
+    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text,boolean)'),
     'EXECUTE'
   ),
   'service_role can execute atomic submit function'
@@ -72,7 +72,7 @@ select ok(
 select ok(
   not has_function_privilege(
     'anon',
-    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text)'),
+    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text,boolean)'),
     'EXECUTE'
   ),
   'anon cannot execute atomic submit function'
@@ -81,14 +81,14 @@ select ok(
 select ok(
   not has_function_privilege(
     'authenticated',
-    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text)'),
+    to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text,boolean)'),
     'EXECUTE'
   ),
   'authenticated cannot execute atomic submit function'
 );
 
 select ok(
-  pg_get_functiondef(to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text)'))
+  pg_get_functiondef(to_regprocedure('public.submit_guest_request(text,uuid,text,uuid,uuid,text,text,text,text,date,time without time zone,integer,text,text,text,text,jsonb,text,boolean)'))
     like '%pg_advisory_xact_lock%',
   'atomic submit function takes an advisory transaction lock'
 );
@@ -223,6 +223,48 @@ select throws_ok(
   '23514'::char(5),
   null,
   'a language the site does not speak is refused by the constraint'
+);
+
+select has_column('public'::name, 'service_requests'::name, 'asap'::name, 'service_requests has asap');
+
+select results_eq(
+  $$
+    select outcome
+    from public.submit_guest_request(
+      'MG-ASAPAAAA',
+      '40000000-0000-4000-8000-000000000004',
+      'atomic-asap-rate-key',
+      '30000000-0000-4000-8000-000000000001',
+      '30000000-0000-4000-8000-000000000003',
+      'transport', '', 'Hotel A', 'Airport', '2099-12-31', null, 2, 'Alex', '+998901234567', '',
+      null, null, 'en', true
+    )
+  $$,
+  $$values ('created'::text)$$,
+  'atomic submit accepts an as-soon-as-possible request without a time'
+);
+
+select is(
+  (select asap from public.service_requests where reference = 'MG-ASAPAAAA'),
+  true,
+  'the as-soon-as-possible flag is stored'
+);
+
+select throws_ok(
+  $$
+    select * from public.submit_guest_request(
+      'MG-ASAPBBBB',
+      '40000000-0000-4000-8000-000000000005',
+      'atomic-asap-rate-key',
+      '30000000-0000-4000-8000-000000000001',
+      '30000000-0000-4000-8000-000000000003',
+      'transport', '', 'Hotel A', 'Airport', '2099-12-31', '14:30', 2, 'Alex', '+998901234567', '',
+      null, null, 'en', true
+    )
+  $$,
+  '23514'::char(5),
+  null,
+  'an as-soon-as-possible request may not also name a time'
 );
 select * from finish();
 rollback;

@@ -9,8 +9,9 @@ import { ServiceCatalog } from '@/components/catalog/service-catalog';
 import { LanguageMenu, rememberLocale } from '@/components/language-menu';
 import { RequestForm } from '@/components/request-form';
 import { RequestSuccess } from '@/components/request-success';
+import { SavePageButton } from '@/components/save-page-button';
 import { ServiceGrid } from '@/components/service-grid';
-import type { GuestContext, ServiceId } from '@/lib/guest-request';
+import { hotelPickupLine, type GuestContext, type ServiceId } from '@/lib/guest-request';
 import { getLocalisedCatalog } from '@/lib/i18n/catalog';
 import { I18nProvider, useI18n } from '@/lib/i18n/context';
 import { defaultLocale, localeInfo, LOCALE_PARAM, type Locale } from '@/lib/i18n/locale';
@@ -68,6 +69,8 @@ function GuestScreens({ context }: { context: GuestContext }) {
   const [view, setView] = useState<CatalogView>({ step: 'catalog' });
   const [draft, setDraft] = useState<CatalogDraft>(emptyCatalogDraft);
   const lang = localeInfo[locale].tag;
+  const hotelPickup = hotelPickupLine(context);
+  const shareTitle = `MehmonGo · ${context.hotelName}`;
 
   const restart = () => {
     setService(null);
@@ -75,15 +78,18 @@ function GuestScreens({ context }: { context: GuestContext }) {
     setView({ step: 'catalog' });
   };
 
-  const submitLegacy = (chosen: ServiceId) => (fields: Parameters<typeof submitGuestRequest>[0]['fields'], idempotencyKey: string) =>
-    submitGuestRequest({ roomToken: context.roomToken, idempotencyKey, service: chosen, fields, website: '', guestLocale: locale });
+  const submitLegacy = (chosen: ServiceId) => (
+    fields: Parameters<typeof submitGuestRequest>[0]['fields'],
+    idempotencyKey: string,
+    asap: boolean,
+  ) => submitGuestRequest({ roomToken: context.roomToken, idempotencyKey, service: chosen, fields, website: '', guestLocale: locale, asap });
 
   if (reference) {
     return (
       <main className="guest-shell" lang={lang}>
         <GuestHeader />
         <RequestSuccess context={context} reference={reference} onRestart={restart} catalog={catalog} />
-        <GuestFooter />
+        <GuestFooter shareTitle={shareTitle} />
       </main>
     );
   }
@@ -94,11 +100,12 @@ function GuestScreens({ context }: { context: GuestContext }) {
         <GuestHeader />
         <RequestForm
           service={service}
+          hotelPickup={hotelPickup}
           onBack={() => { setService(null); setView({ step: 'catalog' }); }}
           onComplete={setReference}
           onSubmit={submitLegacy(service)}
         />
-        <GuestFooter />
+        <GuestFooter shareTitle={shareTitle} />
       </main>
     );
   }
@@ -117,7 +124,7 @@ function GuestScreens({ context }: { context: GuestContext }) {
           <div className="section-heading"><h2 id="services-title">{t.welcome.heading}</h2><span>{t.welcome.count(context.services.length)}</span></div>
           <ServiceGrid onSelect={setService} allowedServices={context.services} />
         </section>
-        <footer><span className="status-dot" aria-hidden="true" />{t.common.concierge}</footer>
+        <GuestFooter shareTitle={shareTitle} />
       </main>
     );
   }
@@ -131,9 +138,10 @@ function GuestScreens({ context }: { context: GuestContext }) {
           offer={view.offer}
           catalog={catalog}
           draft={draft}
+          hotelPickup={hotelPickup}
           onDraftChange={setDraft}
           onBack={() => setView({ step: 'details', offer: view.offer })}
-          onSubmit={async (fields, offerId, idempotencyKey) => {
+          onSubmit={async (fields, offerId, idempotencyKey, asap) => {
             const result = await submitGuestRequest({
               roomToken: context.roomToken,
               idempotencyKey,
@@ -142,6 +150,7 @@ function GuestScreens({ context }: { context: GuestContext }) {
               website: '',
               offerId,
               guestLocale: locale,
+              asap,
             });
             setReference(result.reference);
           }}
@@ -174,7 +183,7 @@ function GuestScreens({ context }: { context: GuestContext }) {
         />
       ) : null}
 
-      <GuestFooter />
+      <GuestFooter shareTitle={shareTitle} />
     </main>
   );
 }
@@ -189,12 +198,13 @@ function GuestHeader() {
   );
 }
 
-function GuestFooter() {
+function GuestFooter({ shareTitle }: { shareTitle: string }) {
   const { t } = useI18n();
   return (
     <footer className="guest-footer">
       <span className="status-dot" aria-hidden="true" />
       <span>{t.common.concierge}</span>
+      <SavePageButton title={shareTitle} />
       <Link href="/photo-credits">{t.common.photoCredits}</Link>
     </footer>
   );

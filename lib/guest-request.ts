@@ -15,16 +15,26 @@ export const emptyRequest: RequestFields = {
   choice: '', pickup: '', destination: '', date: '', time: '', count: '1', guestName: '', contact: '', note: '',
 };
 
+/** What the pickup field starts with: the guest is standing in the hotel. */
+export function hotelPickupLine(context: Pick<GuestContext, 'hotelName' | 'hotelAddress'>): string {
+  return context.hotelAddress ? `${context.hotelName}, ${context.hotelAddress}` : context.hotelName;
+}
+
 function isValidDate(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const date = new Date(`${value}T00:00:00.000Z`);
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
+/**
+ * @param asap The guest asked for the nearest possible time: no date or time
+ * is required, and the server dates the request itself.
+ */
 export function validateRequest(
   service: ServiceId,
   fields: RequestFields,
   messages: ValidationMessages = en.validation,
+  asap = false,
 ): RequestErrors {
   const errors: RequestErrors = {};
   const required = (key: keyof RequestFields, message: string) => {
@@ -38,13 +48,15 @@ export function validateRequest(
     required('choice', messages.choice[service]);
   }
 
-  required('date', messages.date);
-  if (fields.date && !isValidDate(fields.date)) {
-    errors.date = messages.validDate;
-  } else if (fields.date && fields.date < new Date().toISOString().slice(0, 10)) {
-    errors.date = messages.futureDate;
+  if (!asap) {
+    required('date', messages.date);
+    if (fields.date && !isValidDate(fields.date)) {
+      errors.date = messages.validDate;
+    } else if (fields.date && fields.date < new Date().toISOString().slice(0, 10)) {
+      errors.date = messages.futureDate;
+    }
+    if (service === 'transport' || service === 'restaurants') required('time', messages.time);
   }
-  if (service === 'transport' || service === 'restaurants') required('time', messages.time);
   required('guestName', messages.name);
   required('contact', messages.contact);
 

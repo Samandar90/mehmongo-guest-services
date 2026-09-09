@@ -177,6 +177,7 @@ function readDeliveryRequest(data: unknown): DeliveryRequest | null {
     note: request.note,
     offer: readOfferSnapshot(request.offer_snapshot),
     guestLocale: isGuestLocale(request.guest_locale) ? request.guest_locale : 'en',
+    asap: request.asap === true,
   };
 }
 
@@ -303,6 +304,7 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
         p_offer_id: request.offerId,
         p_offer_snapshot: request.offerSnapshot,
         p_guest_locale: request.guestLocale,
+        p_asap: request.asap,
       });
       const conflict = uniqueConflict(error);
       if (conflict === 'reference_conflict') return { kind: conflict };
@@ -323,7 +325,7 @@ function repositoryFor(client: SubmitRequestClient): SubmitRequestRepository {
     async findByReference(reference) {
       const { data, error } = await client
         .from('service_requests')
-        .select('id, reference, service_type, choice, pickup, destination, requested_date, requested_time, party_size, guest_name, guest_contact, note, offer_snapshot, guest_locale, rooms!inner(label, hotels!inner(name))')
+        .select('id, reference, service_type, choice, pickup, destination, requested_date, requested_time, party_size, guest_name, guest_contact, note, offer_snapshot, guest_locale, asap, rooms!inner(label, hotels!inner(name))')
         .eq('reference', reference)
         .maybeSingle();
       if (error) throw error;

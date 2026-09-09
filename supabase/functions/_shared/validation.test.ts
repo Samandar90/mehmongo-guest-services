@@ -1,7 +1,7 @@
 /// <reference lib="deno.ns" />
 
 import { assertEquals, assertThrows } from '@std/assert';
-import { validateSubmitPayload } from './validation.ts';
+import { tashkentToday, validateSubmitPayload } from './validation.ts';
 
 const validFields = {
   choice: '',
@@ -120,4 +120,53 @@ Deno.test('refuses a language the site does not speak', () => {
   assertThrows(() => validateSubmitPayload({ ...validTransportPayload(), guestLocale: 'de' }));
   assertThrows(() => validateSubmitPayload({ ...validTransportPayload(), guestLocale: 'EN' }));
   assertThrows(() => validateSubmitPayload({ ...validTransportPayload(), guestLocale: 7 }));
+});
+
+Deno.test('an as-soon-as-possible transfer needs no time and is dated today in Tashkent', () => {
+  const request = validateSubmitPayload({
+    ...validTransportPayload(),
+    fields: { ...validFields, date: '', time: '' },
+    asap: true,
+  });
+  assertEquals(request.asap, true);
+  assertEquals(request.time, '');
+  assertEquals(request.date, tashkentToday());
+});
+
+Deno.test('an as-soon-as-possible request may not also name a time', () => {
+  assertThrows(() => validateSubmitPayload({ ...validTransportPayload(), asap: true }));
+});
+
+Deno.test('as soon as possible is offered for rides only', () => {
+  assertThrows(() => validateSubmitPayload({
+    ...validTransportPayload(),
+    service: 'tours',
+    fields: { ...validFields, choice: 'Old city', time: '' },
+    asap: true,
+  }));
+  assertThrows(() => validateSubmitPayload({
+    ...validTransportPayload(),
+    service: 'tours',
+    offerId: 'tashkent-private-guide',
+    fields: { ...validFields, pickup: '', destination: '', time: '' },
+    asap: true,
+  }));
+  const airport = validateSubmitPayload({
+    ...validTransportPayload(),
+    offerId: 'tashkent-airport-sedan',
+    fields: { ...validFields, choice: 'Airport → hotel', pickup: '', destination: '', time: '' },
+    asap: true,
+  });
+  assertEquals(airport.asap, true);
+  assertEquals(airport.time, '');
+});
+
+Deno.test('asap must be a boolean when present, and defaults to false', () => {
+  assertEquals(validateSubmitPayload(validTransportPayload()).asap, false);
+  assertThrows(() => validateSubmitPayload({ ...validTransportPayload(), asap: 'yes' }));
+});
+
+Deno.test('tashkentToday follows the +05:00 calendar', () => {
+  assertEquals(tashkentToday(new Date('2026-09-10T20:30:00.000Z')), '2026-09-11');
+  assertEquals(tashkentToday(new Date('2026-09-10T18:30:00.000Z')), '2026-09-10');
 });

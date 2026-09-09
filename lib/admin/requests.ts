@@ -40,6 +40,8 @@ export type AdminRequestRow = {
   note: string;
   /** The language the guest was reading the site in; the one to answer in. */
   guestLocale: GuestLocale;
+  /** The guest asked for the nearest possible time; requestedTime is then null. */
+  asap: boolean;
   telegramStatus: TelegramStatus | 'none';
   telegramAttempt: number;
   telegramErrorCode: string | null;
@@ -85,7 +87,7 @@ export const requestPageSize = 100;
 const requestColumns = [
   'id', 'reference', 'service_type', 'status', 'choice', 'pickup', 'destination',
   'requested_date', 'requested_time', 'party_size', 'guest_name', 'guest_contact', 'note',
-  'hotel_id', 'room_id', 'created_at', 'offer_id', 'offer_snapshot', 'guest_locale',
+  'hotel_id', 'room_id', 'created_at', 'offer_id', 'offer_snapshot', 'guest_locale', 'asap',
   'settled_amount_minor', 'settled_currency', 'settled_at', 'cost_amount_minor',
   'hotel_rate_minor', 'hotel_rate_currency',
   'hotels!inner(name)', 'rooms!inner(label)',
@@ -114,6 +116,7 @@ type RequestRow = {
   offer_id: string | null;
   offer_snapshot: unknown;
   guest_locale: string | null;
+  asap: boolean | null;
   settled_amount_minor: number | null;
   settled_currency: string | null;
   settled_at: string | null;
@@ -193,6 +196,7 @@ function toRow(row: RequestRow): AdminRequestRow {
     contact: row.guest_contact,
     note: row.note,
     guestLocale: isGuestLocale(row.guest_locale) ? row.guest_locale : 'en',
+    asap: row.asap === true,
     telegramStatus: delivery?.status ?? 'none',
     telegramAttempt: delivery?.attempt ?? 0,
     telegramErrorCode: delivery?.error_code ?? null,

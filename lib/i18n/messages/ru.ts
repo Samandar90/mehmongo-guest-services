@@ -21,6 +21,18 @@ export const ru: Messages = {
     optional: 'Необязательно',
     concierge: 'Местная консьерж-служба на связи',
     photoCredits: 'Источники фотографий',
+    savePage: 'Сохранить страницу',
+    saveHint: 'Отправьте ссылку себе, чтобы заказывать откуда угодно.',
+    linkCopied: 'Ссылка скопирована',
+    replyPromise: (minutes, from, to) =>
+      `Обычно отвечаем в течение ${minutes} минут с ${from} до ${to} по Ташкенту. На ночную заявку ответим с ${from}.`,
+  },
+  timing: {
+    legend: 'Когда нужна машина?',
+    asap: 'Как можно скорее',
+    pickTime: 'Выбрать дату и время',
+    asapHint: 'Мы сразу свяжемся с вами и подтвердим ближайшее время подачи.',
+    pickupPrefilled: 'Подставили ваш отель — измените, если подача в другом месте.',
   },
   services: {
     tours: { title: 'Экскурсии', description: 'Город с проверенным местным гидом' },
@@ -101,6 +113,10 @@ export const ru: Messages = {
     willMessage: 'Мы напишем на указанный вами контакт',
     hint: 'Команда подтвердит наличие и полную стоимость.',
     another: 'Заказать ещё одну услугу',
+    writeUs: 'Хотите написать нам сами?',
+    whatsapp: 'Написать в WhatsApp',
+    telegram: 'Написать в Telegram',
+    contactMessage: (reference, hotel, room) => `Здравствуйте! Моя заявка ${reference} (${hotel}, ${room}).`,
   },
   catalog: {
     filterLegend: 'Фильтр услуг',

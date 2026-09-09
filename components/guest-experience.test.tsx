@@ -14,6 +14,7 @@ vi.mock('@/lib/requests/api', async (importOriginal) => ({
 
 const context: RoomContextResult = {
   hotelName: 'Kamilovs Hotel',
+  hotelAddress: 'Xromiy 7',
   roomLabel: '205',
   roomToken: '20000000-0000-4000-8000-000000000205',
   services: ['tours', 'transport', 'restaurants', 'tickets'],
@@ -82,6 +83,8 @@ describe('GuestExperience', () => {
     await user.click(screen.getByRole('button', { name: /Transport/i }));
     expect(screen.getByRole('heading', { name: 'Transport request' })).toHaveFocus();
 
+    // The pickup starts from the hotel; emptied, it is required like the rest.
+    await user.clear(screen.getByLabelText('Pickup point'));
     await user.click(screen.getByRole('button', { name: 'Send request' }));
     expect(screen.getByText('Enter a pickup point')).toBeVisible();
     expect(screen.getByText('Enter a destination')).toBeVisible();
@@ -195,6 +198,7 @@ describe('GuestExperience languages', () => {
     render(<GuestExperience context={context} locale="uz" />);
 
     await user.click(screen.getByRole('button', { name: /Transport/i }));
+    await user.clear(screen.getByLabelText('Qayerdan olib ketamiz'));
     await user.click(screen.getByRole('button', { name: 'Soʻrov yuborish' }));
 
     expect(screen.getByText('Qayerdan olib ketishimizni kiriting')).toBeVisible();

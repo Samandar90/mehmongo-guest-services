@@ -13,7 +13,7 @@ const INACTIVE_ROOM_TOKEN = '20000000-0000-4000-8000-000000000206';
 
 const activeRoomRepository: RoomContextRepository = {
   findActiveRoom: (token) => Promise.resolve(token === ACTIVE_ROOM_TOKEN
-    ? { hotelName: 'Kamilovs Hotel', roomLabel: '205', catalogId: 'tashkent-v1' }
+    ? { hotelName: 'Kamilovs Hotel', hotelAddress: 'Xromiy 7', roomLabel: '205', catalogId: 'tashkent-v1' }
     : null),
 };
 
@@ -26,6 +26,7 @@ Deno.test('returns only public room context for an active room', async () => {
   assertEquals(response.status, 200);
   assertEquals(await response.json(), {
     hotelName: 'Kamilovs Hotel',
+    hotelAddress: 'Xromiy 7',
     roomLabel: '205',
     catalogId: 'tashkent-v1',
     services: ['tours', 'transport', 'restaurants', 'tickets'],
@@ -84,7 +85,7 @@ Deno.test('production repository requires active room and hotel records', async 
 Deno.test('a hotel without a catalogue keeps the previous guest form', async () => {
   const response = await handler(
     new Request(`http://local/?token=${ACTIVE_ROOM_TOKEN}`),
-    { repository: { findActiveRoom: () => Promise.resolve({ hotelName: 'Kamilovs Hotel', roomLabel: '205', catalogId: null }) } },
+    { repository: { findActiveRoom: () => Promise.resolve({ hotelName: 'Kamilovs Hotel', hotelAddress: '', roomLabel: '205', catalogId: null }) } },
   );
 
   const body = await response.json() as { catalogId: string | null };
@@ -99,7 +100,7 @@ Deno.test('an unknown catalogue attachment is not announced to the guest', async
           eq: () => ({
             eq: () => ({
               maybeSingle: () => Promise.resolve({
-                data: { label: '205', hotels: { name: 'Kamilovs Hotel', guest_catalog_id: 'moon-base-v9' } },
+                data: { label: '205', hotels: { name: 'Kamilovs Hotel', address: 'Xromiy 7', guest_catalog_id: 'moon-base-v9' } },
                 error: null,
               }),
             }),
@@ -111,7 +112,34 @@ Deno.test('an unknown catalogue attachment is not announced to the guest', async
 
   assertEquals(await createRepository(client).findActiveRoom(ACTIVE_ROOM_TOKEN), {
     hotelName: 'Kamilovs Hotel',
+    hotelAddress: 'Xromiy 7',
     roomLabel: '205',
     catalogId: null,
+  });
+});
+
+Deno.test('a hotel without an address pre-fills nothing rather than failing', async () => {
+  const client = {
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          eq: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({
+                data: { label: '205', hotels: { name: 'Kamilovs Hotel', guest_catalog_id: 'tashkent-v1' } },
+                error: null,
+              }),
+            }),
+          }),
+        }),
+      }),
+    }),
+  } as unknown as RoomContextClient;
+
+  assertEquals(await createRepository(client).findActiveRoom(ACTIVE_ROOM_TOKEN), {
+    hotelName: 'Kamilovs Hotel',
+    hotelAddress: '',
+    roomLabel: '205',
+    catalogId: 'tashkent-v1',
   });
 });

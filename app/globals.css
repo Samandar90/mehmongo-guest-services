@@ -453,3 +453,25 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 :lang(zh) h1 em { font-family: inherit; font-weight: inherit; }
 :lang(zh) .eyebrow, :lang(zh) .offer-eyebrow, :lang(zh) .form-divider, :lang(zh) .language-popover-title, :lang(zh) .offer-dialog-body h3 { letter-spacing: .08em; }
 :lang(zh) h1, :lang(zh) h2, :lang(zh) h3, :lang(zh) .form-title { word-break: keep-all; overflow-wrap: anywhere; }
+
+/* ---------- when the ride is needed, contact, saving the page ---------- */
+.timing-choice { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 8px; }
+.timing-choice legend { padding: 0; margin-bottom: 4px; font-size: 13px; font-weight: 680; }
+.timing-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.timing-option { min-height: 50px; padding: 0 12px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--input); border-radius: 14px; background: rgba(255,253,250,.85); color: var(--navy); font-size: 14px; font-weight: 650; cursor: pointer; transition: background 160ms ease, border-color 160ms ease, color 160ms ease; }
+.timing-option svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.timing-option[aria-pressed='true'] { border-color: var(--navy); background: var(--navy); color: #fff; }
+.timing-option[aria-pressed='true'] svg { color: #f56fa0; }
+.form-hint { margin: -2px 0 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
+.contact-block { margin: 18px 0 0; }
+.contact-title { margin: 0 0 10px; font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
+.contact-buttons { display: grid; gap: 10px; }
+.contact-button { min-height: 50px; padding: 0 16px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; border: 1px solid var(--navy); border-radius: 14px; background: rgba(255,253,250,.85); color: var(--navy); font-size: 15px; font-weight: 680; text-decoration: none; }
+.contact-button svg { width: 20px; height: 20px; color: var(--magenta); }
+.contact-button:hover { background: var(--secondary); }
+.save-block { margin: 18px 0 6px; display: grid; gap: 6px; justify-items: center; text-align: center; }
+.save-page-button { min-height: 48px; padding: 0 18px; display: inline-flex; align-items: center; gap: 8px; border: 1px dashed rgba(16,43,78,.4); border-radius: 14px; background: transparent; color: var(--navy); font-size: 14px; font-weight: 650; cursor: pointer; }
+.save-page-button:hover { background: rgba(255,253,250,.85); }
+.save-page-link { min-height: 44px; padding: 0 8px; display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--ink-soft); font: inherit; font-size: 12px; cursor: pointer; }
+.save-page-button svg, .save-page-link svg { width: 16px; height: 16px; flex: 0 0 auto; }
+@media (min-width: 640px) { .contact-buttons { grid-template-columns: 1fr 1fr; } }
