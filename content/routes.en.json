@@ -1,0 +1,403 @@
+{
+  "locale": "en",
+  "version": "mehmongo-routes-2026-09-12-draft",
+  "labels": {
+    "stops": "What we see",
+    "included": "Included",
+    "extra": "Quoted separately",
+    "tips": "Good to know",
+    "scheme": "Route diagram",
+    "schemeNote": "A diagram, not a map to scale. The exact order is agreed with you.",
+    "openMap": "Scan to open the route in maps",
+    "start": "Start",
+    "priceFrom": "From",
+    "quote": "Individual quote",
+    "askUs": "Ask us",
+    "notConfirmed": "A starting price, not a confirmed total. We confirm the full price before payment.",
+    "sheet": "Route",
+    "openArea": "Scan to see the area on the map",
+    "schemeNoteOptions": "A diagram, not a map to scale. One direction per day."
+  },
+  "routes": [
+    {
+      "id": "samarkand-day",
+      "title": "Samarkand in one day",
+      "eyebrow": "From Tashkent · private car with driver",
+      "summary": "An early start, the six landmarks of the city and back in the evening. They sit almost on one line, so you walk between most of them with only two short drives.",
+      "facts": [
+        {
+          "label": "Drive",
+          "value": "≈ 280 km, 4 hours each way"
+        },
+        {
+          "label": "In the city",
+          "value": "6–7 hours"
+        },
+        {
+          "label": "On foot",
+          "value": "≈ 4 km between sites"
+        }
+      ],
+      "offerId": "tashkent-samarkand-one-way",
+      "travelmode": "walking",
+      "stops": [
+        {
+          "name": "Gur-e-Amir",
+          "local": "Гур-Эмир",
+          "time": "30–40 min",
+          "text": "Timur's mausoleum. A ribbed turquoise dome outside, a gilded chamber inside; his sons and his grandson Ulugh Beg lie here too.",
+          "maps": "Gur-e-Amir Mausoleum, Samarkand",
+          "x": 20,
+          "y": 94
+        },
+        {
+          "name": "Registan",
+          "local": "Регистан",
+          "time": "1–1.5 hours",
+          "text": "A square framed by three madrasahs: Ulugh Beg's (15th century), Sher-Dor with the lions on its portal, and Tilya-Kori with its gold hall. The picture everyone comes for.",
+          "maps": "Registan, Samarkand",
+          "x": 40,
+          "y": 74
+        },
+        {
+          "name": "Bibi-Khanym Mosque",
+          "local": "Биби-Ханым",
+          "time": "30 min",
+          "text": "The congregational mosque built under Timur. An enormous portal, and a stone Quran stand in the middle of the courtyard.",
+          "maps": "Bibi-Khanym Mosque, Samarkand",
+          "x": 52,
+          "y": 56
+        },
+        {
+          "name": "Siyob Bazaar",
+          "local": "Сиабский базар",
+          "time": "30–40 min",
+          "text": "A working market right behind the mosque. Samarkand bread, dried fruit, nuts and spices — the easiest place to buy something to take home.",
+          "maps": "Siyob Bazaar, Samarkand",
+          "x": 57,
+          "y": 51
+        },
+        {
+          "name": "Shah-i-Zinda",
+          "local": "Шахи-Зинда",
+          "time": "45 min",
+          "text": "A street of mausoleums climbing the hillside. The finest tilework in Samarkand, 14th–15th century.",
+          "maps": "Shah-i-Zinda, Samarkand",
+          "x": 75,
+          "y": 48
+        },
+        {
+          "name": "Ulugh Beg Observatory",
+          "local": "Обсерватория Улугбека",
+          "time": "30 min",
+          "text": "What remains of a giant sextant cut into the hill, and a museum about the 15th-century Samarkand school of astronomy.",
+          "maps": "Ulugh Beg Observatory, Samarkand",
+          "x": 80,
+          "y": 6
+        }
+      ],
+      "included": [
+        "Car with driver: Tashkent — Samarkand — Tashkent",
+        "Drives between the sites inside the city",
+        "Fuel and road charges"
+      ],
+      "extra": [
+        "Entrance tickets",
+        "A guide in Samarkand",
+        "Lunch"
+      ],
+      "tips": [
+        "We leave at 06:00–07:00; any later and the sightseeing gets squeezed.",
+        "Instead of the car you can take the Afrosiyob high-speed train, about 2 hours each way. We can buy the tickets.",
+        "Midday is hot in summer: Shah-i-Zinda and the Registan are better in the morning or late afternoon.",
+        "Mosques ask for covered shoulders and knees; scarves for women are available at the entrance."
+      ],
+      "priceMode": "quote",
+      "priceNote": "A full day with waiting and the return is priced separately. The one-way transfer starts at $200.",
+      "stopsAre": "sequence"
+    },
+    {
+      "id": "tashkent-city-day",
+      "title": "Tashkent in one day",
+      "eyebrow": "Private car with driver · 09:00–18:00",
+      "summary": "The city is spread out and does not walk well. A car and driver move you between the stops all day. This is the full list; a day usually fits five or six — we choose together.",
+      "facts": [
+        {
+          "label": "Hours",
+          "value": "09:00–18:00"
+        },
+        {
+          "label": "Across the city",
+          "value": "40–60 km in a day"
+        },
+        {
+          "label": "Stops",
+          "value": "5–6 from the list"
+        }
+      ],
+      "offerId": "tashkent-city-car",
+      "travelmode": "driving",
+      "stops": [
+        {
+          "name": "Hazrati Imam",
+          "local": "Хазрати Имам",
+          "time": "1 hour",
+          "text": "The religious heart of the city: the Barak Khan Madrasah, the Tilla Sheikh Mosque, and the Muyi Muborak library where the Uthman Quran is kept — one of the oldest copies in existence.",
+          "maps": "Hazrati Imam Complex, Tashkent",
+          "x": 22,
+          "y": 28
+        },
+        {
+          "name": "Chorsu Bazaar",
+          "local": "Базар Чорсу",
+          "time": "45 min",
+          "text": "The market under the blue dome. Rows of spices, dried fruit, meat and bread; the upper gallery is the place to see the dome from inside.",
+          "maps": "Chorsu Bazaar, Tashkent",
+          "x": 20,
+          "y": 46
+        },
+        {
+          "name": "Kukeldash Madrasah",
+          "local": "Медресе Кукельдаш",
+          "time": "20 min",
+          "text": "16th century, on the rise above the bazaar. The courtyard is quiet the moment you step in from the noise.",
+          "maps": "Kukeldash Madrasah, Tashkent",
+          "x": 26,
+          "y": 54
+        },
+        {
+          "name": "Amir Timur Square",
+          "local": "Площадь Амира Темура",
+          "time": "20 min",
+          "text": "The park at the centre, with the Timur monument, the chiming clock and buildings from several eras around it.",
+          "maps": "Amir Timur Square, Tashkent",
+          "x": 62,
+          "y": 60
+        },
+        {
+          "name": "Metro: Kosmonavtlar and Alisher Navoi",
+          "local": "Космонавтлар, Алишер Навои",
+          "time": "30 min",
+          "text": "Two stations worth riding for the interiors: cosmonaut portraits on blue glass, and domed vaults. Photography is allowed.",
+          "maps": "Kosmonavtlar metro station, Tashkent",
+          "x": 52,
+          "y": 70
+        },
+        {
+          "name": "Minor Mosque",
+          "local": "Мечеть Минор",
+          "time": "20 min",
+          "text": "A modern mosque of white marble with a turquoise dome, on the bank of the Ankhor canal.",
+          "maps": "Minor Mosque, Tashkent",
+          "x": 44,
+          "y": 20
+        },
+        {
+          "name": "TV Tower",
+          "local": "Телебашня",
+          "time": "40 min",
+          "text": "375 metres, with an observation deck. From here you see how green and how flat the city is.",
+          "maps": "Tashkent Television Tower",
+          "x": 70,
+          "y": 12
+        }
+      ],
+      "included": [
+        "Private car with driver, 09:00–18:00",
+        "Fuel and parking",
+        "Every drive between the stops of the day"
+      ],
+      "extra": [
+        "Entrance tickets and metro tokens",
+        "A professional guide",
+        "Lunch",
+        "Hours beyond the agreed schedule"
+      ],
+      "tips": [
+        "Some museums close on Mondays; we adjust the route.",
+        "Bring your passport for the TV Tower — it is checked at the entrance.",
+        "Photography is allowed in the metro, but not of military sites.",
+        "If you want a guide for the whole day, say so in advance: that is a separate service."
+      ],
+      "stopsAre": "sequence"
+    },
+    {
+      "id": "old-tashkent-walk",
+      "title": "Old Tashkent on foot",
+      "eyebrow": "Private excursion with a guide · 3–4 hours",
+      "summary": "A compact walk through the old part of the city: the religious complex, the residential mahallas and the bazaar. Everything is close; you walk from one to the next.",
+      "facts": [
+        {
+          "label": "On foot",
+          "value": "≈ 3 km"
+        },
+        {
+          "label": "Length",
+          "value": "3–4 hours"
+        },
+        {
+          "label": "Start",
+          "value": "Morning, or after 16:00"
+        }
+      ],
+      "offerId": "tashkent-private-guide",
+      "travelmode": "walking",
+      "stops": [
+        {
+          "name": "Hazrati Imam",
+          "local": "Хазрати Имам",
+          "time": "40 min",
+          "text": "The main square of the complex, the Tilla Sheikh Mosque and the Kaffal Shashi mausoleum. Your guide explains how the religious centre of the city came together.",
+          "maps": "Hazrati Imam Complex, Tashkent",
+          "x": 30,
+          "y": 20
+        },
+        {
+          "name": "Muyi Muborak",
+          "local": "Муйи Муборак",
+          "time": "20 min",
+          "text": "The library where the Uthman Quran lies under glass — one of the oldest surviving copies. Photography inside is restricted.",
+          "maps": "Muyi Muborak Madrasah, Tashkent",
+          "x": 40,
+          "y": 26
+        },
+        {
+          "name": "Barak Khan Madrasah",
+          "local": "Медресе Барак-хана",
+          "time": "20 min",
+          "text": "16th century, with craft workshops around the courtyard: ceramics, metalwork, textiles.",
+          "maps": "Barak Khan Madrasah, Tashkent",
+          "x": 24,
+          "y": 32
+        },
+        {
+          "name": "The mahalla around the complex",
+          "local": "Махалля",
+          "time": "30 min",
+          "text": "Residential lanes: single-storey houses, gates, quiet courtyards. This is Tashkent off the parade route.",
+          "maps": "Sebzar Mahalla, Tashkent",
+          "x": 36,
+          "y": 48
+        },
+        {
+          "name": "Chorsu Bazaar",
+          "local": "Базар Чорсу",
+          "time": "45 min",
+          "text": "The market under the blue dome. You taste bread, dried fruit and spices while the guide explains what things are called and what they should cost.",
+          "maps": "Chorsu Bazaar, Tashkent",
+          "x": 46,
+          "y": 68
+        },
+        {
+          "name": "Kukeldash Madrasah",
+          "local": "Медресе Кукельдаш",
+          "time": "20 min",
+          "text": "The last stop, on the rise above the bazaar: a quiet courtyard and a view back over the Chorsu dome.",
+          "maps": "Kukeldash Madrasah, Tashkent",
+          "x": 56,
+          "y": 82
+        }
+      ],
+      "included": [
+        "A private guide for the whole walk",
+        "Language agreed in advance",
+        "Route shaped around your interests"
+      ],
+      "extra": [
+        "Entrance tickets",
+        "Transport to the start and back",
+        "Food and shopping at the bazaar"
+      ],
+      "tips": [
+        "Wear walking shoes: part of the route is uneven paving.",
+        "Mosques ask for covered shoulders and knees.",
+        "In summer we walk before 11:00 or after 16:00.",
+        "More interested in food than architecture? Say so and the guide rebuilds the walk around the bazaar and the teahouses."
+      ],
+      "stopsAre": "sequence"
+    },
+    {
+      "id": "mountains-day",
+      "title": "A day in the mountains",
+      "eyebrow": "From Tashkent · private car with driver",
+      "summary": "One direction per day: Chimgan, Amirsoy, or Charvak with a walk in the canyon. All of them together does not fit into a day — we decide when confirming.",
+      "facts": [
+        {
+          "label": "Drive",
+          "value": "70–90 km, 1.5–2 hours each way"
+        },
+        {
+          "label": "In the mountains",
+          "value": "4–6 hours"
+        },
+        {
+          "label": "Directions",
+          "value": "One per day"
+        }
+      ],
+      "offerId": "tashkent-mountains-base",
+      "travelmode": "driving",
+      "origin": {
+        "name": "Tashkent",
+        "x": 6,
+        "y": 88,
+        "note": "70–90 km · 1.5–2 hours"
+      },
+      "stops": [
+        {
+          "name": "Charvak Reservoir",
+          "local": "Чарвак",
+          "time": "40 min",
+          "text": "A viewpoint over turquoise water ringed by mountains. The beaches work in summer; in spring and autumn it is the view and the air.",
+          "maps": "Charvak Reservoir, Uzbekistan",
+          "x": 58,
+          "y": 32
+        },
+        {
+          "name": "Chimgan and Beldersay",
+          "local": "Чимган, Бельдерсай",
+          "time": "1.5–2 hours",
+          "text": "A chairlift up, and the view of Great Chimgan — 3,309 metres. In winter this is the ski slope.",
+          "maps": "Chimgan, Uzbekistan",
+          "x": 80,
+          "y": 18
+        },
+        {
+          "name": "Amirsoy",
+          "local": "Амирсой",
+          "time": "1.5–2 hours",
+          "text": "A modern resort with a gondola, viewing decks and a restaurant at the top. The easiest option with children.",
+          "maps": "Amirsoy Mountain Resort, Uzbekistan",
+          "x": 48,
+          "y": 14
+        },
+        {
+          "name": "Gulkam Canyon",
+          "local": "Гулкам",
+          "time": "1–2 hours",
+          "text": "A short walk along the river between rock walls. The path is seasonal and depends on the water level — we check before we set off.",
+          "maps": "Gulkam Canyon, Uzbekistan",
+          "x": 72,
+          "y": 44
+        }
+      ],
+      "included": [
+        "Private car with driver for the whole day",
+        "Fuel, parking and road charges",
+        "The agreed route out and back"
+      ],
+      "extra": [
+        "Cable cars and chairlifts",
+        "Resort entrance tickets",
+        "A guide and lunch"
+      ],
+      "tips": [
+        "It is 5–10 degrees colder up there than in the city: bring a jacket even in summer.",
+        "Closed-toe shoes — the lifts and the paths require them.",
+        "Snow can close the road in winter; we confirm the route on the morning of the trip.",
+        "Gulkam is not always passable after rain — we will offer an alternative."
+      ],
+      "stopsAre": "options"
+    }
+  ]
+}

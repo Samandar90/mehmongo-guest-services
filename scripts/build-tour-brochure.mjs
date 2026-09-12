@@ -17,13 +17,19 @@
  * Rendering is Chrome (or Edge) in headless mode: the fonts, photos and QR code
  * are embedded as data URIs, so the HTML renders identically with no network.
  */
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import QRCode from 'qrcode';
+import {
+  brandAsset,
+  browserPath,
+  dataUri,
+  escapeHtml,
+  fontFaces,
+  projectDir,
+  renderPdf,
+} from './lib/print-assets.mjs';
 
-const projectDir = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const outputDir = process.argv[2] ?? path.join(projectDir, 'outputs', 'tour-brochure');
 
 const locales = ['en', 'ru', 'uz', 'zh'];
@@ -99,36 +105,8 @@ const brochure = {
 const contact = JSON.parse(readFileSync(path.join(projectDir, 'content', 'contact.json'), 'utf8'));
 const photoSources = JSON.parse(readFileSync(path.join(projectDir, 'content', 'photo-sources.json'), 'utf8'));
 
-function dataUri(filePath, mediaType) {
-  return `data:${mediaType};base64,${readFileSync(filePath).toString('base64')}`;
-}
-
-/**
- * The Geist faces the site already downloaded, inlined. The split by
- * unicode-range is kept, so Cyrillic comes from the Cyrillic file exactly as
- * it does in the browser.
- */
-function fontFaces() {
-  const cssPath = path.join(projectDir, '.vinext', 'fonts', 'geist-8ac0455e797f', 'style.css');
-  if (!existsSync(cssPath)) {
-    throw new Error(`Geist not found at ${cssPath}. Run "npm run build" once to fetch it.`);
-  }
-  return readFileSync(cssPath, 'utf8').replace(/url\(([^)]+)\)/g, (match, url) => {
-    const file = url.trim().replace(/^['"]|['"]$/g, '');
-    return existsSync(file) ? `url(${dataUri(file, 'font/woff2')})` : match;
-  });
-}
-
 function photo(name) {
   return dataUri(path.join(projectDir, 'public', 'catalog', `${name}-960.jpg`), 'image/jpeg');
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
 }
 
 /** "assets/charvak-lake.jpg" -> "charvak-lake" */
@@ -209,8 +187,8 @@ async function buildHtml(locale) {
   const copy = brochure[locale];
   const page = catalog.page;
 
-  const lockupWhite = dataUri(path.join(projectDir, '..', 'MehmonGo-логотип', 'lockup-white.svg'), 'image/svg+xml');
-  const mark = dataUri(path.join(projectDir, '..', 'MehmonGo-логотип', 'mark.svg'), 'image/svg+xml');
+  const lockupWhite = brandAsset('lockup-white.svg');
+  const mark = brandAsset('mark.svg');
 
   const whatsappText = encodeURIComponent(copy.contactTitle);
   const qr = await QRCode.toDataURL(`https://wa.me/${contact.whatsapp}?text=${whatsappText}`, {
@@ -633,18 +611,6 @@ body {
 </html>`;
 }
 
-function browserPath() {
-  const candidates = [
-    'C:/Program Files/Google/Chrome/Application/chrome.exe',
-    'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
-    'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-    'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
-  ];
-  const found = candidates.find((candidate) => existsSync(candidate));
-  if (!found) throw new Error('Neither Chrome nor Edge was found; one of them renders the PDF.');
-  return found;
-}
-
 /** Named so the folder reads without this script open, as the logo folder does. */
 function readme() {
   return `БУКЛЕТ MEHMONGO ДЛЯ ТУРИСТОВ
@@ -705,16 +671,7 @@ async function main() {
     const pdfPath = path.join(outputDir, `MehmonGo-tours-${locale}.pdf`);
     writeFileSync(htmlPath, html, 'utf8');
 
-    execFileSync(browser, [
-      '--headless=new',
-      '--disable-gpu',
-      '--no-sandbox',
-      '--no-pdf-header-footer',
-      '--virtual-time-budget=20000',
-      `--print-to-pdf=${pdfPath}`,
-      `file:///${htmlPath.replaceAll('\\', '/')}`,
-    ], { stdio: 'ignore' });
-
+    renderPdf(browser, htmlPath, pdfPath);
     console.log(`${path.basename(pdfPath)} written`);
   }
 
