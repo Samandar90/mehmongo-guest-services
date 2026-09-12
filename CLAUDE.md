@@ -120,8 +120,16 @@ Rulings this created, which later work must not undo:
 The guest site speaks `en`, `ru`, `uz` (Latin) and `zh` (Simplified). The
 header pill is `components/language-menu.tsx`; the choice is a cookie
 (`mg_lang`, one year) and the server renders the first paint in it:
-`lib/i18n/server.ts` resolves `?lang=` → cookie → `Accept-Language` → `en`,
-so `?lang=zh` on a room link is a way to demo a language.
+`lib/i18n/server.ts` resolves `?lang=` → cookie → `en`, so `?lang=zh` on a
+room link is a way to demo a language.
+
+**A scanned plaque always opens in English** (owner's decision, 2026-09-12).
+`Accept-Language` was consulted until then and is deliberately not any more:
+a hotel wants one predictable first screen, and a phone's language is a poor
+guess at the language its owner reads. Restoring it means restoring
+`localeFromAcceptLanguage` in `lib/i18n/locale.ts` — it is in the history of
+that file, removed rather than left dead. Changing this changes no printed
+plaque: the QR encodes `<origin>/r/<token>` and nothing about language.
 
 - Interface strings: `lib/i18n/messages/{en,ru,uz,zh}.ts`, typed against the
   English object. Components read them through `useI18n()`

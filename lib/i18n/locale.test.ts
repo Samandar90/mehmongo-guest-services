@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isLocale, localeCookie, localeFromAcceptLanguage, localeInfo, locales, resolveLocale } from './locale';
+import { isLocale, localeCookie, localeInfo, locales, resolveLocale } from './locale';
 
 describe('locale', () => {
   it('knows exactly the four guest languages', () => {
@@ -20,36 +20,22 @@ describe('locale', () => {
   });
 });
 
-describe('localeFromAcceptLanguage', () => {
-  it('maps regional variants onto their language', () => {
-    expect(localeFromAcceptLanguage('ru-KZ,ru;q=0.9,en;q=0.8')).toBe('ru');
-    expect(localeFromAcceptLanguage('zh-TW,zh;q=0.9')).toBe('zh');
-    expect(localeFromAcceptLanguage('uz-Latn-UZ')).toBe('uz');
-  });
-
-  it('follows the browser weights rather than the list order', () => {
-    expect(localeFromAcceptLanguage('en;q=0.5, zh-CN;q=0.9')).toBe('zh');
-  });
-
-  it('skips languages the site does not speak', () => {
-    expect(localeFromAcceptLanguage('de-DE,de;q=0.9,fr;q=0.8')).toBeNull();
-    expect(localeFromAcceptLanguage('de-DE,de;q=0.9,ru;q=0.2')).toBe('ru');
-    expect(localeFromAcceptLanguage('')).toBeNull();
-    expect(localeFromAcceptLanguage(null)).toBeNull();
-    expect(localeFromAcceptLanguage('*')).toBeNull();
-  });
-});
-
 describe('resolveLocale', () => {
-  it('lets the link override the cookie, and the cookie override the browser', () => {
-    expect(resolveLocale({ param: 'zh', cookie: 'ru', acceptLanguage: 'uz' })).toBe('zh');
-    expect(resolveLocale({ cookie: 'ru', acceptLanguage: 'uz' })).toBe('ru');
-    expect(resolveLocale({ acceptLanguage: 'uz' })).toBe('uz');
+  it('lets the link override the cookie', () => {
+    expect(resolveLocale({ param: 'zh', cookie: 'ru' })).toBe('zh');
+    expect(resolveLocale({ cookie: 'ru' })).toBe('ru');
     expect(resolveLocale({})).toBe('en');
   });
 
+  // A scanned plaque opens the same way for everyone; the phone's own
+  // language is not consulted, only what the guest has chosen here before.
+  it('opens in English whatever the phone is set to', () => {
+    expect(resolveLocale({})).toBe('en');
+    expect(resolveLocale({ cookie: null })).toBe('en');
+  });
+
   it('ignores values it does not recognise', () => {
-    expect(resolveLocale({ param: 'fr', cookie: 'nope', acceptLanguage: 'de' })).toBe('en');
+    expect(resolveLocale({ param: 'fr', cookie: 'nope' })).toBe('en');
     expect(resolveLocale({ param: ['ru', 'zh'] })).toBe('ru');
   });
 });

@@ -42,45 +42,23 @@ export function isLocale(value: unknown): value is Locale {
 }
 
 /**
- * The language a browser asks for, mapped onto one of ours. Only the primary
- * subtag matters: ru-KZ is still Russian, zh-TW still reads Simplified far
- * better than English. Weighted preferences are honoured in the order the
- * browser lists them, which is the order of the user's own settings.
- */
-export function localeFromAcceptLanguage(header: string | null | undefined): Locale | null {
-  if (!header) return null;
-  const ranked = header
-    .split(',')
-    .map((part, index) => {
-      const [tag, ...params] = part.trim().split(';');
-      const q = params.map((p) => p.trim()).find((p) => p.startsWith('q='));
-      const weight = q ? Number(q.slice(2)) : 1;
-      return { tag: tag.trim().toLowerCase(), weight: Number.isFinite(weight) ? weight : 0, index };
-    })
-    .filter((entry) => entry.tag && entry.weight > 0)
-    .sort((a, b) => b.weight - a.weight || a.index - b.index);
-
-  for (const entry of ranked) {
-    const primary = entry.tag.split('-')[0];
-    if (isLocale(primary)) return primary;
-  }
-  return null;
-}
-
-/**
  * Which language to render, in order of how deliberate each signal is: a
  * ?lang= in the link the guest opened, the cookie from an earlier choice,
- * then the browser's own preference, then English.
+ * then English.
+ *
+ * A scanned plaque always opens in English, whatever the phone is set to.
+ * The owner's decision, on 2026-09-12: a hotel wants one predictable first
+ * screen, and a phone's language is a poor guess at the language its owner
+ * reads. The guest changes it once from the header and the cookie remembers.
  */
 export function resolveLocale(input: {
   param?: string | string[] | null;
   cookie?: string | null;
-  acceptLanguage?: string | null;
 }): Locale {
   const param = Array.isArray(input.param) ? input.param[0] : input.param;
   if (isLocale(param)) return param;
   if (isLocale(input.cookie)) return input.cookie;
-  return localeFromAcceptLanguage(input.acceptLanguage) ?? defaultLocale;
+  return defaultLocale;
 }
 
 /** Serialised Set-Cookie value for document.cookie. */
