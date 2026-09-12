@@ -22,6 +22,7 @@
     "functions:lint": "deno lint supabase/functions",
     "assets:generate": "tsx scripts/generate-room-assets.ts",
     "assets:verify": "node scripts/verify-room-assets.mjs",
+    "icons": "node scripts/build-app-icons.mjs",
     "brochure": "node scripts/build-tour-brochure.mjs \"../MehmonGo-туры\"",
     "routes": "node scripts/build-route-sheets.mjs \"../MehmonGo-маршруты\"",
     "telegram:check": "node scripts/check-telegram.mjs",

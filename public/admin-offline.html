@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MehmonGo — нет сети</title>
+<style>
+  :root { --navy: #102B4E; --magenta: #D3226A; --warm: #F7F3EC; --paper: #FFFDFA; --line: #E5DED2; --muted: #5E6A7C; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: var(--warm);
+    color: var(--navy);
+    font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  }
+  main {
+    width: min(100%, 420px);
+    padding: 30px 26px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--paper);
+    text-align: center;
+  }
+  img { width: 64px; height: 64px; border-radius: 16px; }
+  h1 { margin: 18px 0 0; font-size: 22px; letter-spacing: -.02em; }
+  p { margin: 12px 0 0; color: var(--muted); font-size: 15px; line-height: 1.55; }
+  button {
+    min-height: 48px;
+    margin-top: 22px;
+    padding: 0 22px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--navy);
+    color: var(--paper);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 650;
+    cursor: pointer;
+  }
+  button:hover { background: #163455; }
+</style>
+</head>
+<body>
+  <main>
+    <img src="/app-icon-192.png" alt="MehmonGo">
+    <h1>Нет подключения</h1>
+    <p>
+      Админка показывает заявки и деньги в реальном времени, поэтому без интернета
+      ей нечего показать. Проверьте связь и откройте снова — ничего не потеряется.
+    </p>
+    <button type="button" onclick="location.reload()">Попробовать снова</button>
+  </main>
+</body>
+</html>

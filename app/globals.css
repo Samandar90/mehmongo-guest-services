@@ -114,7 +114,14 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .admin-nav a[aria-current='page'] { background: var(--navy); color: #fff; }
 .admin-nav .admin-nav-brand { margin-right: auto; padding-left: 4px; font-size: 16px; font-weight: 780; letter-spacing: -.5px; }
 .admin-nav .admin-nav-brand span { color: var(--magenta); }
-.admin-nav button { margin-left: auto; color: var(--ink-soft); }
+.admin-nav > button { margin-left: auto; color: var(--ink-soft); }
+/* When the install offer is there it takes the free space and sign-out follows
+   it; when it is not rendered at all, sign-out keeps the right edge to itself. */
+.admin-nav .admin-install { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
+.admin-nav .admin-install + button { margin-left: 0; }
+.admin-nav .admin-install-button { border: 1px solid var(--line); color: var(--magenta); }
+.admin-nav .admin-install-button:hover { border-color: var(--magenta); background: var(--accent); }
+.admin-install-help { max-width: 230px; color: var(--ink-soft); font-size: 12px; line-height: 1.4; white-space: normal; }
 .admin-gate { min-height: 100svh; display: grid; place-items: center; color: var(--ink-soft); font-size: 14px; }
 .admin-page { width: min(100%, 1180px); margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 14px; align-content: start; }
 /* Centred on both axes rather than pushed down by a viewport-height padding:

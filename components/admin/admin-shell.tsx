@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { InstallApp } from '@/components/admin/install-app';
 import {
   adminHome,
   getAdminIdentity,
@@ -141,6 +142,7 @@ export function AdminShell({
             {item.label}
           </Link>
         ))}
+        <InstallApp />
         <button type="button" onClick={handleSignOut}>Выйти</button>
       </nav>
       {signOutError ? (

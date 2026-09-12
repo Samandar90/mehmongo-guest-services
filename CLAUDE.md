@@ -192,6 +192,37 @@ Four conveniences for a guest with a phone in a hotel room:
 Deploy order when these change again: migration, then the Edge Functions
 (`submit-request`, `retry-telegram`, `room-context`), then the Worker.
 
+## The admin as an installed app, added 2026-09-12
+
+`/admin` installs to a phone home screen or a desktop dock. The pieces:
+`public/admin.webmanifest` (scope and `start_url` `/admin`, standalone, navy
+theme), the icons built by `npm run icons` into `public/` from the brand mark,
+`public/admin-sw.js`, and `public/admin-offline.html`. The manifest is linked
+from `app/admin/layout.tsx` metadata alone — never the root layout, or a guest
+scanning a plaque would be offered "install MehmonGo admin".
+
+- The service worker **caches nothing but the offline notice**. Not the
+  bundle, not one Supabase response. This screen shows money: a figure from
+  yesterday's cache is worse than no figure, and a stale bundle after a deploy
+  worse still. Non-navigation requests are not intercepted at all. Bump
+  `VERSION` in the worker to drop the old cache.
+- The offline page is cached as `/admin-offline`, without the extension:
+  Cloudflare serves the asset at the clean path and answers
+  `/admin-offline.html` with a 307 to it.
+- Scope is `/admin`, not `/admin/` — the dashboard itself is exactly `/admin`,
+  which a trailing slash would leave uncontrolled.
+- `lib/admin/install-script.ts` is inlined in the admin layout and runs while
+  the HTML parses. It registers the worker and catches `beforeinstallprompt`,
+  because Chrome fires that once and early, and `InstallApp` — which lives in
+  the navigation, behind the identity check — mounts far too late to hear it.
+  It is written as a real function and serialised with `toString()`, so it is
+  type-checked and testable rather than a string nobody can verify; that
+  survives minification because it only touches globals and literals.
+- `components/admin/install-app.tsx` reads both the platform and the caught
+  prompt through `useSyncExternalStore`, not an effect: setting state in an
+  effect body trips the react-compiler rule this project has hit before.
+  Safari gets instructions instead of a button, since iOS has no prompt API.
+
 ## Known limitations recorded in the ledgers
 
 - `retry-telegram` answers 409 for an already-sent delivery too; the UI says the delivery is already running and asks to refresh.
