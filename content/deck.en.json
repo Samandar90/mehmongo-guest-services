@@ -1,0 +1,188 @@
+{
+  "locale": "en",
+  "labels": {
+    "defaultAudience": "A proposal for hotels in Tashkent",
+    "audienceFor": "A proposal for {hotel}",
+    "perMonth": "a month",
+    "perYear": "a year",
+    "from": "from",
+    "quote": "quoted",
+    "onRequest": "on request",
+    "example": "Example",
+    "transport": "Transfers",
+    "tours": "Tours",
+    "tickets": "Tickets",
+    "completed": "completed",
+    "bonus": "bonus",
+    "noBonus": "no bonus",
+    "plaqueCaption": "An A5 plaque in every room",
+    "phoneCaption": "The guest's page",
+    "roomLabel": "1204",
+    "mockHotel": "Your Hotel",
+    "hotelStep": "the hotel's step"
+  },
+  "cover": {
+    "title": "Guest services in every room",
+    "lead": "Tours, transfers and tickets from a QR code in the room. We do all the work; the hotel is paid for every completed request.",
+    "facts": ["4 languages", "No app to install", "Operating in Tashkent"]
+  },
+  "problem": {
+    "eyebrow": "Today",
+    "title": "A guest asks at reception — and ends up with a random taxi",
+    "cards": [
+      { "title": "Front desk time", "text": "An airport run, a city tour, a train ticket: every one of these questions takes the front desk's time, often at its busiest hour." },
+      { "title": "Money passing by", "text": "The guest pays anyway — a driver at the door or an agency found online. The hotel earns nothing and does not know who it trusted its guest to." },
+      { "title": "Language", "text": "Guests from China, Europe, the Gulf. Not every shift has someone at the desk who speaks their language." }
+    ]
+  },
+  "solution": {
+    "eyebrow": "How it works",
+    "title": "Four steps, and the hotel takes one of them",
+    "steps": [
+      { "title": "We print the plaques", "text": "A plaque with its own QR code for every room. We check each code before handing it over." },
+      { "title": "The guest scans", "text": "No app, no sign-up. The page opens in English, and the guest can switch to Russian, Uzbek or Chinese." },
+      { "title": "The request reaches us", "text": "In seconds. We contact the guest, confirm the price and the details, and arrange everything." },
+      { "title": "The hotel is paid", "text": "For every completed request, at a fixed rate." }
+    ]
+  },
+  "guest": {
+    "eyebrow": "What the guest sees",
+    "title": "A plaque in the room and a page with your hotel's name",
+    "points": [
+      "Your hotel's name and the room number on the page",
+      "4 languages: English, Русский, Oʻzbekcha, 中文",
+      "No app and no sign-up",
+      "The price is confirmed before payment; the site takes no money and asks for no passport or card",
+      "Rides can be ordered “as soon as possible”",
+      "After the request, the guest can message us on WhatsApp straight away"
+    ]
+  },
+  "services": {
+    "eyebrow": "What a guest can order",
+    "title": "Everything guests ask the front desk about",
+    "items": [
+      { "name": "Airport transfer, either direction", "offerId": "tashkent-airport-sedan" },
+      { "name": "Airport meet & greet with a name board", "offerId": "tashkent-airport-welcome" },
+      { "name": "Tashkent tour with a private guide", "offerId": "tashkent-private-guide" },
+      { "name": "Car and driver for the day", "offerId": "tashkent-city-car" },
+      { "name": "Mountain day: Chimgan, Charvak, Amirsoy", "offerId": "tashkent-mountains-base" },
+      { "name": "Transfer to Samarkand", "offerId": "tashkent-samarkand-one-way" },
+      { "name": "Flight, train and bus tickets", "offerId": "ticket-assistance" },
+      { "name": "Restaurant table booking", "offerId": null }
+    ],
+    "note": "Starting prices. We confirm the total with the guest before payment."
+  },
+  "roles": {
+    "eyebrow": "Who does what",
+    "title": "The hotel gives us a room list. Everything else is our job",
+    "hotelTitle": "The hotel",
+    "hotel": [
+      "Gives us the list of rooms",
+      "Places the plaques",
+      "Sees requests and payouts in its own account"
+    ],
+    "usTitle": "MehmonGo",
+    "us": [
+      "Sets up the hotel and prints the plaques",
+      "Checks every code before handing it over",
+      "Takes each request and contacts the guest",
+      "Confirms price and details before payment",
+      "Arranges the driver, the guide or the tickets",
+      "Calculates and pays the hotel"
+    ]
+  },
+  "earnings": {
+    "eyebrow": "What the hotel earns",
+    "title": "Paid per completed request, not a share of revenue",
+    "rates": [
+      { "service": "tours", "label": "per tour" },
+      { "service": "transport", "label": "per transfer" },
+      { "service": "tickets", "label": "per ticket request" }
+    ],
+    "restaurants": "Restaurant bookings are not paid: nobody earns on them.",
+    "bonusTitle": "Monthly volume bonus",
+    "bonusText": "on transfers and tours",
+    "bonusFrom": "from {count} completed",
+    "footnote": "The rate is written into the request when it is completed. Payouts are in US dollars."
+  },
+  "example": {
+    "eyebrow": "An example month",
+    "title": "What this can look like for a large hotel",
+    "scenarios": [
+      { "name": "A quiet month", "transport": 10, "tours": 4, "tickets": 3 },
+      { "name": "A typical month", "transport": 25, "tours": 10, "tickets": 8 },
+      { "name": "High season", "transport": 60, "tours": 25, "tickets": 20 }
+    ],
+    "disclaimer": "An example calculation, not a forecast: it depends on your guests. The formula is always the same — completed requests × rate + volume bonus."
+  },
+  "verify": {
+    "eyebrow": "How to check",
+    "title": "Nothing to reconcile: requests × rate",
+    "points": [
+      { "title": "Your own login", "text": "Every request from your rooms: room, service, status and payout. For any month." },
+      { "title": "You see only yours, and only you do", "text": "The separation is enforced in the database itself, not in the interface." },
+      { "title": "No retroactive changes", "text": "The terms are written into the request when it is completed." },
+      { "title": "You never need our revenue", "text": "The payout does not depend on what the guest paid." }
+    ],
+    "table": {
+      "title": "Hotel account",
+      "columns": ["Request", "Room", "Service", "Status", "Payout"],
+      "rows": [
+        ["MG-7KQ2M4XA", "1204", "Transfer", "Completed", "$2.00"],
+        ["MG-B3N8R5TE", "0817", "Tour", "Completed", "$8.00"],
+        ["MG-W6D4H2LP", "1511", "Tickets", "Completed", "$2.00"],
+        ["MG-Q9F7C3VJ", "0402", "Transfer", "Cancelled", "—"]
+      ]
+    }
+  },
+  "bigHotel": {
+    "eyebrow": "For a large hotel",
+    "title": "What matters to a large hotel",
+    "points": [
+      { "title": "Your name on the page", "text": "The guest sees your hotel's name and their own room number." },
+      { "title": "An honest price", "text": "The price is confirmed before payment. The site takes no money and asks for no passport or card." },
+      { "title": "Four languages", "text": "English, Русский, Oʻzbekcha, 中文. The guest switches language themselves." },
+      { "title": "Works alongside your concierge", "text": "It catches the guests who never reach the desk — and the hotel is paid for them too." },
+      { "title": "Full control", "text": "Switching the hotel off disables every code in every room at once." },
+      { "title": "Fully transparent", "text": "Every request and every payout is visible in your account." }
+    ]
+  },
+  "status": {
+    "eyebrow": "Straight about the product",
+    "title": "What works today, and what we are still building",
+    "workingTitle": "Working now",
+    "working": [
+      "A QR plaque for every room",
+      "A guest page with the hotel's name and room number",
+      "4 languages: English, Русский, Oʻzbekcha, 中文",
+      "Requests reach the team in seconds",
+      "Hotel account: every request and payout, for any month",
+      "Only the hotel sees its own data",
+      "Switching a hotel off disables its codes instantly"
+    ],
+    "buildingTitle": "Still building",
+    "building": [
+      "A service list per hotel — today it is shared",
+      "The hotel's logo on the guest page",
+      "Our own domain instead of the technical address"
+    ],
+    "proof": "Already live in 3 hotels in Tashkent"
+  },
+  "launch": {
+    "eyebrow": "Getting started",
+    "title": "One day from the conversation to a plaque in the room",
+    "steps": [
+      "We agree the terms",
+      "You send us the room list",
+      "We print and check the plaques",
+      "We give you the login to your account",
+      "You place the plaques — and it works"
+    ]
+  },
+  "contact": {
+    "eyebrow": "Let's talk",
+    "title": "We'll show it live on your own phone",
+    "text": "Call, or write on WhatsApp or Telegram. We'll come over, show you the plaque and answer every question about the payouts.",
+    "qrCaption": "Payout calculator and details"
+  }
+}

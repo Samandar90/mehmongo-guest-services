@@ -192,6 +192,31 @@ Four conveniences for a guest with a phone in a hotel room:
 Deploy order when these change again: migration, then the Edge Functions
 (`submit-request`, `retry-telegram`, `room-context`), then the Worker.
 
+## Printed sales pieces
+
+Four generators write into folders beside the repository, never into it:
+`npm run brochure` (guests, `../MehmonGo-туры`), `npm run routes` (route
+sheets, `../MehmonGo-маршруты`), `npm run deck` (the 16:9 presentation for
+hotels, `../MehmonGo-презентация`; `npm run deck -- "Hotel Name"` puts the
+hotel on the cover, the plaque and the phone mock) and `npm run icons`. They
+share `scripts/lib/print-assets.mjs`: Geist inlined, the logo folder, and
+`renderPdf`.
+
+- `renderPdf` resolves both paths and requires the PDF to exist afterwards.
+  Before 2026-09-16 a relative output folder produced a `file://` URL to
+  nothing; the browser wrote no PDF and the scripts still printed "written".
+- The deck takes every figure from a source: prices from the catalogue, the
+  payout rules from `lib/partners/payout-example.ts` (which mirrors the seed in
+  `20260907170000_payout_rates.sql`; its test pins the three example months),
+  the phone from `content/contact.json`. Copy is in `content/deck.<locale>.json`.
+- No real hotel turnover appears in any printed piece: as of 2026-09-16 three
+  hotels are connected and one request has been completed, so the deck states
+  the three hotels and marks the example month as an example.
+- Every QR in the deck opens the partner site, including the one on the plaque
+  drawn with the real template: a manager scanning the screen must not land in
+  a room link. The reference plaque in `artifacts/` encodes an old demo host
+  (`…chatgpt.site`) and must not be used in anything shown to a hotel.
+
 ## The admin as an installed app, added 2026-09-12
 
 `/admin` installs to a phone home screen or a desktop dock. The pieces:

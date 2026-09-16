@@ -7,9 +7,9 @@
  * a machine with no network and no fonts installed.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const projectDir = path.dirname(path.dirname(path.dirname(fileURLToPath(import.meta.url))));
 
@@ -60,17 +60,30 @@ export function browserPath() {
   return found;
 }
 
-/** The page box comes from the document's own @page rule, so no header or footer is added. */
+/**
+ * The page box comes from the document's own @page rule, so no header or footer is added.
+ *
+ * Both paths are made absolute first. The npm scripts pass the output folder as
+ * "../MehmonGo-туры", and a relative path turned into a file:// URL points at
+ * nothing: the browser exits quietly, writes no PDF, and the caller used to
+ * report success anyway. The old PDF is removed before rendering and the new
+ * one is required to exist after, so a failed render can no longer pass for a
+ * fresh one.
+ */
 export function renderPdf(browser, htmlPath, pdfPath) {
+  const html = path.resolve(htmlPath);
+  const pdf = path.resolve(pdfPath);
+  rmSync(pdf, { force: true });
   execFileSync(browser, [
     '--headless=new',
     '--disable-gpu',
     '--no-sandbox',
     '--no-pdf-header-footer',
     '--virtual-time-budget=20000',
-    `--print-to-pdf=${pdfPath}`,
-    `file:///${htmlPath.replaceAll('\\', '/')}`,
+    `--print-to-pdf=${pdf}`,
+    pathToFileURL(html).href,
   ], { stdio: 'ignore' });
+  if (!existsSync(pdf)) throw new Error(`The browser did not write ${pdf}`);
 }
 
 /**
