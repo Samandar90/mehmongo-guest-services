@@ -8,7 +8,7 @@ The user's messages should be answered in Russian. Guest-facing copy exists in a
 
 ## Work in this checkout
 
-- Repository on the owner's second machine (2026-09-07 onward): `C:\Users\Comp X\Desktop\mehmongo-guest-services`, branch `main`. The worktree layout below belonged to the first machine and no longer exists.
+- Repository on the owner's second machine (2026-09-07 onward): `C:\Users\Comp X\Desktop\MehmonGo\mehmongo-guest-services`, branch `main`. The owner moved it there, with its sibling folders `MehmonGo-логотип`, `MehmonGo-туры` and `MehmonGo-маршруты`, by 2026-09-16; it lived at `Desktop\mehmongo-guest-services` before. The print scripts find those siblings through `..`, so they must keep sitting beside the repository. The partner site repository stayed at `Desktop\mehmongo-partners`. The worktree layout below belonged to the first machine and no longer exists.
 - Docker Desktop on that machine crashes on startup because the user profile path contains a space: it writes a socket at `unix://C:\Users\Comp X\AppData\Local\Docker\run\dockerInference`, then cannot remove it. Launch it with `Запустить Docker.cmd` on the Desktop, which clears the broken sockets and passes the 8.3 short path.
 - Historical, for the first machine: branch `codex/mehmongo-platform-mvp`, do not implement in the main checkout on `main`.
 - Preserve existing commits and do not rewrite history.
