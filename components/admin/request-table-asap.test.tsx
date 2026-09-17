@@ -51,3 +51,28 @@ describe('RequestTable, as soon as possible', () => {
     expect(within(details).getByText('русский')).toBeInTheDocument();
   });
 });
+
+describe('RequestTable, Telegram refusals', () => {
+  it('says what to do when the bot was removed from the group', async () => {
+    const user = userEvent.setup();
+    const refused: AdminRequestRow = { ...asapRow, id: 'request-refused', reference: 'MG-REFUSEDA', telegramStatus: 'failed', telegramErrorCode: 'TELEGRAM_BOT_REMOVED' };
+    render(<RequestTable rows={[refused]} retryTelegram={vi.fn().mockResolvedValue({ status: 'sent' })} />);
+
+    await user.click(screen.getByRole('button', { name: 'Подробнее MG-REFUSEDA' }));
+
+    const details = screen.getByRole('region', { name: 'Детали заявки MG-REFUSEDA' });
+    expect(within(details).getByText('TELEGRAM_BOT_REMOVED (попытка 1)')).toBeInTheDocument();
+    expect(within(details).getByText(/Добавьте бота обратно/)).toBeInTheDocument();
+  });
+
+  it('adds nothing for a code it has no advice for', async () => {
+    const user = userEvent.setup();
+    const refused: AdminRequestRow = { ...asapRow, id: 'request-generic', reference: 'MG-GENERICA', telegramStatus: 'failed', telegramErrorCode: 'TELEGRAM_API_ERROR' };
+    render(<RequestTable rows={[refused]} retryTelegram={vi.fn().mockResolvedValue({ status: 'sent' })} />);
+
+    await user.click(screen.getByRole('button', { name: 'Подробнее MG-GENERICA' }));
+
+    const details = screen.getByRole('region', { name: 'Детали заявки MG-GENERICA' });
+    expect(within(details).queryByText(/Добавьте бота|супергруппой|Токен бота/)).not.toBeInTheDocument();
+  });
+});

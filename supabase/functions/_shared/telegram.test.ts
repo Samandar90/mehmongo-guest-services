@@ -1,7 +1,13 @@
 /// <reference lib="deno.ns" />
 
 import { assert, assertEquals, assertStringIncludes } from '@std/assert';
-import { formatTelegramRequest, sendTelegramMessage } from './telegram.ts';
+import {
+  classifyTelegramRefusal,
+  deliveryFailureRecord,
+  formatTelegramRequest,
+  sendTelegramMessage,
+  TelegramDeliveryError,
+} from './telegram.ts';
 
 const transportFixture = {
   reference: 'MG-ABCDEFGH',
@@ -123,4 +129,68 @@ Deno.test('marks an as-soon-as-possible request in the title and the time line',
   assertStringIncludes(text, '<b>🆕 Новая заявка MG-ABCDEFGH ⚡ срочно</b>');
   assertStringIncludes(text, '🕒 Время: ⚡ как можно скорее');
   assert(!formatTelegramRequest(transportFixture, 'Asia/Tashkent').includes('срочно'));
+});
+
+function refusal(status: number, body: unknown) {
+  return () => Promise.resolve(new Response(JSON.stringify(body), { status }));
+}
+
+async function refusalCode(status: number, body: unknown): Promise<TelegramDeliveryError> {
+  try {
+    await sendTelegramMessage(refusal(status, body), 'test-bot-token', '-100123', 'request');
+  } catch (reason) {
+    if (reason instanceof TelegramDeliveryError) return reason;
+    throw reason;
+  }
+  throw new Error('expected a refusal');
+}
+
+Deno.test('names the refusal when the bot was removed from the group', async () => {
+  const error = await refusalCode(403, { ok: false, error_code: 403, description: 'Forbidden: bot was kicked from the group chat' });
+  assertEquals(error.code, 'TELEGRAM_BOT_REMOVED');
+});
+
+Deno.test('keeps the new id when the group became a supergroup', async () => {
+  const error = await refusalCode(400, {
+    ok: false,
+    error_code: 400,
+    description: 'Bad Request: group chat was upgraded to a supergroup chat',
+    parameters: { migrate_to_chat_id: -1002233445566 },
+  });
+  assertEquals(error.code, 'TELEGRAM_CHAT_MIGRATED');
+  assertEquals(error.migrateToChatId, -1002233445566);
+  assertEquals(deliveryFailureRecord(error), {
+    code: 'TELEGRAM_CHAT_MIGRATED',
+    message: 'The group was upgraded to a supergroup; new chat id -1002233445566',
+  });
+});
+
+Deno.test('tells a revoked token, a missing chat, missing rights and a rate limit apart', () => {
+  assertEquals(classifyTelegramRefusal(401, { description: 'Unauthorized' }).code, 'TELEGRAM_BOT_TOKEN_INVALID');
+  assertEquals(classifyTelegramRefusal(400, { description: 'Bad Request: chat not found' }).code, 'TELEGRAM_CHAT_NOT_FOUND');
+  assertEquals(classifyTelegramRefusal(400, { description: 'Bad Request: not enough rights to send text messages to the chat' }).code, 'TELEGRAM_BOT_NO_RIGHTS');
+  assertEquals(classifyTelegramRefusal(429, { description: 'Too Many Requests: retry after 5' }).code, 'TELEGRAM_RATE_LIMITED');
+  assertEquals(classifyTelegramRefusal(400, { description: "Bad Request: can't parse entities" }).code, 'TELEGRAM_MESSAGE_REJECTED');
+});
+
+Deno.test('falls back to the general code for a refusal it does not recognise, or cannot read', async () => {
+  assertEquals(classifyTelegramRefusal(400, { description: 'Bad Request: something new' }).code, 'TELEGRAM_API_ERROR');
+  const unreadable = await (async () => {
+    try {
+      await sendTelegramMessage(() => Promise.resolve(new Response('<html>bad gateway</html>', { status: 502 })), 'test-bot-token', '-100123', 'request');
+    } catch (reason) {
+      return reason as TelegramDeliveryError;
+    }
+  })();
+  assertEquals(unreadable?.code, 'TELEGRAM_API_ERROR');
+});
+
+Deno.test('never stores Telegram text, which can echo a guest phone number', () => {
+  const echoed = classifyTelegramRefusal(400, { description: 'Bad Request: chat is invalid: +998 90 123 45 67' });
+  const record = deliveryFailureRecord(echoed);
+  assertEquals(record.message.includes('+998'), false);
+  // A message raised elsewhere with a known code still gets the fixed wording.
+  assertEquals(deliveryFailureRecord(new TelegramDeliveryError('TELEGRAM_BOT_REMOVED', 'guest +998 90 123 45 67')).message, 'The bot cannot write to the group');
+  assertEquals(deliveryFailureRecord(new TelegramDeliveryError('SOMETHING_ELSE', 'x')).code, 'TELEGRAM_DELIVERY_FAILED');
+  assertEquals(deliveryFailureRecord(new Error('boom')).code, 'TELEGRAM_DELIVERY_FAILED');
 });

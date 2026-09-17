@@ -482,3 +482,5 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .save-page-link { min-height: 44px; padding: 0 8px; display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: var(--ink-soft); font: inherit; font-size: 12px; cursor: pointer; }
 .save-page-button svg, .save-page-link svg { width: 16px; height: 16px; flex: 0 0 auto; }
 @media (min-width: 640px) { .contact-buttons { grid-template-columns: 1fr 1fr; } }
+/* A Telegram refusal explained under its code, on its own line. */
+.admin-telegram-hint { display: block; margin-top: 4px; max-width: 320px; color: #a7193f; }

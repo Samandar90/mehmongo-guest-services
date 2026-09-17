@@ -16,7 +16,7 @@ import { GUEST_SERVICE_IDS, isGuestLocale } from '../_shared/contracts.ts';
 import {
   formatTelegramRequest,
   sendTelegramMessage,
-  TelegramDeliveryError,
+  deliveryFailureRecord,
   type TelegramRequest,
 } from '../_shared/telegram.ts';
 
@@ -417,24 +417,6 @@ async function parsePayload(request: Request): Promise<ValidatedRequest | null> 
   }
 }
 
-function safeDeliveryFailure(reason: unknown): { code: string; message: string } {
-  if (reason instanceof TelegramDeliveryError) {
-    if (reason.code === 'TELEGRAM_TIMEOUT') {
-      return { code: 'TELEGRAM_TIMEOUT', message: 'Telegram request timed out' };
-    }
-    if (reason.code === 'TELEGRAM_NETWORK_ERROR') {
-      return { code: 'TELEGRAM_NETWORK_ERROR', message: 'Telegram network request failed' };
-    }
-    if (reason.code === 'TELEGRAM_API_ERROR') {
-      return { code: 'TELEGRAM_API_ERROR', message: 'Telegram API request failed' };
-    }
-    if (reason.code === 'TELEGRAM_RESPONSE_INVALID') {
-      return { code: 'TELEGRAM_RESPONSE_INVALID', message: 'Telegram response was invalid' };
-    }
-  }
-  return { code: 'TELEGRAM_DELIVERY_FAILED', message: 'Telegram delivery failed' };
-}
-
 async function deliverNewRequest(
   repository: SubmitRequestRepository,
   telegramSender: SubmitRequestDependencies['telegramSender'],
@@ -448,7 +430,7 @@ async function deliverNewRequest(
     try {
       result = await telegramSender(request);
     } catch (reason) {
-      failure = safeDeliveryFailure(reason);
+      failure = deliveryFailureRecord(reason);
       continue;
     }
     try {

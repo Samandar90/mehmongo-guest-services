@@ -39,10 +39,75 @@ export function guestLanguageLabel(locale: GuestLocale | null | undefined): stri
 export type TelegramFetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 export class TelegramDeliveryError extends Error {
-  constructor(public readonly code: string, message: string) {
+  constructor(
+    public readonly code: string,
+    message: string,
+    /** Set only when Telegram says the group became a supergroup: the id to use from now on. */
+    public readonly migrateToChatId: number | null = null,
+  ) {
     super(message);
     this.name = 'TelegramDeliveryError';
   }
+}
+
+/**
+ * Why Telegram refused a message, as a code the owner can act on.
+ *
+ * Until 2026-09-17 every refusal was stored as TELEGRAM_API_ERROR, and when the
+ * group stopped receiving requests nobody could tell whether the bot had been
+ * removed, the group upgraded, or the token revoked. Only the HTTP status, a few
+ * fixed phrases of Telegram's description and the numeric migrate_to_chat_id
+ * are read here. None of Telegram's text is kept: a description can echo what
+ * was sent, and what was sent is a guest's name and phone number.
+ */
+export function classifyTelegramRefusal(status: number, payload: unknown): TelegramDeliveryError {
+  const body = payload && typeof payload === 'object' ? payload as { description?: unknown; parameters?: { migrate_to_chat_id?: unknown } } : {};
+  const description = typeof body.description === 'string' ? body.description.toLowerCase() : '';
+  const migrateTo = body.parameters?.migrate_to_chat_id;
+
+  if (typeof migrateTo === 'number' && Number.isSafeInteger(migrateTo)) {
+    return new TelegramDeliveryError('TELEGRAM_CHAT_MIGRATED', 'The group was upgraded to a supergroup', migrateTo);
+  }
+  if (status === 401) return new TelegramDeliveryError('TELEGRAM_BOT_TOKEN_INVALID', 'Telegram rejected the bot token');
+  // 403 is "bot was kicked from the group chat" or "bot is not a member": either way it cannot post.
+  if (status === 403) return new TelegramDeliveryError('TELEGRAM_BOT_REMOVED', 'The bot cannot write to the group');
+  if (status === 429) return new TelegramDeliveryError('TELEGRAM_RATE_LIMITED', 'Telegram is rate limiting the bot');
+  if (description.includes('chat not found')) return new TelegramDeliveryError('TELEGRAM_CHAT_NOT_FOUND', 'Telegram cannot find the group');
+  if (description.includes('not enough rights') || description.includes('have no rights')) {
+    return new TelegramDeliveryError('TELEGRAM_BOT_NO_RIGHTS', 'The bot has no right to post in the group');
+  }
+  if (description.includes("can't parse entities")) return new TelegramDeliveryError('TELEGRAM_MESSAGE_REJECTED', 'Telegram could not parse the message');
+  return new TelegramDeliveryError('TELEGRAM_API_ERROR', 'Telegram API request failed');
+}
+
+/** The fixed wording stored for each code; a message raised anywhere else is never persisted. */
+const deliveryFailureMessages: Record<string, string> = {
+  TELEGRAM_TIMEOUT: 'Telegram request timed out',
+  TELEGRAM_NETWORK_ERROR: 'Telegram network request failed',
+  TELEGRAM_API_ERROR: 'Telegram API request failed',
+  TELEGRAM_RESPONSE_INVALID: 'Telegram response was invalid',
+  TELEGRAM_BOT_TOKEN_INVALID: 'Telegram rejected the bot token',
+  TELEGRAM_BOT_REMOVED: 'The bot cannot write to the group',
+  TELEGRAM_CHAT_MIGRATED: 'The group was upgraded to a supergroup',
+  TELEGRAM_CHAT_NOT_FOUND: 'Telegram cannot find the group',
+  TELEGRAM_BOT_NO_RIGHTS: 'The bot has no right to post in the group',
+  TELEGRAM_RATE_LIMITED: 'Telegram is rate limiting the bot',
+  TELEGRAM_MESSAGE_REJECTED: 'Telegram could not parse the message',
+};
+
+/**
+ * What a failed delivery row records. Shared by submit-request and
+ * retry-telegram, which each kept their own copy of this before.
+ */
+export function deliveryFailureRecord(reason: unknown): { code: string; message: string } {
+  if (reason instanceof TelegramDeliveryError && Object.hasOwn(deliveryFailureMessages, reason.code)) {
+    const message = deliveryFailureMessages[reason.code];
+    // The new group id is the one thing worth keeping from a refusal: it is
+    // what has to go into TELEGRAM_CHAT_ID, and it is a number we checked.
+    const migrated = reason.code === 'TELEGRAM_CHAT_MIGRATED' && reason.migrateToChatId !== null && Number.isSafeInteger(reason.migrateToChatId);
+    return { code: reason.code, message: migrated ? `${message}; new chat id ${reason.migrateToChatId}` : message };
+  }
+  return { code: 'TELEGRAM_DELIVERY_FAILED', message: 'Telegram delivery failed' };
 }
 
 function escapeHtml(value: string | number): string {
@@ -143,7 +208,13 @@ export async function sendTelegramMessage(
       signal: controller.signal,
     });
     if (!response.ok) {
-      throw new TelegramDeliveryError('TELEGRAM_API_ERROR', 'Telegram API request failed');
+      let refusal: unknown = null;
+      try {
+        refusal = await response.json();
+      } catch {
+        // An unreadable refusal is still a refusal; classify it by status alone.
+      }
+      throw classifyTelegramRefusal(response.status, refusal);
     }
 
     let payload: unknown;

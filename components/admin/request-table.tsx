@@ -50,6 +50,20 @@ export const guestLocaleLabels: Record<GuestLocale, string> = {
   zh: 'китайский',
 };
 
+/**
+ * What to do about a Telegram refusal, in the owner's words. The code alone
+ * told nobody anything; these say where the fix is.
+ */
+export const telegramErrorHints: Record<string, string> = {
+  TELEGRAM_BOT_REMOVED: 'Бот не может писать в группу: его удалили из группы. Добавьте бота обратно и нажмите «Повторить Telegram».',
+  TELEGRAM_CHAT_MIGRATED: 'Группа стала супергруппой и получила новый ID. Его нужно обновить в настройках Supabase (TELEGRAM_CHAT_ID).',
+  TELEGRAM_BOT_TOKEN_INVALID: 'Токен бота больше не действует. Выпустите новый в @BotFather и обновите TELEGRAM_BOT_TOKEN в Supabase.',
+  TELEGRAM_CHAT_NOT_FOUND: 'Telegram не находит группу. Проверьте TELEGRAM_CHAT_ID в Supabase.',
+  TELEGRAM_BOT_NO_RIGHTS: 'У бота нет права писать в группу. Разрешите участникам отправлять сообщения или сделайте бота администратором.',
+  TELEGRAM_RATE_LIMITED: 'Telegram временно ограничил отправку. Повторите через минуту.',
+  TELEGRAM_MESSAGE_REJECTED: 'Telegram не принял текст сообщения.',
+};
+
 const settleMessages = {
   forbidden: 'Нет прав на изменение итога. Войдите заново.',
   missing: 'Заявка не найдена. Обновите список.',
@@ -377,6 +391,9 @@ export function RequestTable({
                                 : row.telegramErrorCode
                                   ? `${row.telegramErrorCode} (попытка ${row.telegramAttempt})`
                                   : row.telegramAttempt > 0 ? `попытка ${row.telegramAttempt}` : '—'}
+                              {!override && row.telegramErrorCode && telegramErrorHints[row.telegramErrorCode] ? (
+                                <small className="admin-hint admin-telegram-hint">{telegramErrorHints[row.telegramErrorCode]}</small>
+                              ) : null}
                             </dd>
                           </div>
                           {settledLabel ? (

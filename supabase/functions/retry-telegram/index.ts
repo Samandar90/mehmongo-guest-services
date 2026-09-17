@@ -7,7 +7,7 @@ import { isGuestLocale } from '../_shared/contracts.ts';
 import {
   formatTelegramRequest,
   sendTelegramMessage,
-  TelegramDeliveryError,
+  deliveryFailureRecord,
   type TelegramRequest,
 } from '../_shared/telegram.ts';
 
@@ -281,24 +281,6 @@ async function requestIdFrom(request: Request): Promise<string | null> {
   }
 }
 
-function safeDeliveryFailure(reason: unknown): { code: string; message: string } {
-  if (reason instanceof TelegramDeliveryError) {
-    if (reason.code === 'TELEGRAM_TIMEOUT') {
-      return { code: 'TELEGRAM_TIMEOUT', message: 'Telegram request timed out' };
-    }
-    if (reason.code === 'TELEGRAM_NETWORK_ERROR') {
-      return { code: 'TELEGRAM_NETWORK_ERROR', message: 'Telegram network request failed' };
-    }
-    if (reason.code === 'TELEGRAM_API_ERROR') {
-      return { code: 'TELEGRAM_API_ERROR', message: 'Telegram API request failed' };
-    }
-    if (reason.code === 'TELEGRAM_RESPONSE_INVALID') {
-      return { code: 'TELEGRAM_RESPONSE_INVALID', message: 'Telegram response was invalid' };
-    }
-  }
-  return { code: 'TELEGRAM_DELIVERY_FAILED', message: 'Telegram delivery failed' };
-}
-
 export async function handler(request: Request, context?: HandlerContext): Promise<Response> {
   if (request.method === 'OPTIONS') return emptyResponse(204, POST_ALLOWED_METHODS);
   if (request.method !== 'POST') return retryJson({ code: 'METHOD_NOT_ALLOWED' }, 405);
@@ -325,7 +307,7 @@ export async function handler(request: Request, context?: HandlerContext): Promi
       result = await dependencies.telegramSender(storedRequest);
     } catch (reason) {
       try {
-        return await dependencies.repository.failDelivery(delivery.id, safeDeliveryFailure(reason))
+        return await dependencies.repository.failDelivery(delivery.id, deliveryFailureRecord(reason))
           ? retryJson({ telegramStatus: 'failed' }, 502)
           : retryJson({ telegramStatus: 'pending' }, 503);
       } catch {
