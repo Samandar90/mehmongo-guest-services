@@ -192,6 +192,21 @@ Four conveniences for a guest with a phone in a hotel room:
 Deploy order when these change again: migration, then the Edge Functions
 (`submit-request`, `retry-telegram`, `room-context`), then the Worker.
 
+## Telegram group
+
+- On 2026-09-17 every delivery started failing: the team group had been
+  upgraded to a supergroup, which gives it a new chat id. Fixed on 2026-09-19
+  by setting the `TELEGRAM_CHAT_ID` Edge secret to the id Telegram returned
+  (`npx supabase secrets set TELEGRAM_CHAT_ID=<id> --project-ref hraamyjvsnsgaezkolpl`;
+  no redeploy is needed). The id is not written here because the repository is public.
+- Since then refusals are classified (`classifyTelegramRefusal` in
+  `_shared/telegram.ts`) and the admin explains each code. A
+  `TELEGRAM_CHAT_MIGRATED` delivery row carries the new id in `error_message`,
+  so the next migration is one press of «Повторить Telegram», one SQL read of
+  that row, and one `secrets set`.
+- The token and chat id exist only in the Edge secrets; this machine has no
+  local copy, so `scripts/check-telegram.mjs` cannot run here.
+
 ## Printed sales pieces
 
 Four generators write into folders beside the repository, never into it:
