@@ -348,6 +348,12 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .choice-option input:checked + span svg { color: #f56fa0; }
 .choice-option input:focus-visible + span { outline: 2px solid var(--ring); outline-offset: 2px; }
 
+/* Optional fields wait behind one quiet button. */
+.add-details-button { min-height: 48px; padding: 0 16px; display: inline-flex; align-items: center; gap: 8px; justify-self: start; border: 1px dashed rgba(16,43,78,.4); border-radius: 14px; background: transparent; color: var(--navy); font-size: 14px; font-weight: 650; cursor: pointer; }
+.add-details-button:hover { background: rgba(255,253,250,.85); }
+.add-details-button svg { width: 16px; height: 16px; flex: 0 0 auto; color: var(--magenta); }
+.add-details { display: grid; gap: 18px; }
+
 .stepper { max-width: 240px; display: grid; grid-template-columns: 50px minmax(0, 1fr) 50px; gap: 8px; }
 .stepper-button { min-height: 50px; display: grid; place-items: center; border: 1px solid var(--input); border-radius: 14px; background: rgba(255,253,250,.85); color: var(--navy); cursor: pointer; }
 .stepper-button:hover { background: var(--secondary); }

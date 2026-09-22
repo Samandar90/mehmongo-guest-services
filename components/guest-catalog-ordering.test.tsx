@@ -157,6 +157,40 @@ describe('the short form', () => {
     expect(count).toHaveValue(50);
   });
 
+  it('keeps the optional fields behind Add details until the guest asks', async () => {
+    const user = renderCatalog();
+    await openForm(user, 'Arrange my airport ride');
+
+    expect(screen.queryByLabelText('Flight number (optional)')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Anything else? (optional)')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add details' }));
+
+    expect(screen.getByLabelText('Flight number (optional)')).toHaveFocus();
+    expect(screen.getByLabelText('Luggage (optional)')).toBeInTheDocument();
+    expect(screen.getByLabelText('Anything else? (optional)')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add details' })).not.toBeInTheDocument();
+  });
+
+  it('shows a note kept from another service instead of sending it unseen', async () => {
+    const user = renderCatalog();
+    await openForm(user, 'Request this excursion');
+    await user.click(screen.getByRole('button', { name: 'Add details' }));
+    await user.type(screen.getByLabelText('Anything else? (optional)'), 'Vegetarian lunch');
+    await user.click(screen.getByRole('button', { name: 'Back to services' }));
+
+    await openForm(user, 'Plan my city day');
+    expect(screen.getByLabelText('Anything else? (optional)')).toHaveValue('Vegetarian lunch');
+  });
+
+  it('folds the note of the restaurant form the same way', async () => {
+    const user = renderCatalog();
+    await user.click(screen.getByRole('button', { name: 'Request a restaurant reservation' }));
+
+    expect(screen.queryByLabelText(/Anything else\?/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add details' }));
+    expect(screen.getByLabelText(/Anything else\?/)).toHaveFocus();
+  });
+
   it('lets the phone fill in the name and number', async () => {
     const user = renderCatalog();
     await openForm(user, 'Arrange my airport ride');

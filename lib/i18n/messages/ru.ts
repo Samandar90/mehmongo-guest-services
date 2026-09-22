@@ -19,6 +19,7 @@ export const ru: Messages = {
     backToServices: 'К услугам',
     yourDetails: 'Ваши данные',
     optional: 'Необязательно',
+    addDetails: 'Добавить детали',
     concierge: 'Местная консьерж-служба на связи',
     photoCredits: 'Источники фотографий',
     savePage: 'Сохранить страницу',

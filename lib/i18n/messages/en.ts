@@ -16,6 +16,7 @@ export const en = {
     backToServices: 'Back to services',
     yourDetails: 'Your details',
     optional: 'Optional',
+    addDetails: 'Add details',
     concierge: 'Local concierge team available',
     photoCredits: 'Photo credits',
     savePage: 'Save this page',

@@ -212,6 +212,12 @@ Frontend only; the payload, the server and the catalogue JSON are unchanged.
   free text because it also takes a Telegram @username or an email.
 - One legal line under the submit button; the privacy sentence is the hint
   under the contact field.
+- Every optional field waits behind «+ Добавить детали» (`AddDetails` in
+  `components/add-details.tsx`), before «Ваши данные»: flight and luggage,
+  the guide's interests and language, the city places, and the note — the
+  legacy form's note too. It opens by itself when something in it is already
+  filled (a note kept from another service), and once open it stays open, so
+  nothing reaches the team unseen.
 - Owner declined, 2026-09-22: services on the first screen (the hero stays),
   and storing the guest's name/contact on the device. Do not add either
   without asking.

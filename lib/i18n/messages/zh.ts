@@ -15,6 +15,7 @@ export const zh: Messages = {
     backToServices: '返回服务列表',
     yourDetails: '您的信息',
     optional: '选填',
+    addDetails: '添加详情',
     concierge: '本地礼宾团队随时为您服务',
     photoCredits: '图片来源',
     savePage: '保存此页面',

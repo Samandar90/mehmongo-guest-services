@@ -161,6 +161,7 @@ describe('guest catalogue', () => {
     await user.type(screen.getByLabelText('Number of travellers'), '2');
     await user.type(screen.getByLabelText('Your name'), 'Amir Khan');
     await user.type(screen.getByLabelText('One way to reach you'), '@amir');
+    await user.click(screen.getByRole('button', { name: 'Add details' }));
     await user.type(screen.getByLabelText('Flight number (optional)'), 'HY601');
     await user.click(screen.getByRole('button', { name: 'Send my request' }));
 

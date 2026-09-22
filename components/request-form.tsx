@@ -5,6 +5,7 @@ import { type SyntheticEvent, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { AddDetails } from '@/components/add-details';
 import { guestContact } from '@/lib/contact';
 import {
   emptyRequest,
@@ -143,13 +144,15 @@ export function RequestForm({ service, hotelPickup = '', onBack, onComplete, onS
           <div className="form-pair"><RequestField id="date" label={copy.date} type="date" min={todayIso()} fields={fields} errors={errors} onChange={setField} /><RequestField id="time" label={copy.time} type="time" fields={fields} errors={errors} onChange={setField} /></div>
         ) : <RequestField id="date" label={copy.date} type="date" min={todayIso()} fields={fields} errors={errors} onChange={setField} />}
         <RequestField id="count" label={countLabel} type="number" min="1" max="50" fields={fields} errors={errors} onChange={setField} />
+        <AddDetails filled={fields.note.trim() !== ''}>
+          <div className="form-field">
+            <label htmlFor="note">{copy.note} <span className="optional">{t.common.optional}</span></label>
+            <Textarea id="note" name="note" maxLength={REQUEST_FIELD_MAX_LENGTHS.note} value={fields.note} onChange={(event) => setField('note', event.target.value)} placeholder={copy.notePlaceholder} />
+          </div>
+        </AddDetails>
         <div className="form-divider"><span>{t.common.yourDetails}</span></div>
         <RequestField id="guestName" label={copy.name} placeholder={copy.namePlaceholder} maxLength={REQUEST_FIELD_MAX_LENGTHS.guestName} autoComplete="name" fields={fields} errors={errors} onChange={setField} />
         <RequestField id="contact" label={copy.contact} placeholder={copy.contactPlaceholder} maxLength={REQUEST_FIELD_MAX_LENGTHS.contact} autoComplete="tel" fields={fields} errors={errors} onChange={setField} />
-        <div className="form-field">
-          <label htmlFor="note">{copy.note} <span className="optional">{t.common.optional}</span></label>
-          <Textarea id="note" name="note" maxLength={REQUEST_FIELD_MAX_LENGTHS.note} value={fields.note} onChange={(event) => setField('note', event.target.value)} placeholder={copy.notePlaceholder} />
-        </div>
         <p className="form-legal">{t.common.replyPromise(guestContact.replyMinutes, guestContact.hoursFrom, guestContact.hoursTo)}</p>
         <Button className="submit-button" type="submit" disabled={submitting} aria-label={submitting ? copy.sending : copy.submit}>
           {submitting ? copy.sending : copy.submit}

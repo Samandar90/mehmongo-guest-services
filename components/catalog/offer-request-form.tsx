@@ -5,6 +5,7 @@ import { type ReactNode, type SyntheticEvent, useEffect, useRef, useState } from
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { AddDetails } from '@/components/add-details';
 import { OfferDetails } from '@/components/catalog/offer-details';
 import { offerPriceLabel } from '@/components/catalog/offer-card';
 import { guestContact } from '@/lib/contact';
@@ -370,15 +371,12 @@ export function OfferRequestForm({ offer, catalog, draft, hotelPickup = '', onDr
           </div>
         ) : null}
         {profile === 'city' ? textField('pickup', labels.cityPickup, { placeholder: labels.cityPickupPlaceholder, maxLength: REQUEST_FIELD_MAX_LENGTHS.pickup, hint: pickupHint }) : null}
-        {profile === 'city' ? textField('choice', labels.cityPlaces, { placeholder: labels.cityPlacesPlaceholder }) : null}
         {profile === 'intercity' ? (
           <div className="form-pair">
             {textField('pickup', labels.intercityPickup, { placeholder: labels.hotelOrAddress, maxLength: REQUEST_FIELD_MAX_LENGTHS.pickup, hint: pickupHint })}
             {textField('destination', labels.intercityDestination, { placeholder: labels.hotelOrAddress, maxLength: REQUEST_FIELD_MAX_LENGTHS.destination })}
           </div>
         ) : null}
-        {profile === 'guide' ? textField('choice', labels.interests, { placeholder: labels.interestsPlaceholder }) : null}
-        {profile === 'guide' ? textField('language', labels.guideLanguage, { placeholder: labels.guideLanguagePlaceholder, maxLength: 60 }) : null}
 
         {whenField}
         {showDate || showTime ? (
@@ -404,12 +402,23 @@ export function OfferRequestForm({ offer, catalog, draft, hotelPickup = '', onDr
           {fieldError('count')}
         </div>
 
-        {profile === 'airport' || profile === 'airport_arrival' ? (
-          <div className="form-pair">
-            {textField('flight', labels.flight, { placeholder: 'HY601', maxLength: 40, autoComplete: 'off' })}
-            {textField('luggage', labels.luggage, { placeholder: labels.luggagePlaceholder, maxLength: 80 })}
+        {/* Everything optional; a note kept from another service opens it by itself. */}
+        <AddDetails filled={draft.note.trim() !== ''}>
+          {profile === 'city' ? textField('choice', labels.cityPlaces, { placeholder: labels.cityPlacesPlaceholder }) : null}
+          {profile === 'guide' ? textField('choice', labels.interests, { placeholder: labels.interestsPlaceholder }) : null}
+          {profile === 'guide' ? textField('language', labels.guideLanguage, { placeholder: labels.guideLanguagePlaceholder, maxLength: 60 }) : null}
+          {profile === 'airport' || profile === 'airport_arrival' ? (
+            <div className="form-pair">
+              {textField('flight', labels.flight, { placeholder: 'HY601', maxLength: 40, autoComplete: 'off' })}
+              {textField('luggage', labels.luggage, { placeholder: labels.luggagePlaceholder, maxLength: 80 })}
+            </div>
+          ) : null}
+          <div className="form-field">
+            <label htmlFor="note">{copy.noteLabel}</label>
+            <Textarea id="note" name="note" value={draft.note} maxLength={REQUEST_FIELD_MAX_LENGTHS.note}
+              onChange={(event) => setDraftField('note', event.target.value)} />
           </div>
-        ) : null}
+        </AddDetails>
 
         <div className="form-divider"><span>{t.common.yourDetails}</span></div>
 
@@ -430,12 +439,6 @@ export function OfferRequestForm({ offer, catalog, draft, hotelPickup = '', onDr
             onChange={(event) => setDraftField('contact', event.target.value)} />
           {fieldError('contact')}
           {errors.contact ? null : <p className="form-hint" id="contact-hint">{copy.privacy}</p>}
-        </div>
-
-        <div className="form-field">
-          <label htmlFor="note">{copy.noteLabel}</label>
-          <Textarea id="note" name="note" value={draft.note} maxLength={REQUEST_FIELD_MAX_LENGTHS.note}
-            onChange={(event) => setDraftField('note', event.target.value)} />
         </div>
 
         <Button className="submit-button" type="submit" disabled={submitting}>

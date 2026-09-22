@@ -15,6 +15,7 @@ export const uz: Messages = {
     backToServices: 'Xizmatlarga qaytish',
     yourDetails: 'Sizning maʼlumotlaringiz',
     optional: 'Ixtiyoriy',
+    addDetails: 'Tafsilot qoʻshish',
     concierge: 'Mahalliy konsyerj jamoasi xizmatda',
     photoCredits: 'Fotosuratlar manbalari',
     savePage: 'Sahifani saqlash',
