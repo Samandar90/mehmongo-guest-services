@@ -218,6 +218,25 @@ Frontend only; the payload, the server and the catalogue JSON are unchanged.
 - Measured on a 375×812 phone, airport sedan: the form went from 1710 px to
   1480 px, and the first field from 484 px to 343 px down the page.
 
+## Confirmed on arrival, decided 2026-09-22
+
+The owner's decision: a guest request is `confirmed` the moment it arrives, so
+nobody has to press «Подтвердить» on each one. Migration
+`20260922100000_confirm_on_arrival.sql` sets the default of
+`service_requests.status` to `confirmed`; `submit_guest_request` names no
+status, so the default is the one place the first status is decided.
+
+- «Изменить итог» in the admin stays exactly as it was, all four outcomes
+  including «Новая», on the owner's instruction ("just in case"). The row's
+  «Подтвердить» button still shows for a request set back to «Новая».
+- The dashboard card is «Заявки в работе»: `new` plus `confirmed`
+  (`openRequests` in `lib/admin/requests.ts`). Counting `new` alone would
+  read zero forever.
+- Telegram's «🆕 Новая заявка» title is the arrival notice, not the status,
+  and is unchanged.
+- Nothing was backfilled: on 2026-09-22 production held no `new` request
+  (3 completed, 6 cancelled).
+
 ## Telegram group
 
 - On 2026-09-17 every delivery started failing: the team group had been
@@ -292,7 +311,7 @@ scanning a plaque would be offered "install MehmonGo admin".
 ## Known limitations recorded in the ledgers
 
 - `retry-telegram` answers 409 for an already-sent delivery too; the UI says the delivery is already running and asks to refresh.
-- `service_requests.status` only allows `new`, so the dashboard's "Новые заявки" equals the total request count for now.
+- A request arrives `confirmed` (see "Confirmed on arrival"), so the dashboard counts «Заявки в работе» — `new` plus `confirmed` — rather than new ones alone.
 - The hotel detail page ships pdf-lib, jszip, qrcode and jsqr in its client chunk (~770 KB) by design of the browser-side generator.
 - The reference plaque in `artifacts/` encodes a sample token and is a visual reference only.
 

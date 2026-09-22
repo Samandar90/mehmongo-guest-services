@@ -41,7 +41,7 @@ describe('AdminDashboardPage', () => {
   });
 
   it('loads and renders the metrics', async () => {
-    vi.mocked(getDashboardMetrics).mockResolvedValue({ activeHotels: 1, activeRooms: 24, newRequests: 7 });
+    vi.mocked(getDashboardMetrics).mockResolvedValue({ activeHotels: 1, activeRooms: 24, openRequests: 7 });
     render(<AdminDashboardPage />);
 
     expect(screen.getByRole('heading', { level: 1, name: 'Обзор' })).toBeInTheDocument();
@@ -53,26 +53,26 @@ describe('AdminDashboardPage', () => {
     const user = userEvent.setup();
     vi.mocked(getDashboardMetrics)
       .mockRejectedValueOnce(new Error('network'))
-      .mockResolvedValueOnce({ activeHotels: 2, activeRooms: 40, newRequests: 0 });
+      .mockResolvedValueOnce({ activeHotels: 2, activeRooms: 40, openRequests: 0 });
     render(<AdminDashboardPage />);
 
     // Named by its text: the totals below load separately and can raise their own.
     expect(await screen.findByText('Не удалось загрузить показатели.')).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Новые заявки' })).not.toHaveAttribute('aria-busy');
+    expect(screen.getByRole('link', { name: 'Заявки в работе' })).not.toHaveAttribute('aria-busy');
     // Scoped to the three counters, which are links now: the totals section
     // below has its own em dashes for a hotel that earned nothing.
-    const counters = ['Активные отели', 'Активные комнаты', 'Новые заявки']
+    const counters = ['Активные отели', 'Активные комнаты', 'Заявки в работе']
       .map((name) => screen.getByRole('link', { name }));
     expect(counters.filter((card) => within(card).queryByText('—'))).toHaveLength(3);
 
     await user.click(screen.getByRole('button', { name: 'Повторить' }));
 
     expect(await screen.findByText('40')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Новые заявки' })).not.toHaveAttribute('aria-busy');
+    expect(screen.getByRole('link', { name: 'Заявки в работе' })).not.toHaveAttribute('aria-busy');
   });
 
   it('announces loading through a persistent live region', async () => {
-    vi.mocked(getDashboardMetrics).mockResolvedValue({ activeHotels: 1, activeRooms: 24, newRequests: 7 });
+    vi.mocked(getDashboardMetrics).mockResolvedValue({ activeHotels: 1, activeRooms: 24, openRequests: 7 });
     render(<AdminDashboardPage />);
 
     const live = screen.getByText('Загрузка показателей…');
@@ -82,7 +82,7 @@ describe('AdminDashboardPage', () => {
   });
 
   it('shows the settlement totals alongside the counters', async () => {
-    vi.mocked(getDashboardMetrics).mockResolvedValue({ activeHotels: 1, activeRooms: 9, newRequests: 3 });
+    vi.mocked(getDashboardMetrics).mockResolvedValue({ activeHotels: 1, activeRooms: 9, openRequests: 3 });
     vi.mocked(listHotels).mockResolvedValue([
       { id: 'hotel-1', name: 'Kamilovs Hotel', slug: 'kamilovs', address: '', commissionBps: 1500, active: true, guestCatalogId: null, createdAt: '', updatedAt: '' },
     ]);
@@ -100,7 +100,7 @@ describe('AdminDashboardPage', () => {
   });
 
   it('keeps a failed total from hiding the counters', async () => {
-    vi.mocked(getDashboardMetrics).mockResolvedValue({ activeHotels: 1, activeRooms: 9, newRequests: 3 });
+    vi.mocked(getDashboardMetrics).mockResolvedValue({ activeHotels: 1, activeRooms: 9, openRequests: 3 });
     vi.mocked(getSettlementSummary).mockRejectedValue(new Error('network'));
 
     render(<AdminDashboardPage />);

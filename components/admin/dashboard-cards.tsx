@@ -11,7 +11,7 @@ type DashboardCardsProps = {
 const cards: Array<{ key: keyof DashboardMetrics; title: string; href: string }> = [
   { key: 'activeHotels', title: 'Активные отели', href: '/admin/hotels' },
   { key: 'activeRooms', title: 'Активные комнаты', href: '/admin/hotels' },
-  { key: 'newRequests', title: 'Новые заявки', href: '/admin/requests' },
+  { key: 'openRequests', title: 'Заявки в работе', href: '/admin/requests' },
 ];
 
 /**

@@ -166,6 +166,7 @@ describe('getDashboardMetrics', () => {
             return builder;
           }),
           eq: vi.fn((column: string, value: unknown) => { call.filter = [column, value]; return result; }),
+          in: vi.fn((column: string, values: unknown[]) => { call.filter = [column, values]; return result; }),
         };
         return builder;
       }),
@@ -173,21 +174,21 @@ describe('getDashboardMetrics', () => {
     return { client: client as never, calls };
   }
 
-  it('counts only active hotels and rooms and new requests', async () => {
+  it('counts only active hotels and rooms, and requests not yet carried out', async () => {
     const { client, calls } = countClient({ hotels: 1, rooms: 24, service_requests: 7 });
 
-    await expect(getDashboardMetrics(client)).resolves.toEqual({ activeHotels: 1, activeRooms: 24, newRequests: 7 });
+    await expect(getDashboardMetrics(client)).resolves.toEqual({ activeHotels: 1, activeRooms: 24, openRequests: 7 });
 
     expect(calls).toEqual(expect.arrayContaining([
       { table: 'hotels', filter: ['active', true], head: true },
       { table: 'rooms', filter: ['active', true], head: true },
-      { table: 'service_requests', filter: ['status', 'new'], head: true },
+      { table: 'service_requests', filter: ['status', ['new', 'confirmed']], head: true },
     ]));
   });
 
   it('treats a missing count as zero and propagates database errors', async () => {
     await expect(getDashboardMetrics(countClient({ hotels: null, rooms: null, service_requests: null }).client))
-      .resolves.toEqual({ activeHotels: 0, activeRooms: 0, newRequests: 0 });
+      .resolves.toEqual({ activeHotels: 0, activeRooms: 0, openRequests: 0 });
     await expect(getDashboardMetrics(countClient({}, { code: '42501', message: 'permission denied' }).client))
       .rejects.toMatchObject({ code: '42501' });
   });

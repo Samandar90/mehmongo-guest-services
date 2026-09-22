@@ -1,5 +1,5 @@
 begin;
-select plan(33);
+select plan(34);
 select has_table('public'::name, 'admin_users'::name);
 select has_table('public'::name, 'hotels'::name);
 select has_table('public'::name, 'rooms'::name);
@@ -124,6 +124,12 @@ select results_eq(
   $$,
   $$values ('existing'::text, 'MG-ATOMICAB'::text, true)$$,
   'atomic submit returns the existing request id without creating another request'
+);
+
+select is(
+  (select status from public.service_requests where reference = 'MG-ATOMICAB'),
+  'confirmed',
+  'a guest request arrives already confirmed'
 );
 
 select results_eq(

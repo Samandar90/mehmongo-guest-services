@@ -239,7 +239,14 @@ export async function listRequests(
   };
 }
 
-export type DashboardMetrics = { activeHotels: number; activeRooms: number; newRequests: number };
+export type DashboardMetrics = { activeHotels: number; activeRooms: number; openRequests: number };
+
+/**
+ * Requests still to be carried out. They arrive confirmed since 2026-09-22,
+ * so counting only «new» would read zero forever; «new» stays in for a
+ * request the team set back by hand.
+ */
+const openStatuses: readonly RequestStatus[] = ['new', 'confirmed'];
 
 async function exactCount(
   client: SupabaseClient,
@@ -247,19 +254,20 @@ async function exactCount(
   column: string,
   value: unknown,
 ): Promise<number> {
-  const { count, error } = await client.from(table).select('id', { count: 'exact', head: true }).eq(column, value);
+  const query = client.from(table).select('id', { count: 'exact', head: true });
+  const { count, error } = await (Array.isArray(value) ? query.in(column, value) : query.eq(column, value));
   if (error) throw error;
   return count ?? 0;
 }
 
 /** Three exact-count queries under RLS; no financial figures by design. */
 export async function getDashboardMetrics(client: SupabaseClient = getSupabaseBrowserClient()): Promise<DashboardMetrics> {
-  const [activeHotels, activeRooms, newRequests] = await Promise.all([
+  const [activeHotels, activeRooms, openRequests] = await Promise.all([
     exactCount(client, 'hotels', 'active', true),
     exactCount(client, 'rooms', 'active', true),
-    exactCount(client, 'service_requests', 'status', 'new'),
+    exactCount(client, 'service_requests', 'status', openStatuses),
   ]);
-  return { activeHotels, activeRooms, newRequests };
+  return { activeHotels, activeRooms, openRequests };
 }
 
 async function functionErrorBody(error: unknown): Promise<{ status: number; body: Record<string, unknown> } | null> {
