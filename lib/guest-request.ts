@@ -1,5 +1,17 @@
 import type { GuestRequestFields, RoomContextResult, ServiceId } from '../supabase/functions/_shared/contracts';
+import { tashkentToday } from '../supabase/functions/_shared/validation';
 import { en, type Messages } from './i18n/messages/en';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * A calendar date in Tashkent, `days` after today. The service happens there,
+ * whatever clock the guest's phone still runs on; Tashkent keeps no daylight
+ * saving, so a day is always 24 hours.
+ */
+export function tashkentDate(days = 0, now = new Date()): string {
+  return tashkentToday(new Date(now.getTime() + days * DAY_MS));
+}
 
 export type { GuestRequestFields, RoomContextResult, ServiceId } from '../supabase/functions/_shared/contracts';
 

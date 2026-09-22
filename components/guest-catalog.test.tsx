@@ -30,9 +30,14 @@ function renderCatalog(context: Partial<RoomContextResult> = {}) {
   return userEvent.setup();
 }
 
-async function openDetails(user: ReturnType<typeof userEvent.setup>, cta: string) {
+/** The card's button opens the form itself; there is no details step in between. */
+async function openForm(user: ReturnType<typeof userEvent.setup>, cta: string) {
   await user.click(screen.getByRole('button', { name: cta }));
-  return screen.getByRole('dialog');
+}
+
+async function chooseOtherDate(user: ReturnType<typeof userEvent.setup>, date: string, otherDate = 'Other date', dateLabel = 'Preferred date') {
+  await user.click(screen.getByRole('radio', { name: otherDate }));
+  await user.type(screen.getByLabelText(dateLabel), date);
 }
 
 describe('guest catalogue', () => {
@@ -98,36 +103,35 @@ describe('guest catalogue', () => {
     expect(screen.getByText('No services are available in this category for your hotel right now.')).toBeInTheDocument();
   });
 
-  it('opens the details of the chosen offer and only then the form', async () => {
+  it('opens the form straight from the card, with the terms folded inside', async () => {
     const user = renderCatalog();
 
-    const details = await openDetails(user, 'Plan my mountain day');
+    await openForm(user, 'Plan my mountain day');
 
-    expect(within(details).getByRole('heading', { name: 'Trade the city for mountain views' })).toBeInTheDocument();
-    expect(within(details).getByText('Private vehicle with driver for the agreed mountain route')).toBeInTheDocument();
-    expect(within(details).getByText(/Cable cars, attraction tickets, guide and meals/)).toBeInTheDocument();
-    expect(within(details).getByText('Exact route, stops and return arrangement')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Your name')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Trade the city for mountain views' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Your name')).toBeInTheDocument();
 
-    await user.click(within(details).getByRole('button', { name: 'Plan my mountain day' }));
-
-    expect(screen.getByRole('heading', { name: "Let's arrange the details" })).toBeInTheDocument();
-    expect(screen.getByText('Trade the city for mountain views')).toBeInTheDocument();
+    const included = screen.getByText('Private vehicle with driver for the agreed mountain route');
+    expect(included).not.toBeVisible();
+    await user.click(screen.getByText('What is included and what we confirm'));
+    expect(included).toBeVisible();
+    expect(screen.getByText(/Cable cars, attraction tickets, guide and meals/)).toBeVisible();
+    expect(screen.getByText('Exact route, stops and return arrangement')).toBeVisible();
   });
 
-  it('closes the details panel with Escape', async () => {
+  it('returns from the form to the card the guest came from', async () => {
     const user = renderCatalog();
-    await openDetails(user, 'Plan my city day');
+    await openForm(user, 'Plan my city day');
 
-    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Back to services' }));
 
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Plan my city day' })).toHaveFocus();
   });
 
   it('asks the city profile for a meeting point and no time', async () => {
     const user = renderCatalog();
-    const details = await openDetails(user, 'Plan my city day');
-    await user.click(within(details).getByRole('button', { name: 'Plan my city day' }));
+    await openForm(user, 'Plan my city day');
 
     expect(screen.getByLabelText('Pickup point in Tashkent')).toBeInTheDocument();
     expect(screen.queryByLabelText('Preferred time')).not.toBeInTheDocument();
@@ -136,10 +140,10 @@ describe('guest catalogue', () => {
 
   it('asks the ticket profile for a travel mode and a route without a price', async () => {
     const user = renderCatalog();
-    const details = await openDetails(user, 'Find my ticket');
-    await user.click(within(details).getByRole('button', { name: 'Find my ticket' }));
+    await openForm(user, 'Find my ticket');
 
-    expect(screen.getByLabelText('Travel by')).toBeInTheDocument();
+    const travelBy = screen.getByRole('group', { name: 'Travel by' });
+    expect(within(travelBy).getAllByRole('radio').map((radio) => radio.getAttribute('value'))).toEqual(['Flight', 'Train', 'Bus']);
     expect(screen.getByLabelText('From')).toBeInTheDocument();
     expect(screen.getByLabelText('To')).toBeInTheDocument();
     expect(screen.getByText('Individual quote — no payment now')).toBeInTheDocument();
@@ -148,11 +152,10 @@ describe('guest catalogue', () => {
 
   it('sends the offer id with the mapped fields and shows the real reference', async () => {
     const user = renderCatalog();
-    const details = await openDetails(user, 'Arrange my airport ride');
-    await user.click(within(details).getByRole('button', { name: 'Arrange my airport ride' }));
+    await openForm(user, 'Arrange my airport ride');
 
-    await user.selectOptions(screen.getByLabelText('Direction'), 'Hotel → airport');
-    await user.type(screen.getByLabelText('Preferred date'), '2099-12-31');
+    await user.click(screen.getByRole('radio', { name: 'Hotel → airport' }));
+    await chooseOtherDate(user, '2099-12-31');
     await user.type(screen.getByLabelText('Preferred time'), '05:15');
     await user.clear(screen.getByLabelText('Number of travellers'));
     await user.type(screen.getByLabelText('Number of travellers'), '2');
@@ -165,7 +168,7 @@ describe('guest catalogue', () => {
     const payload = server.submit.mock.calls[0][0];
     expect(payload.offerId).toBe('tashkent-airport-sedan');
     expect(payload.service).toBe('transport');
-    expect(payload.fields).toMatchObject({ choice: 'Hotel → airport', time: '05:15', count: '2', guestName: 'Amir Khan', contact: '@amir' });
+    expect(payload.fields).toMatchObject({ choice: 'Hotel → airport', date: '2099-12-31', time: '05:15', count: '2', guestName: 'Amir Khan', contact: '@amir' });
     expect(payload.fields.note).toContain('Flight: HY601');
     expect(payload.fields).not.toHaveProperty('offerId');
 
@@ -175,8 +178,7 @@ describe('guest catalogue', () => {
 
   it('offers an individual quote when the party is larger than the vehicle', async () => {
     const user = renderCatalog();
-    const details = await openDetails(user, 'Arrange my airport ride');
-    await user.click(within(details).getByRole('button', { name: 'Arrange my airport ride' }));
+    await openForm(user, 'Arrange my airport ride');
 
     await user.clear(screen.getByLabelText('Number of travellers'));
     await user.type(screen.getByLabelText('Number of travellers'), '6');
@@ -188,15 +190,13 @@ describe('guest catalogue', () => {
 
   it('keeps the name and contact when the guest goes back and picks another service', async () => {
     const user = renderCatalog();
-    let details = await openDetails(user, 'Plan my mountain day');
-    await user.click(within(details).getByRole('button', { name: 'Plan my mountain day' }));
+    await openForm(user, 'Plan my mountain day');
 
     await user.type(screen.getByLabelText('Your name'), 'Amir Khan');
     await user.type(screen.getByLabelText('One way to reach you'), '@amir');
-    await user.click(screen.getByRole('button', { name: 'Back to service' }));
+    await user.click(screen.getByRole('button', { name: 'Back to services' }));
 
-    details = await openDetails(user, 'Plan my city day');
-    await user.click(within(details).getByRole('button', { name: 'Plan my city day' }));
+    await openForm(user, 'Plan my city day');
 
     expect(screen.getByLabelText('Your name')).toHaveValue('Amir Khan');
     expect(screen.getByLabelText('One way to reach you')).toHaveValue('@amir');
@@ -250,10 +250,9 @@ describe('idempotency across services', () => {
       .mockRejectedValueOnce(new Error('REQUEST_FAILED'))
       .mockResolvedValue({ reference: 'MG-ABCDEFGH', telegramStatus: 'sent' });
 
-    const details = await openDetails(user, 'Plan my mountain day');
-    await user.click(within(details).getByRole('button', { name: 'Plan my mountain day' }));
-    await user.selectOptions(screen.getByLabelText('Where would you like to go?'), 'Charvak');
-    await user.type(screen.getByLabelText('Preferred date'), '2099-12-31');
+    await openForm(user, 'Plan my mountain day');
+    await user.click(screen.getByRole('radio', { name: 'Charvak' }));
+    await chooseOtherDate(user, '2099-12-31');
     await user.type(screen.getByLabelText('Your name'), 'Amir Khan');
     await user.type(screen.getByLabelText('One way to reach you'), '@amir');
     await user.click(screen.getByRole('button', { name: 'Send my request' }));
@@ -270,20 +269,17 @@ describe('idempotency across services', () => {
     const user = renderCatalog();
     server.submit.mockRejectedValueOnce(new Error('REQUEST_FAILED'));
 
-    let details = await openDetails(user, 'Plan my mountain day');
-    await user.click(within(details).getByRole('button', { name: 'Plan my mountain day' }));
-    await user.selectOptions(screen.getByLabelText('Where would you like to go?'), 'Charvak');
-    await user.type(screen.getByLabelText('Preferred date'), '2099-12-31');
+    await openForm(user, 'Plan my mountain day');
+    await user.click(screen.getByRole('radio', { name: 'Charvak' }));
+    await chooseOtherDate(user, '2099-12-31');
     await user.type(screen.getByLabelText('Your name'), 'Amir Khan');
     await user.type(screen.getByLabelText('One way to reach you'), '@amir');
     await user.click(screen.getByRole('button', { name: 'Send my request' }));
     await screen.findByRole('alert');
     const failedKey = server.submit.mock.calls[0][0].idempotencyKey;
 
-    await user.click(screen.getByRole('button', { name: 'Back to service' }));
-    await user.keyboard('{Escape}');
-    details = await openDetails(user, 'Plan my city day');
-    await user.click(within(details).getByRole('button', { name: 'Plan my city day' }));
+    await user.click(screen.getByRole('button', { name: 'Back to services' }));
+    await openForm(user, 'Plan my city day');
 
     // The mountain preference must not travel to the city request: the pickup
     // starts from the hotel the guest is in, and from nothing else.
@@ -317,13 +313,11 @@ describe('guest catalogue languages', () => {
     render(<GuestExperience context={catalogContext} locale="ru" />);
 
     await user.click(screen.getByRole('button', { name: 'Заказать трансфер' }));
-    const details = screen.getByRole('dialog');
-    expect(within(details).getByText('Что входит')).toBeInTheDocument();
-    await user.click(within(details).getByRole('button', { name: 'Заказать трансфер' }));
+    expect(screen.getByText('Что входит и что мы подтверждаем')).toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText('Направление'), 'Hotel → airport');
-    expect((screen.getByRole('option', { name: 'Отель → аэропорт' }) as HTMLOptionElement).selected).toBe(true);
-    await user.type(screen.getByLabelText('Желаемая дата'), '2099-12-31');
+    await user.click(screen.getByRole('radio', { name: 'Отель → аэропорт' }));
+    expect(screen.getByRole('radio', { name: 'Отель → аэропорт' })).toBeChecked();
+    await chooseOtherDate(user, '2099-12-31', 'Другая дата', 'Желаемая дата');
     await user.type(screen.getByLabelText('Желаемое время'), '05:15');
     await user.type(screen.getByLabelText('Ваше имя'), 'Амир');
     await user.type(screen.getByLabelText('Как с вами связаться'), '@amir');

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BrandLockup } from '@/components/brand-lockup';
-import { OfferDetails } from '@/components/catalog/offer-details';
+import { offerCardId } from '@/components/catalog/offer-card';
 import { OfferRequestForm, emptyCatalogDraft, type CatalogDraft } from '@/components/catalog/offer-request-form';
 import { ServiceCatalog } from '@/components/catalog/service-catalog';
 import { LanguageMenu, rememberLocale } from '@/components/language-menu';
@@ -19,8 +19,8 @@ import { submitGuestRequest } from '@/lib/requests/api';
 import type { CatalogOffer } from '@/supabase/functions/_shared/catalog';
 
 type CatalogView =
-  | { step: 'catalog' }
-  | { step: 'details'; offer: CatalogOffer }
+  /** `returnTo` is the offer whose form the guest just left. */
+  | { step: 'catalog'; returnTo?: string }
   | { step: 'offer-form'; offer: CatalogOffer }
   | { step: 'custom-category' };
 
@@ -71,6 +71,16 @@ function GuestScreens({ context }: { context: GuestContext }) {
   const lang = localeInfo[locale].tag;
   const hotelPickup = hotelPickupLine(context);
   const shareTitle = `MehmonGo · ${context.hotelName}`;
+  const returnTo = view.step === 'catalog' ? view.returnTo : undefined;
+
+  // Back from a form lands on the card the guest came from, not at the top
+  // of a long list, with the focus on that card's button.
+  useEffect(() => {
+    if (!returnTo) return;
+    const card = document.getElementById(offerCardId(returnTo));
+    card?.scrollIntoView({ block: 'center' });
+    card?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
+  }, [returnTo]);
 
   const restart = () => {
     setService(null);
@@ -140,7 +150,7 @@ function GuestScreens({ context }: { context: GuestContext }) {
           draft={draft}
           hotelPickup={hotelPickup}
           onDraftChange={setDraft}
-          onBack={() => setView({ step: 'details', offer: view.offer })}
+          onBack={() => setView({ step: 'catalog', returnTo: view.offer.id })}
           onSubmit={async (fields, offerId, idempotencyKey, asap) => {
             const result = await submitGuestRequest({
               roomToken: context.roomToken,
@@ -169,19 +179,11 @@ function GuestScreens({ context }: { context: GuestContext }) {
           services={context.services}
           hotelName={context.hotelName}
           roomLabel={context.roomLabel}
-          onOpenOffer={(offer) => setView({ step: 'details', offer })}
+          onOpenOffer={(offer) => setView({ step: 'offer-form', offer })}
           onRestaurant={() => setService('restaurants')}
           onCustomQuote={() => setView({ step: 'custom-category' })}
         />
       )}
-
-      {view.step === 'details' ? (
-        <OfferDetails
-          offer={view.offer}
-          onClose={() => setView({ step: 'catalog' })}
-          onRequest={(offer) => setView({ step: 'offer-form', offer })}
-        />
-      ) : null}
 
       <GuestFooter shareTitle={shareTitle} />
     </main>

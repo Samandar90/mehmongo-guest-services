@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GuestExperience } from './guest-experience';
@@ -22,6 +22,7 @@ const catalogContext: RoomContextResult = {
 
 afterEach(() => {
   server.submit.mockReset();
+  vi.useRealTimers();
 });
 
 function renderCatalog() {
@@ -30,10 +31,14 @@ function renderCatalog() {
   return userEvent.setup();
 }
 
+/** The card's button opens the form itself; there is no details step in between. */
 async function openForm(user: ReturnType<typeof userEvent.setup>, cta: string) {
   await user.click(screen.getByRole('button', { name: cta }));
-  const details = screen.getByRole('dialog');
-  await user.click(within(details).getByRole('button', { name: cta }));
+}
+
+async function fillGuest(user: ReturnType<typeof userEvent.setup>) {
+  await user.type(screen.getByLabelText('Your name'), 'Amir Khan');
+  await user.type(screen.getByLabelText('One way to reach you'), '@amir');
 }
 
 describe('catalogue rides ordered from the room', () => {
@@ -42,13 +47,12 @@ describe('catalogue rides ordered from the room', () => {
     await openForm(user, 'Arrange my airport ride');
 
     expect(screen.getByLabelText('Preferred time')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'As soon as possible' }));
+    await user.click(screen.getByRole('radio', { name: 'As soon as possible' }));
     expect(screen.queryByLabelText('Preferred date')).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Preferred time')).not.toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText('Direction'), 'Hotel → airport');
-    await user.type(screen.getByLabelText('Your name'), 'Amir Khan');
-    await user.type(screen.getByLabelText('One way to reach you'), '@amir');
+    await user.click(screen.getByRole('radio', { name: 'Hotel → airport' }));
+    await fillGuest(user);
     await user.click(screen.getByRole('button', { name: 'Send my request' }));
 
     expect(await screen.findByText('MG-ABCDEFGH')).toBeInTheDocument();
@@ -59,17 +63,27 @@ describe('catalogue rides ordered from the room', () => {
     }));
   });
 
-  it('still requires a time for a ride when a time was chosen', async () => {
+  it('still requires a time for a ride when a day was chosen', async () => {
     const user = renderCatalog();
     await openForm(user, 'Arrange my airport ride');
 
-    await user.selectOptions(screen.getByLabelText('Direction'), 'Hotel → airport');
-    await user.type(screen.getByLabelText('Preferred date'), '2099-12-31');
-    await user.type(screen.getByLabelText('Your name'), 'Amir Khan');
-    await user.type(screen.getByLabelText('One way to reach you'), '@amir');
+    await user.click(screen.getByRole('radio', { name: 'Hotel → airport' }));
+    await user.click(screen.getByRole('radio', { name: 'Tomorrow' }));
+    await fillGuest(user);
     await user.click(screen.getByRole('button', { name: 'Send my request' }));
 
     expect(screen.getByText('Choose a time')).toBeInTheDocument();
+    expect(server.submit).not.toHaveBeenCalled();
+  });
+
+  it('asks for a day when none was chosen', async () => {
+    const user = renderCatalog();
+    await openForm(user, 'Request this excursion');
+
+    await fillGuest(user);
+    await user.click(screen.getByRole('button', { name: 'Send my request' }));
+
+    expect(screen.getByText('Choose a date')).toBeInTheDocument();
     expect(server.submit).not.toHaveBeenCalled();
   });
 
@@ -79,14 +93,17 @@ describe('catalogue rides ordered from the room', () => {
 
     expect(screen.getByLabelText('Pickup address in Tashkent')).toHaveValue('Kamilovs Hotel, Xromiy 7');
     expect(screen.getByLabelText('Destination in Samarkand')).toHaveValue('');
-    expect(screen.getByRole('button', { name: 'As soon as possible' })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: 'As soon as possible' })).toBeInTheDocument();
   });
 
-  it('does not offer as soon as possible for a guide', async () => {
+  it('does not offer as soon as possible for a guide, only the day', async () => {
     const user = renderCatalog();
     await openForm(user, 'Request this excursion');
 
-    expect(screen.queryByRole('button', { name: 'As soon as possible' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: 'As soon as possible' })).not.toBeInTheDocument();
+    expect(screen.getByRole('group', { name: 'Which day?' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Preferred date')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('radio', { name: 'Other date' }));
     expect(screen.getByLabelText('Preferred date')).toBeInTheDocument();
   });
 
@@ -94,7 +111,59 @@ describe('catalogue rides ordered from the room', () => {
     const user = renderCatalog();
     await openForm(user, 'Find my ticket');
 
-    expect(screen.queryByRole('button', { name: 'As soon as possible' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: 'As soon as possible' })).not.toBeInTheDocument();
     expect(screen.getByLabelText('From')).toHaveValue('');
+  });
+});
+
+describe('the short form', () => {
+  it('dates today and tomorrow in Tashkent, where UTC is still on the day before', async () => {
+    // 02:00 on 23 September in Tashkent is 21:00 UTC on the 22nd.
+    vi.useFakeTimers({ now: new Date('2026-09-22T21:00:00Z'), toFake: ['Date'] });
+    const user = renderCatalog();
+    await openForm(user, 'Request this excursion');
+
+    await user.click(screen.getByRole('radio', { name: 'Today' }));
+    await fillGuest(user);
+    await user.click(screen.getByRole('button', { name: 'Send my request' }));
+    await waitFor(() => expect(server.submit).toHaveBeenCalledTimes(1));
+    expect(server.submit.mock.calls[0][0].fields.date).toBe('2026-09-23');
+  });
+
+  it('keeps the chosen day when the guest moves to another service', async () => {
+    vi.useFakeTimers({ now: new Date('2026-09-22T21:00:00Z'), toFake: ['Date'] });
+    const user = renderCatalog();
+    await openForm(user, 'Request this excursion');
+    await user.click(screen.getByRole('radio', { name: 'Tomorrow' }));
+    await user.click(screen.getByRole('button', { name: 'Back to services' }));
+
+    await openForm(user, 'Plan my city day');
+    expect(screen.getByRole('radio', { name: 'Tomorrow' })).toBeChecked();
+  });
+
+  it('counts travellers with the stepper between 1 and 50', async () => {
+    const user = renderCatalog();
+    await openForm(user, 'Request this excursion');
+    const count = screen.getByLabelText('Number of travellers');
+
+    expect(count).toHaveValue(2);
+    await user.click(screen.getByRole('button', { name: 'Fewer travellers' }));
+    await user.click(screen.getByRole('button', { name: 'Fewer travellers' }));
+    expect(count).toHaveValue(1);
+
+    await user.clear(count);
+    await user.type(count, '50');
+    await user.click(screen.getByRole('button', { name: 'More travellers' }));
+    expect(count).toHaveValue(50);
+  });
+
+  it('lets the phone fill in the name and number', async () => {
+    const user = renderCatalog();
+    await openForm(user, 'Arrange my airport ride');
+
+    expect(screen.getByLabelText('Your name')).toHaveAttribute('autocomplete', 'name');
+    expect(screen.getByLabelText('One way to reach you')).toHaveAttribute('autocomplete', 'tel');
+    // The contact is still free text: a Telegram @username or an email is welcome too.
+    expect(screen.getByLabelText('One way to reach you')).toHaveProperty('type', 'text');
   });
 });

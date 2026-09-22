@@ -2,7 +2,7 @@
 
 import { ArrowUpRight, Ticket, Utensils } from 'lucide-react';
 import { useState } from 'react';
-import { OfferCard } from '@/components/catalog/offer-card';
+import { OfferCard, offerCardId } from '@/components/catalog/offer-card';
 import { useI18n } from '@/lib/i18n/context';
 import type { CatalogOffer, GuestCatalog } from '@/supabase/functions/_shared/catalog';
 import type { ServiceId } from '@/supabase/functions/_shared/contracts';
@@ -94,7 +94,7 @@ export function ServiceCatalog({ catalog, services, hotelName, roomLabel, onOpen
         ) : null}
 
         {ticketOffer ? (
-          <article className="ticket-block" aria-label={ticketOffer.title}>
+          <article className="ticket-block" id={offerCardId(ticketOffer.id)} aria-label={ticketOffer.title}>
             <span className="ticket-icon" aria-hidden="true"><Ticket /></span>
             <div>
               <p className="offer-eyebrow">{ticketOffer.eyebrow}</p>

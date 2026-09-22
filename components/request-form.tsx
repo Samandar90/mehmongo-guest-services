@@ -25,16 +25,17 @@ type FieldProps = {
   max?: string;
   maxLength?: number;
   hint?: string;
+  autoComplete?: string;
   fields: RequestFields;
   errors: RequestErrors;
   onChange: (key: keyof RequestFields, value: string) => void;
 };
 
-function RequestField({ id, label, type = 'text', placeholder, min, max, maxLength, hint, fields, errors, onChange }: FieldProps) {
+function RequestField({ id, label, type = 'text', placeholder, min, max, maxLength, hint, autoComplete, fields, errors, onChange }: FieldProps) {
   return (
     <div className="form-field">
       <label htmlFor={id}>{label}</label>
-      <Input id={id} name={id} type={type} min={min} max={max} maxLength={maxLength} placeholder={placeholder} value={fields[id]} onChange={(event) => onChange(id, event.target.value)} aria-invalid={Boolean(errors[id])} aria-describedby={errors[id] ? `${id}-error` : hint ? `${id}-hint` : undefined} />
+      <Input id={id} name={id} type={type} min={min} max={max} maxLength={maxLength} placeholder={placeholder} autoComplete={autoComplete} value={fields[id]} onChange={(event) => onChange(id, event.target.value)} aria-invalid={Boolean(errors[id])} aria-describedby={errors[id] ? `${id}-error` : hint ? `${id}-hint` : undefined} />
       {errors[id] ? <p className="field-error" id={`${id}-error`} role="alert">{errors[id]}</p> : null}
       {hint && !errors[id] ? <p className="form-hint" id={`${id}-hint`}>{hint}</p> : null}
     </div>
@@ -143,8 +144,8 @@ export function RequestForm({ service, hotelPickup = '', onBack, onComplete, onS
         ) : <RequestField id="date" label={copy.date} type="date" min={todayIso()} fields={fields} errors={errors} onChange={setField} />}
         <RequestField id="count" label={countLabel} type="number" min="1" max="50" fields={fields} errors={errors} onChange={setField} />
         <div className="form-divider"><span>{t.common.yourDetails}</span></div>
-        <RequestField id="guestName" label={copy.name} placeholder={copy.namePlaceholder} maxLength={REQUEST_FIELD_MAX_LENGTHS.guestName} fields={fields} errors={errors} onChange={setField} />
-        <RequestField id="contact" label={copy.contact} placeholder={copy.contactPlaceholder} maxLength={REQUEST_FIELD_MAX_LENGTHS.contact} fields={fields} errors={errors} onChange={setField} />
+        <RequestField id="guestName" label={copy.name} placeholder={copy.namePlaceholder} maxLength={REQUEST_FIELD_MAX_LENGTHS.guestName} autoComplete="name" fields={fields} errors={errors} onChange={setField} />
+        <RequestField id="contact" label={copy.contact} placeholder={copy.contactPlaceholder} maxLength={REQUEST_FIELD_MAX_LENGTHS.contact} autoComplete="tel" fields={fields} errors={errors} onChange={setField} />
         <div className="form-field">
           <label htmlFor="note">{copy.note} <span className="optional">{t.common.optional}</span></label>
           <Textarea id="note" name="note" maxLength={REQUEST_FIELD_MAX_LENGTHS.note} value={fields.note} onChange={(event) => setField('note', event.target.value)} placeholder={copy.notePlaceholder} />

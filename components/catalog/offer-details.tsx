@@ -1,86 +1,33 @@
 'use client';
 
-import { X } from 'lucide-react';
-import { useEffect, useRef } from 'react';
-import { OfferImage, offerPriceLabel } from '@/components/catalog/offer-card';
 import { useI18n } from '@/lib/i18n/context';
 import type { CatalogOffer } from '@/supabase/functions/_shared/catalog';
 
-const FOCUSABLE = 'a[href], button:not([disabled]), input, select, textarea, [tabindex]:not([tabindex="-1"])';
-
 /**
- * Details of one offer in a modal dialog: what is included, what is extra and
- * what we confirm before payment. The primary action opens the request form.
+ * What is included, what is extra and what we confirm before payment, folded
+ * into the request form. Closed by default: the guest who already knows what
+ * they want goes straight to the fields, and the terms are one tap away.
  */
-export function OfferDetails({ offer, onClose, onRequest }: {
-  offer: CatalogOffer;
-  onClose: () => void;
-  onRequest: (offer: CatalogOffer) => void;
-}) {
+export function OfferDetails({ offer }: { offer: CatalogOffer }) {
   const { t } = useI18n();
-  const panelRef = useRef<HTMLDialogElement>(null);
-  const headingRef = useRef<HTMLHeadingElement>(null);
-  const openerRef = useRef<Element | null>(null);
-
-  useEffect(() => {
-    openerRef.current = document.activeElement;
-    headingRef.current?.focus();
-    const opener = openerRef.current;
-    return () => { if (opener instanceof HTMLElement) opener.focus(); };
-  }, []);
-
-  const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      onClose();
-      return;
-    }
-    if (event.key !== 'Tab') return;
-    const focusable = [...(panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])];
-    if (focusable.length === 0) return;
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
-
   return (
-    <div className="offer-overlay" onKeyDown={onKeyDown} role="presentation">
-      <button className="offer-overlay-close" type="button" aria-label={t.catalog.closeDetails} onClick={onClose} />
-      <dialog className="offer-dialog" open aria-modal="true" aria-labelledby="offer-details-title" ref={panelRef}>
-        <button className="offer-dialog-dismiss" type="button" onClick={onClose} aria-label={t.catalog.closeDetails}>
-          <X aria-hidden="true" />
-        </button>
-        <OfferImage offer={offer} eager />
-        <div className="offer-dialog-body">
-          <p className="offer-eyebrow">{offer.eyebrow}</p>
-          <h2 id="offer-details-title" ref={headingRef} tabIndex={-1}>{offer.title}</h2>
-          <p className="offer-price">
-            <strong>{offerPriceLabel(offer, t.catalog)}</strong>
-            <span>{offer.price.unit}</span>
-          </p>
-          <p className="offer-description">{offer.description}</p>
-          {offer.imageCaption ? <p className="offer-caption">{offer.imageCaption}</p> : null}
+    <details className="offer-details">
+      <summary>{t.catalog.detailsToggle}</summary>
+      <div className="offer-details-body">
+        <p className="offer-description">{offer.description}</p>
+        {offer.imageCaption ? <p className="offer-caption">{offer.imageCaption}</p> : null}
 
-          <h3>{t.catalog.included}</h3>
-          <ul>{offer.includes.map((item) => <li key={item}>{item}</li>)}</ul>
+        <h2>{t.catalog.included}</h2>
+        <ul>{offer.includes.map((item) => <li key={item}>{item}</li>)}</ul>
 
-          <h3>{t.catalog.extras}</h3>
-          <ul>{offer.extras.map((item) => <li key={item}>{item}</li>)}</ul>
+        <h2>{t.catalog.extras}</h2>
+        <ul>{offer.extras.map((item) => <li key={item}>{item}</li>)}</ul>
 
-          <h3>{t.catalog.confirmBefore}</h3>
-          <ul>{offer.confirmBeforePayment.map((item) => <li key={item}>{item}</li>)}</ul>
+        <h2>{t.catalog.confirmBefore}</h2>
+        <ul>{offer.confirmBeforePayment.map((item) => <li key={item}>{item}</li>)}</ul>
 
-          {offer.timing ? <p className="offer-timing">{offer.timing}</p> : null}
-
-          <button className="offer-dialog-cta" type="button" onClick={() => onRequest(offer)}>{offer.cta}</button>
-        </div>
-      </dialog>
-    </div>
+        {offer.timing ? <p className="offer-timing">{offer.timing}</p> : null}
+      </div>
+    </details>
   );
 }

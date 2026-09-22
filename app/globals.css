@@ -309,22 +309,9 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .guest-footer { min-height: 44px; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; margin-top: 30px; color: var(--ink-soft); font-size: 12px; }
 .guest-footer a { color: var(--ink-soft); }
 
-.offer-overlay { position: fixed; inset: 0; z-index: 20; display: grid; place-items: end center; padding: 0; }
-.offer-overlay-close { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: rgba(16,43,78,.45); cursor: pointer; }
-.offer-dialog { position: relative; width: min(100%, 640px); max-height: 92svh; overflow-y: auto; border-radius: 24px 24px 0 0; background: var(--paper); box-shadow: 0 -12px 40px rgba(16,43,78,.25); }
-.offer-dialog-dismiss { position: absolute; top: 12px; right: 12px; z-index: 1; display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(255,255,255,.92); color: var(--navy); cursor: pointer; }
-.offer-dialog-dismiss svg { width: 20px; }
-.offer-dialog .offer-media img { height: 220px; }
-.offer-dialog-body { display: grid; gap: 10px; padding: 20px 20px 26px; }
-.offer-dialog-body h2 { margin: 0; font-size: clamp(24px, 6vw, 32px); line-height: 1.1; letter-spacing: -.03em; }
-.offer-dialog-body h3 { margin: 14px 0 0; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
-.offer-dialog-body ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
 .offer-description { margin: 4px 0 0; font-size: 15px; line-height: 1.6; }
 .offer-caption, .offer-timing { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
-.offer-dialog-cta { min-height: 52px; margin-top: 16px; border: 0; border-radius: 16px; background: var(--navy); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; }
-.offer-dialog-cta:hover { background: #173d6b; }
 
-.offer-form .offer-chosen { margin: 6px 0 0; font-size: 18px; font-weight: 700; letter-spacing: -.02em; }
 .offer-price-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 6px 0 0; }
 .offer-price-note strong { font-size: 19px; }
 .offer-price-note span { color: var(--ink-soft); font-size: 12px; }
@@ -332,8 +319,41 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 .offer-fixed-field { display: grid; gap: 4px; margin: 0; }
 .offer-fixed-field span { font-size: 13px; font-weight: 680; }
 .offer-fixed-field strong { min-height: 50px; display: flex; align-items: center; padding-inline: 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(236,229,218,.5); font-weight: 600; }
-.form-select { min-height: 50px; width: 100%; padding-inline: 12px; border: 1px solid var(--input); border-radius: 14px; background: rgba(255,253,250,.85); color: var(--navy); font: inherit; }
 .form-legal { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
+
+/* The offer form: a compact head, the terms folded away, then the fields. */
+.offer-form { padding-top: 20px; }
+.offer-form .eyebrow { margin: 18px 0 8px; }
+.offer-form .form-title { font-size: clamp(28px, 7.6vw, 40px); line-height: 1.08; }
+.offer-form form { margin-top: 22px; }
+.offer-details { margin: 14px 0 0; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,253,250,.85); }
+.offer-details summary { position: relative; min-height: 48px; padding: 12px 44px 12px 14px; display: flex; align-items: center; font-size: 14px; font-weight: 680; line-height: 1.35; list-style: none; cursor: pointer; }
+.offer-details summary::-webkit-details-marker { display: none; }
+.offer-details summary::after { content: ''; position: absolute; top: 50%; right: 18px; width: 8px; height: 8px; border-right: 2px solid var(--ink-soft); border-bottom: 2px solid var(--ink-soft); transform: translateY(-70%) rotate(45deg); transition: transform 160ms ease; }
+.offer-details[open] summary::after { transform: translateY(-30%) rotate(-135deg); }
+.offer-details-body { display: grid; gap: 8px; padding: 0 14px 16px; }
+.offer-details h2 { margin: 10px 0 0; color: var(--ink-soft); font-size: 12px; font-weight: 780; letter-spacing: .08em; text-transform: uppercase; }
+.offer-details ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
+
+/* Single choices as buttons: native radios under a visible face. */
+.choice-group { min-width: 0; margin: 0; padding: 0; border: 0; display: grid; gap: 8px; }
+.choice-group legend { margin-bottom: 4px; padding: 0; font-size: 13px; font-weight: 680; }
+.choice-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.choice-options[data-columns='3'] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.choice-option { position: relative; display: block; }
+.choice-option input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.choice-option span { min-height: 50px; padding: 6px 10px; display: flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--input); border-radius: 14px; background: rgba(255,253,250,.85); color: var(--navy); font-size: 14px; font-weight: 650; line-height: 1.25; text-align: center; transition: background 160ms ease, border-color 160ms ease, color 160ms ease; }
+.choice-option svg { width: 18px; height: 18px; flex: 0 0 auto; }
+.choice-option input:checked + span { border-color: var(--navy); background: var(--navy); color: #fff; }
+.choice-option input:checked + span svg { color: #f56fa0; }
+.choice-option input:focus-visible + span { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+.stepper { max-width: 240px; display: grid; grid-template-columns: 50px minmax(0, 1fr) 50px; gap: 8px; }
+.stepper-button { min-height: 50px; display: grid; place-items: center; border: 1px solid var(--input); border-radius: 14px; background: rgba(255,253,250,.85); color: var(--navy); cursor: pointer; }
+.stepper-button:hover { background: var(--secondary); }
+.stepper-button svg { width: 18px; height: 18px; }
+.form-field .stepper input { text-align: center; font-weight: 680; appearance: textfield; }
+.stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { margin: 0; appearance: none; }
 
 .credits-page { width: min(100%, 780px); margin: 0 auto; padding: 40px 22px 60px; }
 .credits-page h1 { font-size: clamp(30px, 7vw, 44px); letter-spacing: -.04em; }
@@ -347,8 +367,6 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
   .ticket-block { grid-template-columns: 48px 1fr auto; align-items: center; }
   .side-card { grid-template-columns: 48px 1fr auto; align-items: center; }
   .side-card:not(:has(.side-icon)) { grid-template-columns: 1fr auto; }
-  .offer-overlay { place-items: center; padding: 24px; }
-  .offer-dialog { border-radius: 24px; max-height: 88svh; }
   .catalog-steps ol { grid-template-columns: repeat(3, 1fr); }
 }
 
@@ -455,10 +473,10 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
 
 /* ---------- Han script ---------- */
 /* Chinese has no tight tracking and needs more leading than the Latin display sizes; the serif accent word has no Han glyphs. */
-:lang(zh) h1, :lang(zh) h2, :lang(zh) h3, :lang(zh) .form-title, :lang(zh) .offer-dialog-body h2, :lang(zh) .language-option-names strong { letter-spacing: 0; }
+:lang(zh) h1, :lang(zh) h2, :lang(zh) h3, :lang(zh) .form-title, :lang(zh) .language-option-names strong { letter-spacing: 0; }
 :lang(zh) h1 { line-height: 1.15; }
 :lang(zh) h1 em { font-family: inherit; font-weight: inherit; }
-:lang(zh) .eyebrow, :lang(zh) .offer-eyebrow, :lang(zh) .form-divider, :lang(zh) .language-popover-title, :lang(zh) .offer-dialog-body h3 { letter-spacing: .08em; }
+:lang(zh) .eyebrow, :lang(zh) .offer-eyebrow, :lang(zh) .form-divider, :lang(zh) .language-popover-title, :lang(zh) .offer-details h2 { letter-spacing: .08em; }
 :lang(zh) h1, :lang(zh) h2, :lang(zh) h3, :lang(zh) .form-title { word-break: keep-all; overflow-wrap: anywhere; }
 
 /* ---------- when the ride is needed, contact, saving the page ---------- */

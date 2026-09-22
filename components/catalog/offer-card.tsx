@@ -8,6 +8,11 @@ import type { CatalogOffer } from '@/supabase/functions/_shared/catalog';
 
 type PriceLabels = Pick<Messages['catalog'], 'fromPrice' | 'getQuote'>;
 
+/** The element id of an offer's card, so the way back from its form can find it. */
+export function offerCardId(offerId: string): string {
+  return `offer-${offerId}`;
+}
+
 /** "From $120" for a published option, "Get a quote" when the price is individual. */
 export function offerPriceLabel(offer: Pick<CatalogOffer, 'price'>, labels: PriceLabels): string {
   if (offer.price.mode === 'quote' || offer.price.amount === null) return labels.getQuote;
@@ -48,7 +53,7 @@ export function OfferImage({ offer, eager }: { offer: CatalogOffer; eager: boole
 export function OfferCard({ offer, eager, onOpen }: { offer: CatalogOffer; eager: boolean; onOpen: (offer: CatalogOffer) => void }) {
   const { t } = useI18n();
   return (
-    <article className="offer-card" aria-label={offer.title}>
+    <article className="offer-card" id={offerCardId(offer.id)} aria-label={offer.title}>
       <OfferImage offer={offer} eager={eager} />
       <div className="offer-body">
         <p className="offer-eyebrow">{offer.eyebrow}</p>

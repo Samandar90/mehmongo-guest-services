@@ -192,6 +192,32 @@ Four conveniences for a guest with a phone in a hotel room:
 Deploy order when these change again: migration, then the Edge Functions
 (`submit-request`, `retry-telegram`, `room-context`), then the Worker.
 
+## Straight to a short form, added 2026-09-22
+
+Plan: `docs/superpowers/plans/2026-09-22-guest-booking-simplification.md`.
+Frontend only; the payload, the server and the catalogue JSON are unchanged.
+
+- A card's button opens the request form directly. The details dialog is
+  gone; its content is a closed `<details>` block at the top of the form
+  (`components/catalog/offer-details.tsx`). Back returns to the catalogue with
+  that card scrolled into view and its button focused (`offerCardId`).
+- Fixed choices are native radios styled as buttons (`ChoiceGroup` in
+  `offer-request-form.tsx`), still submitting the English value.
+- The day is a chip row — As soon as possible (rides only) / Today / Tomorrow /
+  Other date — and the date input appears only for Other date. Today and
+  tomorrow are **Tashkent** dates (`tashkentDate()` in `lib/guest-request.ts`,
+  built on the server's `tashkentToday()`), not the phone's or UTC's.
+- Travellers: a `−`/`+` stepper around the labelled number input (1–50).
+  Name and contact carry `autocomplete="name"`/`"tel"`; the contact stays
+  free text because it also takes a Telegram @username or an email.
+- One legal line under the submit button; the privacy sentence is the hint
+  under the contact field.
+- Owner declined, 2026-09-22: services on the first screen (the hero stays),
+  and storing the guest's name/contact on the device. Do not add either
+  without asking.
+- Measured on a 375×812 phone, airport sedan: the form went from 1710 px to
+  1480 px, and the first field from 484 px to 343 px down the page.
+
 ## Telegram group
 
 - On 2026-09-17 every delivery started failing: the team group had been
