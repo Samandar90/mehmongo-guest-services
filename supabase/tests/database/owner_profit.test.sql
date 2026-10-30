@@ -11,13 +11,13 @@ select has_column('public'::name, 'service_requests'::name, 'cost_amount_minor':
 
 select function_privs_are(
   'public'::name, 'owner_profit_summary'::name,
-  array['timestamptz', 'timestamptz']::name[],
+  array['timestamptz', 'timestamptz', 'text']::name[],
   'anon'::name, array[]::text[],
   'anon cannot execute the margin report'
 );
 select function_privs_are(
   'public'::name, 'owner_profit_summary'::name,
-  array['timestamptz', 'timestamptz']::name[],
+  array['timestamptz', 'timestamptz', 'text']::name[],
   'service_role'::name, array[]::text[],
   'the key that bypasses RLS cannot execute it either'
 );

@@ -67,6 +67,8 @@ const room205: Room = {
 
 describe('AdminRequestsPage', () => {
   beforeEach(() => {
+    // The screen keeps its filters in the address, so one test's must not leak.
+    window.history.replaceState(null, '', '/admin/requests');
     vi.mocked(listRequests).mockReset();
     vi.mocked(listHotels).mockReset().mockResolvedValue([kamilovsHotel]);
     vi.mocked(listRooms).mockReset().mockResolvedValue([room205]);
@@ -86,6 +88,27 @@ describe('AdminRequestsPage', () => {
     await waitFor(() => expect(listRequests).toHaveBeenLastCalledWith({ hotelId: 'hotel-1' }));
     expect(await screen.findByRole('option', { name: '205' })).toBeInTheDocument();
     expect(listRooms).toHaveBeenCalledWith('hotel-1');
+  });
+
+  it('opens with the filters a figure on the overview linked to', async () => {
+    window.history.replaceState(null, '', '/admin/requests?dateFrom=2026-10-09&dateTo=2026-10-09&attention=overdue');
+    vi.mocked(listRequests).mockResolvedValue({ items: [], hasMore: false });
+    render(<AdminRequestsPage />);
+
+    await waitFor(() => expect(listRequests).toHaveBeenCalledWith({ dateFrom: '2026-10-09', dateTo: '2026-10-09', attention: 'overdue' }));
+    expect(screen.getByLabelText('С даты')).toHaveValue('2026-10-09');
+    expect(screen.getByLabelText('Требует внимания')).toHaveValue('overdue');
+  });
+
+  it('keeps the address in step with the filters', async () => {
+    const user = userEvent.setup();
+    vi.mocked(listRequests).mockResolvedValue({ items: [], hasMore: false });
+    render(<AdminRequestsPage />);
+
+    await user.selectOptions(screen.getByLabelText('Даты считать'), 'settled');
+
+    await waitFor(() => expect(listRequests).toHaveBeenLastCalledWith({ dateBasis: 'settled' }));
+    expect(window.location.search).toBe('?dateBasis=settled');
   });
 
   it('never offers the previous hotel rooms after the hotel filter changes', async () => {

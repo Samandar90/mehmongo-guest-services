@@ -465,6 +465,7 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
   .admin-head-row { grid-template-columns: 1fr auto; align-items: end; }
   .admin-period { grid-template-columns: auto auto; align-items: end; gap: 12px; }
   .admin-period-dates { grid-template-columns: 160px 160px; }
+  .admin-period-basis { grid-column: 1 / -1; justify-content: flex-end; }
 }
 @media (min-width: 1040px) {
   .admin-columns { grid-template-columns: 1fr 1fr; }
@@ -476,6 +477,70 @@ footer { min-height:44px; display:flex; align-items:center; justify-content:cent
   .admin-metric-value { font-size: 22px; }
   .admin-metric-title { font-size: 10px; letter-spacing: .05em; }
 }
+
+/* ---------- overview: period, comparison, attention, chart ---------- */
+.admin-period-basis { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.admin-period-basis .admin-hint { margin: 0; }
+.admin-segmented { display: inline-flex; margin: 0; padding: 3px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,253,250,.7); }
+.admin-segmented button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; color: var(--navy); font-size: 13px; font-weight: 650; cursor: pointer; }
+.admin-segmented button[aria-pressed='true'] { background: var(--navy); color: #fff; }
+.admin-period-dates input[aria-invalid='true'] { border-color: var(--destructive); }
+
+/* Old figures stay on screen while new ones load, so the page does not jump,
+   but they must not read as the answer to the period now selected. */
+.admin-report-area { display: grid; gap: 14px; transition: opacity .15s; }
+.admin-report-area[data-stale='true'] { opacity: .45; }
+
+.admin-delta { display: block; margin-top: 3px; font-size: 12px; font-weight: 650; letter-spacing: 0; line-height: 1.3; font-variant-numeric: tabular-nums; }
+/* Two classes: inside the money figures a plain small is grey, and it must not win. */
+.admin-delta.admin-delta-good { color: #17693f; }
+.admin-delta.admin-delta-bad { color: var(--destructive); }
+.admin-delta.admin-delta-flat { color: var(--ink-soft); }
+
+.admin-attention-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.admin-attention-item { display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,253,250,.7); color: var(--navy); font-size: 14px; font-weight: 600; text-decoration: none; }
+.admin-attention-item:hover { border-color: rgba(16,43,78,.24); background: var(--paper); }
+.admin-attention-item strong { margin-left: auto; font-size: 18px; font-variant-numeric: tabular-nums; }
+.admin-attention-item svg { flex: none; color: var(--ink-soft); }
+.admin-attention-urgent { border-color: rgba(180,35,24,.3); background: #fdf1ef; }
+.admin-attention-urgent svg, .admin-attention-urgent strong { color: var(--destructive); }
+@media (min-width: 720px) {
+  .admin-attention-list { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+}
+
+/* Margin is the hero, so it takes the whole row and the two inputs share one. */
+.admin-profit-figures { grid-template-columns: 1fr 1fr; align-items: start; }
+.admin-profit-margin { grid-column: 1 / -1; }
+@media (min-width: 720px) {
+  .admin-profit-figures { grid-template-columns: 1fr 1fr; align-items: start; }
+}
+
+/* validate_palette.js: all three pass on --paper. The amber is just under 3:1,
+   which is what the table under the chart is there for. */
+.admin-chart-completed { background: #2f6db3; }
+.admin-chart-open { background: #c98a1b; }
+.admin-chart-cancelled { background: #d3226a; }
+.admin-chart { margin: 0; display: grid; gap: 10px; }
+.admin-chart-legend { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--ink-soft); font-size: 12px; font-weight: 600; }
+.admin-chart-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.admin-chart-swatch { width: 10px; height: 10px; border-radius: 3px; }
+.admin-chart-plot { position: relative; height: 180px; margin: 8px 0 0 26px; }
+.admin-chart-grid { position: absolute; inset: 0; }
+.admin-chart-grid span { position: absolute; left: -26px; right: 0; height: 0; border-bottom: 1px solid var(--line); color: var(--ink-soft); font-size: 11px; line-height: 0; font-variant-numeric: tabular-nums; }
+.admin-chart-bars { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; display: grid; }
+.admin-chart-bars li { display: flex; min-width: 0; }
+.admin-chart-column { position: relative; flex: 1; min-width: 0; display: flex; align-items: flex-end; justify-content: center; padding: 0 1px; border-radius: 6px 6px 0 0; }
+a.admin-chart-column:hover, a.admin-chart-column:focus-visible { background: rgba(16,43,78,.06); }
+.admin-chart-stack { width: 100%; max-width: 24px; min-height: 3px; display: flex; flex-direction: column-reverse; gap: 2px; }
+.admin-chart-stack span { flex: 1 1 0; min-height: 1px; }
+.admin-chart-stack span:last-child { border-radius: 4px 4px 0 0; }
+.admin-chart-tip { position: absolute; bottom: calc(100% - 28px); left: 50%; z-index: 2; display: none; width: max-content; max-width: 200px; padding: 8px 10px; border-radius: 10px; background: var(--navy); color: #fff; font-size: 12px; font-weight: 500; line-height: 1.35; pointer-events: none; }
+.admin-chart-tip strong { display: block; font-weight: 700; }
+.admin-chart-tip-left { left: auto; right: 50%; }
+a.admin-chart-column:hover .admin-chart-tip, a.admin-chart-column:focus-visible .admin-chart-tip { display: block; }
+.admin-chart-axis { display: flex; justify-content: space-between; margin-left: 26px; color: var(--ink-soft); font-size: 11px; font-variant-numeric: tabular-nums; }
+.admin-chart-table summary { color: var(--ink-soft); font-size: 13px; font-weight: 600; cursor: pointer; }
+.admin-chart-table .admin-table { margin-top: 8px; }
 
 /* ---------- Han script ---------- */
 /* Chinese has no tight tracking and needs more leading than the Latin display sizes; the serif accent word has no Han glyphs. */

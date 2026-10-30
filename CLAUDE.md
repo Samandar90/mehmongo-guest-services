@@ -243,6 +243,40 @@ status, so the default is the one place the first status is decided.
 - Nothing was backfilled: on 2026-09-22 production held no `new` request
   (3 completed, 6 cancelled).
 
+## Overview period and insights, added 2026-10-30
+
+The owner reported that a request received on 9 October appeared in a period
+starting 12 October. It was completed on 24 October, and the overview counted a
+completed request by `settled_at` while the request list filtered by
+`created_at`. Migration `20261030100000_report_date_basis.sql` makes the choice
+explicit.
+
+- `settlement_summary` and `owner_profit_summary` gained
+  `date_basis text default 'settled'` (`created` or `settled`; anything else is
+  refused with 22023 by `private.report_date_basis`). **The hotel cabinet passes
+  no basis on purpose**: its period is the month it is paid in.
+- The overview defaults to `created`, the same reading as the request list, with
+  a switch to `settled`. Open and cancelled requests have no completion date and
+  are always placed by `created_at`.
+- The basis picks which rows are shown, never what they pay. The volume step is
+  still read from the Tashkent month of `settled_at`, so reconciling a monthly
+  payout needs the `settled` basis; the hint under «По отелям» says so.
+- New owner-only `owner_request_timeline` (the chart; it places rows exactly as
+  `settlement_summary` does, so the bars add up to the counters) and
+  `owner_attention` (open and past their date, open today, latest Telegram
+  attempt failed, completed with no cost).
+- Period presets are Tashkent days (`lib/admin/period.ts`), not the browser's.
+  A reversed period loads nothing and says so. Comparison is the equally long
+  stretch right before, measured only up to today; money compares within one
+  currency and never across.
+- The request list keeps its filters in the address (`requestsHref`,
+  `parseRequestFilters`), which is how the chart, the hotel rows and the attention
+  panel open their own rows. Reading `window.location` in the state initialiser is
+  safe because the admin shell mounts its children only in the browser, after the
+  identity check.
+- Deploy order: migration, then the Worker. The old Worker keeps working on the
+  new functions because `date_basis` has a default.
+
 ## Telegram group
 
 - On 2026-09-17 every delivery started failing: the team group had been

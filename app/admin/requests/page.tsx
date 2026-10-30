@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { RequestFilterBar, RequestTable } from '@/components/admin/request-table';
 import { listHotels, type Hotel } from '@/lib/admin/hotels';
-import { listRequests, requestPageSize, type AdminRequestRow, type RequestFilters } from '@/lib/admin/requests';
+import {
+  listRequests,
+  parseRequestFilters,
+  requestPageSize,
+  requestsHref,
+  type AdminRequestRow,
+  type RequestFilters,
+} from '@/lib/admin/requests';
 import { listRooms, type Room } from '@/lib/admin/rooms';
 
 type RequestsState = {
@@ -13,7 +20,12 @@ type RequestsState = {
 };
 
 export default function AdminRequestsPage() {
-  const [filters, setFilters] = useState<RequestFilters>({});
+  // The address carries the filters, so a figure on the overview can open its
+  // own rows. Reading it here is safe: the admin shell only mounts this screen in
+  // the browser, after the identity check.
+  const [filters, setFilters] = useState<RequestFilters>(
+    () => (typeof window === 'undefined' ? {} : parseRequestFilters(window.location.search)),
+  );
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [state, setState] = useState<RequestsState>({ status: 'loading', items: [], hasMore: false });
   const [hotels, setHotels] = useState<Hotel[]>([]);
@@ -55,6 +67,7 @@ export default function AdminRequestsPage() {
   const changeFilters = useCallback((next: RequestFilters) => {
     setState((current) => ({ ...current, status: 'loading' }));
     setFilters(next);
+    window.history.replaceState(window.history.state, '', requestsHref(next));
   }, []);
 
   const reload = useCallback(() => {

@@ -1,5 +1,6 @@
 'use client';
 
+import { PeriodDelta } from '@/components/admin/period-delta';
 import { formatMinorAmount } from '@/lib/admin/money';
 import { serviceLabels } from '@/components/admin/request-table';
 import { marginShare, type ProfitSummary } from '@/lib/admin/profit';
@@ -12,7 +13,7 @@ import { marginShare, type ProfitSummary } from '@/lib/admin/profit';
  * settled in som and one settled in dollars have no shared total — the same
  * rule the settlement figures follow.
  */
-export function ProfitReport({ summary }: { summary: ProfitSummary }) {
+export function ProfitReport({ summary, previous }: { summary: ProfitSummary; previous?: ProfitSummary | null }) {
   if (summary.byCurrency.length === 0) {
     return <p className="admin-empty">За выбранный период нет выполненных заявок.</p>;
   }
@@ -29,24 +30,35 @@ export function ProfitReport({ summary }: { summary: ProfitSummary }) {
 
       {summary.byCurrency.map((total) => {
         const share = marginShare(total.revenueMinor, total.marginMinor);
+        // Compared within one currency only. A currency absent last period was
+        // zero then, which is a real figure and not a gap.
+        const before = previous === undefined || previous === null
+          ? null
+          : previous.byCurrency.find((item) => item.currency === total.currency)
+            ?? { revenueMinor: 0, marginMinor: 0 };
+        const money = (value: number) => formatMinorAmount(value, total.currency);
         return (
           <div key={total.currency} className="admin-profit-block">
             <h4 className="admin-profit-currency">{total.currency}</h4>
             <dl className="admin-profit-figures">
-              <div>
-                <dt>Выручка</dt>
-                <dd>{formatMinorAmount(total.revenueMinor, total.currency)}</dd>
-              </div>
-              <div>
-                <dt>Закупка</dt>
-                <dd>{formatMinorAmount(total.costMinor, total.currency)}</dd>
-              </div>
               <div className="admin-profit-margin">
                 <dt>Маржа</dt>
                 <dd>
                   {formatMinorAmount(total.marginMinor, total.currency)}
                   {share === null ? null : <small>{share}% от выручки</small>}
+                  {before ? <PeriodDelta current={total.marginMinor} previous={before.marginMinor} format={money} /> : null}
                 </dd>
+              </div>
+              <div>
+                <dt>Выручка</dt>
+                <dd>
+                  {formatMinorAmount(total.revenueMinor, total.currency)}
+                  {before ? <PeriodDelta current={total.revenueMinor} previous={before.revenueMinor} format={money} /> : null}
+                </dd>
+              </div>
+              <div>
+                <dt>Закупка</dt>
+                <dd>{formatMinorAmount(total.costMinor, total.currency)}</dd>
               </div>
             </dl>
             <p className="admin-hint">

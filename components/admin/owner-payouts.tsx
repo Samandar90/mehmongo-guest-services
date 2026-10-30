@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { formatMinorAmount } from '@/lib/admin/money';
 import type { HotelSettlement } from '@/lib/admin/summary';
 
@@ -12,7 +13,7 @@ import type { HotelSettlement } from '@/lib/admin/summary';
  * them on one row would put two unrelated figures side by side and invite them
  * to be read as a percentage of each other.
  */
-export function OwnerPayouts({ hotels }: { hotels: HotelSettlement[] }) {
+export function OwnerPayouts({ hotels, hrefFor }: { hotels: HotelSettlement[]; hrefFor?: (hotelId: string) => string }) {
   if (hotels.length === 0) {
     return <p className="admin-empty">Ни один отель не получал заявок за выбранный период.</p>;
   }
@@ -31,7 +32,9 @@ export function OwnerPayouts({ hotels }: { hotels: HotelSettlement[] }) {
       <tbody>
         {hotels.map((hotel) => (
           <tr key={hotel.hotelId}>
-            <td data-label="Отель">{hotel.hotelName}</td>
+            <td data-label="Отель">
+              {hrefFor ? <Link href={hrefFor(hotel.hotelId)}>{hotel.hotelName}</Link> : hotel.hotelName}
+            </td>
             <td data-label="Заявок">{hotel.requests}</td>
             <td data-label="Выполнено">{hotel.completed}</td>
             <td data-label="Оборот">

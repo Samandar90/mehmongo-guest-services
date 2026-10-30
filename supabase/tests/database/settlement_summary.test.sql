@@ -13,19 +13,19 @@ select has_function('public'::name, 'settlement_summary'::name, 'settlement_summ
 
 select function_privs_are(
   'public'::name, 'settlement_summary'::name,
-  array['timestamptz', 'timestamptz']::name[],
+  array['timestamptz', 'timestamptz', 'text']::name[],
   'anon'::name, array[]::text[],
   'anon cannot execute it'
 );
 select function_privs_are(
   'public'::name, 'settlement_summary'::name,
-  array['timestamptz', 'timestamptz']::name[],
+  array['timestamptz', 'timestamptz', 'text']::name[],
   'service_role'::name, array[]::text[],
   'the key that bypasses RLS cannot execute it either'
 );
 select function_privs_are(
   'public'::name, 'settlement_summary'::name,
-  array['timestamptz', 'timestamptz']::name[],
+  array['timestamptz', 'timestamptz', 'text']::name[],
   'authenticated'::name, array['EXECUTE']::text[],
   'authenticated may call it, and is scoped inside'
 );

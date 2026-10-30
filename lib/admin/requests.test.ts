@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AdminRequestError, getDashboardMetrics, listRequests, retryTelegram, settleRequest } from './requests';
+import {
+  AdminRequestError,
+  getDashboardMetrics,
+  listRequests,
+  parseRequestFilters,
+  requestsHref,
+  retryTelegram,
+  settleRequest,
+} from './requests';
 
 const requestRowFixture = {
   id: 'request-1',
@@ -49,6 +57,8 @@ function requestQueryClient(rows: unknown[], error: unknown = null) {
     eq: vi.fn((column: string, value: unknown) => { filters.push(['eq', column, value]); return builder; }),
     gte: vi.fn((column: string, value: unknown) => { filters.push(['gte', column, value]); return builder; }),
     lt: vi.fn((column: string, value: unknown) => { filters.push(['lt', column, value]); return builder; }),
+    in: vi.fn((column: string, value: unknown) => { filters.push(['in', column, value]); return builder; }),
+    is: vi.fn((column: string, value: unknown) => { filters.push(['is', column, value]); return builder; }),
     order: vi.fn().mockReturnThis(),
     limit: vi.fn().mockResolvedValue({ data: rows, error }),
   };
@@ -72,7 +82,79 @@ function functionClient(response: { status: number; body: unknown }) {
   return { client: { functions: { invoke } } as never, invoke };
 }
 
+describe('requestsHref and parseRequestFilters', () => {
+  const hotelId = '85000000-0000-4000-8000-000000000101';
+
+  it('round-trips the filters a figure links to', () => {
+    const filters = { hotelId, dateFrom: '2026-10-12', dateTo: '2026-10-31', dateBasis: 'settled', attention: 'overdue' } as const;
+    const href = requestsHref(filters);
+
+    expect(href.startsWith('/admin/requests?')).toBe(true);
+    expect(parseRequestFilters(href.slice(href.indexOf('?')))).toEqual(filters);
+  });
+
+  it('has no query string with no filters', () => {
+    expect(requestsHref({})).toBe('/admin/requests');
+    expect(parseRequestFilters('')).toEqual({});
+  });
+
+  it('drops anything the screen does not offer', () => {
+    expect(parseRequestFilters('?status=hacked&hotelId=1%27%20or%201=1&dateFrom=12.10.2026&attention=all&dateBasis=x')).toEqual({});
+  });
+});
+
 describe('listRequests', () => {
+  it('reads the dates against completion when asked, and only completed requests', async () => {
+    const { client, filters } = requestQueryClient([]);
+
+    await listRequests({ dateFrom: '2026-10-12', dateBasis: 'settled' }, client);
+
+    expect(filters).toEqual(expect.arrayContaining([
+      ['eq', 'status', 'completed'],
+      ['gte', 'settled_at', '2026-10-11T19:00:00.000Z'],
+    ]));
+    expect(filters.some(([, column]) => column === 'created_at')).toBe(false);
+  });
+
+  it('narrows to what the overview counted as needing attention', async () => {
+    const overdue = requestQueryClient([]);
+    await listRequests({ attention: 'overdue' }, overdue.client);
+    expect(overdue.filters).toEqual(expect.arrayContaining([
+      ['in', 'status', ['new', 'confirmed']],
+      ['lt', 'requested_date', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)],
+    ]));
+
+    const missing = requestQueryClient([]);
+    await listRequests({ attention: 'missing_cost' }, missing.client);
+    expect(missing.filters).toEqual(expect.arrayContaining([
+      ['eq', 'status', 'completed'],
+      ['is', 'cost_amount_minor', null],
+    ]));
+  });
+
+  it('keeps only requests whose latest Telegram attempt failed', async () => {
+    const failedThenSent = {
+      ...requestRowFixture,
+      id: 'retried',
+      telegram_deliveries: [
+        { attempt: 1, status: 'failed', error_code: 'X' },
+        { attempt: 2, status: 'sent', error_code: null },
+      ],
+    };
+    const stillFailing = {
+      ...requestRowFixture,
+      id: 'failing',
+      telegram_deliveries: [{ attempt: 1, status: 'failed', error_code: 'X' }],
+    };
+    const { client, filters, builder } = requestQueryClient([failedThenSent, stillFailing]);
+
+    const page = await listRequests({ attention: 'telegram' }, client);
+
+    expect(builder.select.mock.calls[0][0]).toContain('failed_attempts:telegram_deliveries!inner(id)');
+    expect(filters).toContainEqual(['eq', 'failed_attempts.status', 'failed']);
+    expect(page.items.map((row) => row.id)).toEqual(['failing']);
+  });
+
   it('applies hotel, category and inclusive date filters', async () => {
     const { client, filters } = requestQueryClient([requestRowFixture]);
 

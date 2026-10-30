@@ -5,6 +5,7 @@ import {
   retryTelegram as retryTelegramDefault,
   settleRequest as settleRequestDefault,
   type AdminRequestRow,
+  type RequestAttention,
   type RequestFilters,
   type RequestStatus,
   type RetryResult,
@@ -40,6 +41,13 @@ export const requestStatusLabels: Record<RequestStatus, string> = {
   confirmed: 'Подтверждена',
   completed: 'Выполнена',
   cancelled: 'Отменена',
+};
+
+export const attentionLabels: Record<RequestAttention, string> = {
+  overdue: 'Дата прошла, не закрыта',
+  today: 'В работе на сегодня',
+  telegram: 'Не ушла в Telegram',
+  missing_cost: 'Без закупки',
 };
 
 /** The language the guest read the site in — the one to call them back in. */
@@ -303,6 +311,10 @@ export function RequestTable({
                   <td data-label="Заявка">
                     <strong>{row.reference}</strong>
                     <small>{formatDateTime(row.createdAt)}</small>
+                    {/* The two dates can be weeks apart, and the totals can be read by either. */}
+                    {view.status === 'completed' && (settlements[row.id]?.completedAt ?? row.completedAt) ? (
+                      <small>Выполнена: {formatDateTime((settlements[row.id]?.completedAt ?? row.completedAt) as string)}</small>
+                    ) : null}
                   </td>
                   <td data-label="Отель / комната">
                     <span>{row.hotelName}</span>
@@ -613,6 +625,32 @@ export function RequestFilterBar({ filters, hotels, rooms, onChange, disabled = 
           disabled={disabled}
           onChange={(event) => update({ dateTo: event.target.value || undefined })}
         />
+      </div>
+      <div className="admin-field">
+        <label htmlFor="filter-basis">Даты считать</label>
+        <select
+          id="filter-basis"
+          value={filters.dateBasis ?? 'created'}
+          disabled={disabled}
+          onChange={(event) => update({ dateBasis: event.target.value === 'settled' ? 'settled' : undefined })}
+        >
+          <option value="created">По дате заявки</option>
+          <option value="settled">По дате выполнения</option>
+        </select>
+      </div>
+      <div className="admin-field">
+        <label htmlFor="filter-attention">Требует внимания</label>
+        <select
+          id="filter-attention"
+          value={filters.attention ?? ''}
+          disabled={disabled}
+          onChange={(event) => update({ attention: (event.target.value || undefined) as RequestFilters['attention'] })}
+        >
+          <option value="">Все заявки</option>
+          {(Object.keys(attentionLabels) as RequestAttention[]).map((attention) => (
+            <option key={attention} value={attention}>{attentionLabels[attention]}</option>
+          ))}
+        </select>
       </div>
       <button type="button" className="admin-button admin-button-secondary" disabled={disabled} onClick={() => onChange({})}>
         Сбросить фильтры

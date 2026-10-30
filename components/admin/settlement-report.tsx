@@ -1,5 +1,6 @@
 'use client';
 
+import { PeriodDelta } from '@/components/admin/period-delta';
 import { formatMinorAmount } from '@/lib/admin/money';
 import { serviceLabels } from '@/components/admin/request-table';
 import type { SettlementSummary } from '@/lib/admin/summary';
@@ -9,7 +10,7 @@ import type { SettlementSummary } from '@/lib/admin/summary';
  * are not addable, so there is deliberately no combined total anywhere, however
  * much a single number would look tidier.
  */
-export function SettlementReport({ summary }: { summary: SettlementSummary }) {
+export function SettlementReport({ summary, previous }: { summary: SettlementSummary; previous?: SettlementSummary | null }) {
   if (summary.requests === 0) {
     return <p className="admin-empty">За выбранный период заявок не было.</p>;
   }
@@ -17,9 +18,21 @@ export function SettlementReport({ summary }: { summary: SettlementSummary }) {
   return (
     <div className="admin-report">
       <dl className="admin-metrics">
-        <div className="admin-metric"><dt>Заявок</dt><dd>{summary.requests}</dd></div>
-        <div className="admin-metric"><dt>Выполнено</dt><dd>{summary.completed}</dd></div>
-        <div className="admin-metric"><dt>Отменено</dt><dd>{summary.cancelled}</dd></div>
+        <div className="admin-metric">
+          <dt>Заявок</dt>
+          <dd>{summary.requests}</dd>
+          {previous ? <PeriodDelta current={summary.requests} previous={previous.requests} /> : null}
+        </div>
+        <div className="admin-metric">
+          <dt>Выполнено</dt>
+          <dd>{summary.completed}</dd>
+          {previous ? <PeriodDelta current={summary.completed} previous={previous.completed} /> : null}
+        </div>
+        <div className="admin-metric">
+          <dt>Отменено</dt>
+          <dd>{summary.cancelled}</dd>
+          {previous ? <PeriodDelta current={summary.cancelled} previous={previous.cancelled} goodWhen="down" /> : null}
+        </div>
       </dl>
 
       {summary.payouts.length === 0 ? (

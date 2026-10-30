@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import type { DateBasis } from '@/lib/admin/period';
 import { localMidnight } from '@/lib/admin/requests';
 import type { ServiceId } from '@/supabase/functions/_shared/contracts';
 
@@ -49,13 +50,17 @@ export type ProfitSummary = {
 };
 
 export async function getProfitSummary(
-  period: { dateFrom?: string; dateTo?: string },
+  period: { dateFrom?: string; dateTo?: string; basis?: DateBasis },
   client: SupabaseClient = getSupabaseBrowserClient(),
 ): Promise<ProfitRow[]> {
   const fromAt = period.dateFrom ? localMidnight(period.dateFrom) : null;
   const toAt = period.dateTo ? localMidnight(period.dateTo, 1) : null;
 
-  const { data, error } = await client.rpc('owner_profit_summary', { from_at: fromAt, to_at: toAt });
+  const { data, error } = await client.rpc('owner_profit_summary', {
+    from_at: fromAt,
+    to_at: toAt,
+    ...(period.basis ? { date_basis: period.basis } : {}),
+  });
   if (error) throw error;
   return (data ?? []) as ProfitRow[];
 }

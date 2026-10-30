@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import type { DateBasis } from '@/lib/admin/period';
 import { localMidnight } from '@/lib/admin/requests';
 import type { ServiceId } from '@/supabase/functions/_shared/contracts';
 
@@ -51,7 +52,11 @@ export type SettlementSummary = {
   byService: ServiceTotal[];
 };
 
-export type SummaryPeriod = { dateFrom?: string; dateTo?: string };
+/**
+ * Without a basis the database reads the period by completion date, which is
+ * what the hotel cabinet means: the month a request is paid in.
+ */
+export type SummaryPeriod = { dateFrom?: string; dateTo?: string; basis?: DateBasis };
 
 // The boundary itself now lives in lib/admin/requests.ts and is imported. The
 // copy that used to be here looked the same but skipped the round-trip check,
@@ -67,7 +72,11 @@ export async function getSettlementSummary(
   const fromAt = period.dateFrom ? localMidnight(period.dateFrom) : null;
   const toAt = period.dateTo ? localMidnight(period.dateTo, 1) : null;
 
-  const { data, error } = await client.rpc('settlement_summary', { from_at: fromAt, to_at: toAt });
+  const { data, error } = await client.rpc('settlement_summary', {
+    from_at: fromAt,
+    to_at: toAt,
+    ...(period.basis ? { date_basis: period.basis } : {}),
+  });
   if (error) throw error;
   return (data ?? []) as SummaryRow[];
 }

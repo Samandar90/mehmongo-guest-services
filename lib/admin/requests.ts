@@ -2,11 +2,16 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { AdminRequestError } from '@/lib/admin/errors';
 import { parseSettledAmount, type SettlementCurrency } from '@/lib/admin/money';
+import type { DateBasis } from '@/lib/admin/period';
+import { tashkentDate } from '@/lib/guest-request';
 import { readOfferSnapshot, type OfferSnapshot } from '@/supabase/functions/_shared/catalog';
 import { isGuestLocale, type GuestLocale, type ServiceId } from '@/supabase/functions/_shared/contracts';
 
 export type TelegramStatus = 'pending' | 'sent' | 'failed';
 export type RequestStatus = 'new' | 'confirmed' | 'completed' | 'cancelled';
+
+/** The problems the overview counts, each one a list the owner can open. */
+export type RequestAttention = 'overdue' | 'today' | 'telegram' | 'missing_cost';
 
 export type RequestFilters = {
   hotelId?: string;
@@ -17,6 +22,9 @@ export type RequestFilters = {
   dateFrom?: string;
   /** Inclusive calendar date, YYYY-MM-DD (UTC day boundaries). */
   dateTo?: string;
+  /** What the two dates are read against; when the guest sent it unless told otherwise. */
+  dateBasis?: DateBasis;
+  attention?: RequestAttention;
 };
 
 export type AdminRequestRow = {
@@ -220,23 +228,76 @@ export async function listRequests(
   const from = filters.dateFrom ? localMidnight(filters.dateFrom) : null;
   const to = filters.dateTo ? localMidnight(filters.dateTo, 1) : null;
 
-  let query = client.from('service_requests').select(requestColumns);
+  // The aliased embed narrows the list to requests with a failed attempt while
+  // telegram_deliveries still returns every attempt, so the latest can be read.
+  const telegramOnly = filters.attention === 'telegram';
+  const columns = telegramOnly ? `${requestColumns}, failed_attempts:telegram_deliveries!inner(id)` : requestColumns;
+  const dateColumn = filters.dateBasis === 'settled' ? 'settled_at' : 'created_at';
+
+  let query = client.from('service_requests').select(columns);
   if (filters.hotelId) query = query.eq('hotel_id', filters.hotelId);
   if (filters.roomId) query = query.eq('room_id', filters.roomId);
   if (filters.serviceType) query = query.eq('service_type', filters.serviceType);
   if (filters.status) query = query.eq('status', filters.status);
-  if (from) query = query.gte('created_at', from);
-  if (to) query = query.lt('created_at', to);
+  // settled_at survives a later cancellation, and the totals do not count those.
+  else if (filters.dateBasis === 'settled') query = query.eq('status', 'completed');
+  if (from) query = query.gte(dateColumn, from);
+  if (to) query = query.lt(dateColumn, to);
+
+  if (filters.attention === 'overdue') query = query.in('status', openStatuses).lt('requested_date', tashkentDate());
+  if (filters.attention === 'today') query = query.in('status', openStatuses).eq('requested_date', tashkentDate());
+  if (filters.attention === 'missing_cost') query = query.eq('status', 'completed').is('cost_amount_minor', null);
+  if (telegramOnly) query = query.eq('failed_attempts.status', 'failed');
 
   const { data, error } = await query.order('created_at', { ascending: false }).limit(requestPageSize + 1);
   if (error) throw error;
 
   // The untyped client cannot infer the embedded relations; the mapper below tolerates array or object shapes.
   const rows = (data ?? []) as unknown as RequestRow[];
+  const items = rows.slice(0, requestPageSize).map(toRow);
   return {
-    items: rows.slice(0, requestPageSize).map(toRow),
+    // A request that failed and then went through on a retry is no longer a problem.
+    items: telegramOnly ? items.filter((row) => row.telegramStatus === 'failed') : items,
     hasMore: rows.length > requestPageSize,
   };
+}
+
+const requestFilterKeys = ['hotelId', 'roomId', 'serviceType', 'status', 'dateFrom', 'dateTo', 'dateBasis', 'attention'] as const;
+
+/** The address of the request list with these filters applied, so a figure can link to its rows. */
+export function requestsHref(filters: RequestFilters): string {
+  const params = new URLSearchParams();
+  for (const key of requestFilterKeys) {
+    const value = filters[key];
+    if (value) params.set(key, value);
+  }
+  const query = params.toString();
+  return query ? `/admin/requests?${query}` : '/admin/requests';
+}
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Reads filters from an address, dropping anything that is not a value the screen offers. */
+export function parseRequestFilters(search: string): RequestFilters {
+  const params = new URLSearchParams(search);
+  const oneOf = <T extends string>(key: string, allowed: readonly T[]): T | undefined =>
+    allowed.find((value) => value === params.get(key));
+  const matching = (key: string, pattern: RegExp): string | undefined => {
+    const value = params.get(key);
+    return value && pattern.test(value) ? value : undefined;
+  };
+
+  const filters: RequestFilters = {
+    hotelId: matching('hotelId', uuidPattern),
+    roomId: matching('roomId', uuidPattern),
+    serviceType: oneOf<ServiceId>('serviceType', ['tours', 'transport', 'restaurants', 'tickets']),
+    status: oneOf<RequestStatus>('status', ['new', 'confirmed', 'completed', 'cancelled']),
+    dateFrom: matching('dateFrom', datePattern),
+    dateTo: matching('dateTo', datePattern),
+    dateBasis: oneOf<DateBasis>('dateBasis', ['created', 'settled']),
+    attention: oneOf<RequestAttention>('attention', ['overdue', 'today', 'telegram', 'missing_cost']),
+  };
+  return Object.fromEntries(Object.entries(filters).filter(([, value]) => value)) as RequestFilters;
 }
 
 export type DashboardMetrics = { activeHotels: number; activeRooms: number; openRequests: number };
@@ -246,7 +307,7 @@ export type DashboardMetrics = { activeHotels: number; activeRooms: number; open
  * so counting only «new» would read zero forever; «new» stays in for a
  * request the team set back by hand.
  */
-const openStatuses: readonly RequestStatus[] = ['new', 'confirmed'];
+const openStatuses: RequestStatus[] = ['new', 'confirmed'];
 
 async function exactCount(
   client: SupabaseClient,
