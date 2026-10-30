@@ -297,6 +297,26 @@ explicit.
   uploaded and none are public. Read the real size from
   `npx wrangler deploy --dry-run --config dist/server/wrangler.json`, not `du`.
 
+## Production deploy, 2026-10-30
+
+The overview work and the dependency upgrade went live together: migration
+`report_date_basis` through the Supabase connector, then Worker version
+`26ea4c3d-2248-42a9-aeeb-cf10657ece11`. To go back:
+`npx wrangler rollback 584a0b5f-a7e5-4a44-8e75-40c32ed05d08 --name mehmongo`.
+The migration can stay, because the old Worker works on the new functions.
+
+- A PC with no `.env.production.*` can still build: take the URL and publishable
+  key from the connector and pass them, with `SITE_URL` and `VITE_SITE_URL`, as
+  process environment to `npm run build -- --mode production`. No file is left
+  behind that a later local build would pick up over `.env.local`.
+- `wrangler login` waits about two minutes for the owner's approval. Run it in a
+  terminal tab the owner can see, and confirm with `wrangler whoami`: piping it
+  hides the exit code, so a timeout can look like success.
+- The Supabase advisor now also flags `owner_attention`, `owner_profit_summary`,
+  `owner_request_timeline` and `settlement_summary` as `security definer`
+  functions callable by `authenticated`. Expected, for the same reason as
+  `settle_request`: each one checks its caller itself.
+
 ## Telegram group
 
 - On 2026-09-17 every delivery started failing: the team group had been
