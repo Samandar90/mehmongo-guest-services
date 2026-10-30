@@ -1,0 +1,83 @@
+{
+  "cover": {
+    "title": "Your room has one more *door.*",
+    "guide": "It opens onto Tashkent. The key is the QR code beside this booklet.",
+    "languages": "English · Русский · Oʻzbekcha · 中文"
+  },
+  "intro": {
+    "eyebrow": "What is this?",
+    "title": "The QR code beside this booklet is your *key.*",
+    "text": "Scan it and your phone opens MehmonGo: a local team, working with your hotel, that arranges what you need in Tashkent.",
+    "promises": {
+      "noAccount": "No app to install. No account to create.",
+      "price": "The full price is confirmed before you pay.",
+      "reply": "A real person usually replies within {minutes} minutes, {from}–{to} Tashkent time."
+    }
+  },
+  "steps": {
+    "eyebrow": "How it works",
+    "title": "Three turns of the *key.*",
+    "items": [
+      {
+        "title": "Scan the code",
+        "text": "Point your phone camera at the code. The page opens in your browser, already set to your hotel and room."
+      },
+      {
+        "title": "Choose and send",
+        "text": "Pick a service and fill in a short form: your name and one way to reach you."
+      },
+      {
+        "title": "We confirm, you decide",
+        "text": "Our team contacts you with availability, the full price and how to pay. Nothing is charged online."
+      }
+    ],
+    "opens": "What it opens"
+  },
+  "tours": {
+    "left": "What is behind the *door?*",
+    "right": "Pick one. We do the *rest.*"
+  },
+  "rides": {
+    "title": "Getting *around.*",
+    "alsoTitle": "We can also help with",
+    "restaurantText": "Tell us the food, time and group size. We check availability.",
+    "restaurantStub": "Just ask",
+    "quote": "Individual quote",
+    "from": "From {amount}"
+  },
+  "languages": {
+    "title": "Not reading *English?*",
+    "entries": [
+      {
+        "tag": "ru",
+        "name": "Русский",
+        "title": "Что это за QR-код?",
+        "before": "Отсканируйте код рядом с этой книжкой камерой телефона, и откроется MehmonGo: экскурсии, трансферы, билеты и столики в ресторанах. Без приложения и регистрации. Страница открывается на английском: нажмите",
+        "after": "вверху и выберите русский. Наша команда свяжется с вами и подтвердит цену до оплаты."
+      },
+      {
+        "tag": "uz",
+        "name": "Oʻzbekcha",
+        "title": "Bu QR kod nima?",
+        "before": "Ushbu kitobcha yonidagi kodni telefon kamerasi bilan skanerlang, MehmonGo ochiladi: sayohatlar, transport, chiptalar va restoranda stol band qilish. Ilova va roʻyxatdan oʻtish shart emas. Sahifa ingliz tilida ochiladi: yuqoridagi",
+        "after": "belgisini bosib, oʻzbek tilini tanlang. Jamoamiz siz bilan bogʻlanadi va narxni toʻlovdan oldin tasdiqlaydi."
+      },
+      {
+        "tag": "zh",
+        "name": "中文",
+        "title": "这个二维码是做什么的？",
+        "before": "用手机相机扫描本手册旁边的二维码，即可打开 MehmonGo：游览、专车、票务和餐厅订位。无需下载应用，也无需注册。页面默认显示英文，请点击顶部的",
+        "after": "选择中文。我们的团队会与您联系，并在付款前确认价格。"
+      }
+    ]
+  },
+  "back": {
+    "eyebrow": "Ready when you are",
+    "title": "Go on. *Open it.*",
+    "text": "Scan the code beside this booklet and tell us what you need. We will take care of the rest.",
+    "services": ["Tours", "Transport", "Restaurants", "Tickets"],
+    "reception": "Code not working? Reception can give you the current one.",
+    "questions": "Questions? WhatsApp {phone}, every day {from}–{to} Tashkent time.",
+    "credits": "Photos"
+  }
+}

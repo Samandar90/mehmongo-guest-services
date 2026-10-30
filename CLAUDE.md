@@ -260,7 +260,13 @@ status, so the default is the one place the first status is decided.
 
 ## Printed sales pieces
 
-Four generators write into folders beside the repository, never into it:
+Five generators write into folders beside the repository, never into it:
+`npm run booklet` (the 8-page room booklet that stands beside the plaque,
+`../MehmonGo-книжка`; "your room has one more door, the QR code is the key",
+with arches and star tile drawn as real vector shapes because the browser
+rasterises an SVG `<pattern>` in the PDF; copy in `content/booklet.json`, one A4 sheet per copy,
+and deliberately no QR, link, hotel or room, so one print run serves every
+hotel and the plaque stays the only code to scan),
 `npm run brochure` (guests, `../MehmonGo-туры`), `npm run routes` (route
 sheets, `../MehmonGo-маршруты`), `npm run deck` (the 16:9 presentation for
 hotels, `../MehmonGo-презентация`; `npm run deck -- "Hotel Name"` puts the
