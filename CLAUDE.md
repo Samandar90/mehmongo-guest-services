@@ -277,6 +277,26 @@ explicit.
 - Deploy order: migration, then the Worker. The old Worker keeps working on the
   new functions because `date_basis` has a default.
 
+## Dependency audit, 2026-10-30
+
+`npm audit --omit=dev` is clean, so any new entry there is news. The full
+`npm audit` shows three low entries with one root: `deepmerge` 4.3.1, which the
+`shadcn` CLI pulls in and for which no fixed release exists yet.
+
+- Never `npm audit fix --force`: it "fixes" these by downgrading `shadcn` to
+  1.0.0 and `vinext` to 0.2.1.
+- `shadcn` is a dev dependency. It is a CLI plus `shadcn/tailwind.css`, which is
+  read at build time, and it was the source of most of the audit noise (MCP SDK,
+  express, hono). Nothing from it reaches the Worker.
+- `overrides.fflate` holds 0.7.5 because `satori` pins exactly 0.7.3. Drop it
+  once `@vercel/og` ships a `satori` with a fixed `fflate`, or it will hold that
+  version back. The app has no OG image route, so none of this reaches the Worker.
+- `deno.lock` mirrors `package.json` and Deno rewrites it on any test run, so
+  commit the two together.
+- `dist/server` holds about 10 MB of source maps since `vinext` 1.4. They are not
+  uploaded and none are public. Read the real size from
+  `npx wrangler deploy --dry-run --config dist/server/wrangler.json`, not `du`.
+
 ## Telegram group
 
 - On 2026-09-17 every delivery started failing: the team group had been
