@@ -450,7 +450,7 @@ async function buildPages() {
         <p>${escapeHtml(fill(copy.back.questions, { phone: contact.phone, from: contact.hoursFrom, to: contact.hoursTo }))}</p>
         <div class="back-sign">
           ${wordmark(true)}
-          <p class="back-credits">${escapeHtml(copy.back.credits)}: ${escapeHtml(creditLine(creditedPhotos))}</p>
+          <p class="back-credits">${escapeHtml(copy.back.credits)}: ${escapeHtml(creditLine(creditedPhotos)).replaceAll(' · ', '<br>')}</p>
         </div>
       </div>
     </section>`,
@@ -495,7 +495,8 @@ body {
 .inner-frieze { padding-top: 12mm; }
 
 .eyebrow { font-size: 6.2pt; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: var(--magenta); }
-h2 { margin-top: 1.6mm; font-size: 17pt; line-height: 1.1; font-weight: 800; letter-spacing: -.035em; text-wrap: balance; }
+/* Tight tracking narrows Geist's already small space, and bold words run together: the words are opened up to compensate. */
+h2 { margin-top: 1.6mm; font-size: 16.5pt; line-height: 1.12; font-weight: 800; letter-spacing: -.025em; word-spacing: .14em; text-wrap: balance; }
 em { font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 400; letter-spacing: -.02em; color: var(--magenta); }
 h3 { font-size: 9.2pt; line-height: 1.16; font-weight: 800; letter-spacing: -.015em; }
 .lead { font-size: 8.4pt; line-height: 1.42; }
@@ -518,7 +519,7 @@ h3 { font-size: 9.2pt; line-height: 1.16; font-weight: 800; letter-spacing: -.01
 .cover-door { position: absolute; left: 8mm; top: 44mm; }
 .door { display: block; }
 .cover-top { position: absolute; left: 8mm; right: 8mm; top: 7mm; text-align: center; color: var(--paper); }
-.cover-top h1 { margin: 3mm auto 0; font-size: 23pt; line-height: 1.04; font-weight: 800; letter-spacing: -.04em; text-wrap: balance; }
+.cover-top h1 { margin: 3mm auto 0; font-size: 22.5pt; line-height: 1.06; font-weight: 800; letter-spacing: -.028em; word-spacing: .14em; text-wrap: balance; }
 .cover-top em { color: var(--pink); font-size: 1.1em; }
 .cover-bottom { position: absolute; left: 15mm; right: 15mm; bottom: 7mm; text-align: center; color: var(--paper); }
 .cover-guide { font-size: 9pt; line-height: 1.3; font-weight: 700; letter-spacing: -.012em; text-wrap: balance; }
@@ -527,7 +528,7 @@ h3 { font-size: 9.2pt; line-height: 1.16; font-weight: 800; letter-spacing: -.01
 /* ---------- the key ---------- */
 .p-magenta { color: var(--paper); }
 .p-magenta .eyebrow { color: rgba(255, 253, 250, .86); }
-.display { margin-top: 2mm; font-size: 21pt; line-height: 1.05; letter-spacing: -.04em; }
+.display { margin-top: 2mm; font-size: 20pt; line-height: 1.08; letter-spacing: -.028em; word-spacing: .14em; }
 .p-magenta em { color: var(--paper); font-size: 1.1em; }
 .key { display: block; flex: none; width: 88mm; margin: auto -3mm; }
 .key-small { position: absolute; left: 17mm; top: 20mm; width: 48mm; margin: 0; }
@@ -596,7 +597,7 @@ h3 { font-size: 9.2pt; line-height: 1.16; font-weight: 800; letter-spacing: -.01
 .back-door { position: absolute; left: 8mm; top: 7mm; width: 82mm; height: 88mm; }
 .back-door-text { position: absolute; left: 11mm; right: 11mm; bottom: 8mm; text-align: center; color: var(--paper); }
 .back-door-text .eyebrow { color: rgba(255, 253, 250, .86); }
-.back-door-text .display { margin-top: 2mm; font-size: 25pt; }
+.back-door-text .display { margin: 2mm -3mm 0; font-size: 22.5pt; white-space: nowrap; }
 .back-door-text em { color: var(--paper); font-size: 1.08em; }
 .back-door-text .lead { margin-top: 2.6mm; font-size: 8pt; text-wrap: balance; }
 .back-foot { position: absolute; left: 8mm; right: 8mm; bottom: 6mm; color: rgba(255, 253, 250, .86); font-size: 6.5pt; line-height: 1.34; text-align: center; }
