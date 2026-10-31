@@ -338,7 +338,10 @@ Five generators write into folders beside the repository, never into it:
 `npm run booklet` (the 8-page room booklet that stands beside the plaque,
 `../MehmonGo-книжка`; "your room has one more door, the QR code is the key",
 with arches and star tile drawn as real vector shapes because the browser
-rasterises an SVG `<pattern>` in the PDF; copy in `content/booklet.json`, one A4 sheet per copy,
+rasterises an SVG `<pattern>` in the PDF, and with no transparency at all, because
+`npm run booklet:curves` (`scripts/outline-booklet-pdf.py`, needs `pip install pymupdf`)
+turns the text to curves for print shops on CorelDRAW and that step loses soft masks;
+copy in `content/booklet.json`, one A4 sheet per copy,
 and deliberately no QR, link, hotel or room, so one print run serves every
 hotel and the plaque stays the only code to scan),
 `npm run brochure` (guests, `../MehmonGo-туры`), `npm run routes` (route

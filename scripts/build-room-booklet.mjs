@@ -113,6 +113,15 @@ const languagePill = `<span class="pill">${icon(Globe, 8)}EN</span>`;
 let nextId = 0;
 const uniqueId = (prefix) => `${prefix}-${(nextId += 1)}`;
 
+/** `amount` of the way from one #RRGGBB colour to another. */
+function mixColour(from, to, amount) {
+  const channel = (hex, index) => Number.parseInt(hex.slice(1 + index * 2, 3 + index * 2), 16);
+  const mixed = [0, 1, 2].map((index) => Math.round(channel(from, index) + (channel(to, index) - channel(from, index)) * amount));
+  return `#${mixed.map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+}
+
+const clamp01 = (value) => Math.min(1, Math.max(0, value));
+
 /** An eight-pointed star: two squares turned 45 degrees, the figure of the tile. */
 function starPoints(cx, cy, radius) {
   const inner = radius * (Math.cos(Math.PI / 4) / Math.cos(Math.PI / 8));
@@ -130,24 +139,37 @@ function starPoints(cx, cy, radius) {
  *
  * The grid is anchored to the coordinate origin, not the rectangle, so bands on
  * facing pages share one grid.
+ *
+ * `fade` says how much of a row shows, from 0 to 1, by the row's height on the
+ * page. It mixes the colours rather than laying a transparent veil on top: the
+ * whole booklet is free of transparency, because a print shop opens this file in
+ * CorelDRAW and soft masks are what such an import loses.
  */
-function tileShapes({ x, y, w, h, size = TILE_MM, ground, star, heart, jewel }) {
+function tileShapes({ x, y, w, h, size = TILE_MM, ground, star, heart, jewel, fade }) {
   const id = uniqueId('tile');
   const half = size / 2;
   const corner = size * 0.13;
   const firstColumn = Math.floor(x / size);
   const firstRow = Math.floor(y / size);
+  const defs = [];
   const uses = [];
   for (let row = firstRow; row * size < y + h; row += 1) {
+    const shown = fade ? fade((row + 0.5) * size) : 1;
+    const colour = (value) => mixColour(ground, value, shown);
+    const rowId = `${id}-${row - firstRow}`;
+    // One shape is enough when every row looks the same.
+    if (fade || row === firstRow) {
+      defs.push(`<g id="${rowId}">
+      ${jewel ? [[0, 0], [size, 0], [0, size], [size, size]].map(([cx, cy]) => `<polygon points="${cx},${cy - corner} ${cx + corner},${cy} ${cx},${cy + corner} ${cx - corner},${cy}" fill="${colour(jewel)}"/>`).join('') : ''}
+      <polygon points="${starPoints(half, half, half)}" fill="${colour(star)}"/>
+      ${heart ? `<polygon points="${starPoints(half, half, half * 0.5)}" fill="${colour(heart)}"/>` : ''}
+    </g>`);
+    }
     for (let column = firstColumn; column * size < x + w; column += 1) {
-      uses.push(`<use href="#${id}" x="${(column * size).toFixed(3)}" y="${(row * size).toFixed(3)}"/>`);
+      uses.push(`<use href="#${fade ? rowId : `${id}-0`}" x="${(column * size).toFixed(3)}" y="${(row * size).toFixed(3)}"/>`);
     }
   }
-  return `<defs><g id="${id}">
-      ${jewel ? [[0, 0], [size, 0], [0, size], [size, size]].map(([cx, cy]) => `<polygon points="${cx},${cy - corner} ${cx + corner},${cy} ${cx},${cy + corner} ${cx - corner},${cy}" fill="${jewel}"/>`).join('') : ''}
-      <polygon points="${starPoints(half, half, half)}" fill="${star}"/>
-      ${heart ? `<polygon points="${starPoints(half, half, half * 0.5)}" fill="${heart}"/>` : ''}
-    </g></defs>
+  return `<defs>${defs.join('')}</defs>
     <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${ground}"/>
     ${uses.join('')}`;
 }
@@ -210,10 +232,21 @@ function photoFill(href, pixelWidth, pixelHeight, subjectX) {
   };
 }
 
-/** Sharp's output rather than the 960 px card: the cover door is the largest photo here. */
+/**
+ * The owner's original rather than the 960 px card: the cover door is the largest
+ * photo here. The dark foot that carries the cover's text is painted into the
+ * photo itself, so the page needs no transparent layer over it.
+ */
 async function coverPhoto() {
   const source = path.join(projectDir, 'content', 'owner-photos', 'tashkent-tv-tower.jpg');
-  const buffer = await sharp(source).jpeg({ quality: 88 }).toBuffer();
+  const shade = `<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1125">
+    <defs><linearGradient id="shade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset=".5" stop-color="${NAVY}" stop-opacity="0"/>
+      <stop offset=".86" stop-color="${NAVY}" stop-opacity=".94"/>
+    </linearGradient></defs>
+    <rect width="2000" height="1125" fill="url(#shade)"/>
+  </svg>`;
+  const buffer = await sharp(source).composite([{ input: Buffer.from(shade) }]).jpeg({ quality: 90 }).toBuffer();
   return `data:image/jpeg;base64,${buffer.toString('base64')}`;
 }
 
@@ -233,7 +266,7 @@ function keyIllustration(extraClass = '') {
     <path d="M122 33 h9 v13 a2 2 0 0 1 -2 2 h-5 a2 2 0 0 1 -2 -2 z M137 33 h13 v19 a2 2 0 0 1 -2 2 h-9 a2 2 0 0 1 -2 -2 z" fill="${colour}"/>`;
   return `<svg class="key ${extraClass}" viewBox="-4 -14 164 92" aria-hidden="true">
     <g transform="rotate(-9 76 30)">
-      <g transform="translate(1.6 2.2)" opacity=".85">${body('#A5144F')}</g>
+      <g transform="translate(1.6 2.2)">${body('#AC1653')}</g>
       ${body(PAPER)}
       ${finder(6, 6)}${finder(39, 6)}${finder(6, 39)}
       <polygon points="${starPoints(38.5, 38.5, 13)}" fill="${MAGENTA}"/>
@@ -294,14 +327,15 @@ async function buildPages() {
   ];
   const creditedPhotos = ['tashkent-mountains-base', 'tashkent-samarkand-one-way'].map((id) => photoName(offer(id)));
   const coverHref = await coverPhoto();
-  const shadeId = uniqueId('shade');
   const navyField = { ground: NAVY, star: '#163A63', heart: '#1B4470', jewel: '#1B4470' };
+  // The tile dies away where text stands on it: under the cover's headline, under the back cover's small print.
+  const coverFade = (y) => clamp01((y - 24) / 37);
+  const backFade = (y) => 1 - clamp01((y - 84) / 13);
 
   return {
     1: `
     <section class="p p-navy">
-      ${tileField({ x: -BLEED_MM, y: -BLEED_MM, w: PAGE_WIDTH_MM + 2 * BLEED_MM, h: PAGE_HEIGHT_MM + 2 * BLEED_MM, ...navyField })}
-      <div class="cover-veil"></div>
+      ${tileField({ x: -BLEED_MM, y: -BLEED_MM, w: PAGE_WIDTH_MM + 2 * BLEED_MM, h: PAGE_HEIGHT_MM + 2 * BLEED_MM, ...navyField, fade: coverFade })}
       <div class="cover-door">
         ${doorway({
           w: 82,
@@ -309,13 +343,7 @@ async function buildPages() {
           spring: 36,
           band: 3.5,
           tile: BAND_TILE,
-          inside: (x, y, w, h) => `
-            <defs><linearGradient id="${shadeId}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset=".5" stop-color="${NAVY}" stop-opacity="0"/>
-              <stop offset=".86" stop-color="${NAVY}" stop-opacity=".94"/>
-            </linearGradient></defs>
-            ${photoFill(coverHref, 2000, 1125, 0.37)(x, y, w, h)}
-            <rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#${shadeId})"/>`,
+          inside: photoFill(coverHref, 2000, 1125, 0.37),
         })}
       </div>
       <div class="cover-top">
@@ -426,8 +454,7 @@ async function buildPages() {
 
     8: `
     <section class="p p-navy">
-      ${tileField({ x: -BLEED_MM, y: -BLEED_MM, w: PAGE_WIDTH_MM + 2 * BLEED_MM, h: PAGE_HEIGHT_MM + 2 * BLEED_MM, ...navyField })}
-      <div class="back-veil"></div>
+      ${tileField({ x: -BLEED_MM, y: -BLEED_MM, w: PAGE_WIDTH_MM + 2 * BLEED_MM, h: PAGE_HEIGHT_MM + 2 * BLEED_MM, ...navyField, fade: backFade })}
       <div class="back-door">
         ${doorway({
           w: 82,
@@ -515,7 +542,6 @@ h3 { font-size: 9.2pt; line-height: 1.16; font-weight: 800; letter-spacing: -.01
 .brand-light i { color: var(--pink); }
 
 /* ---------- cover ---------- */
-.cover-veil { position: absolute; inset: -${BLEED_MM}mm -${BLEED_MM}mm 45%; background: linear-gradient(180deg, ${NAVY} 42%, rgba(16, 43, 78, 0) 100%); }
 .cover-door { position: absolute; left: 8mm; top: 44mm; }
 .door { display: block; }
 .cover-top { position: absolute; left: 8mm; right: 8mm; top: 7mm; text-align: center; color: var(--paper); }
@@ -527,7 +553,7 @@ h3 { font-size: 9.2pt; line-height: 1.16; font-weight: 800; letter-spacing: -.01
 
 /* ---------- the key ---------- */
 .p-magenta { color: var(--paper); }
-.p-magenta .eyebrow { color: rgba(255, 253, 250, .86); }
+.p-magenta .eyebrow { color: #F9DEE6; }
 .display { margin-top: 2mm; font-size: 20pt; line-height: 1.08; letter-spacing: -.028em; word-spacing: .14em; }
 .p-magenta em { color: var(--paper); font-size: 1.1em; }
 .key { display: block; flex: none; width: 88mm; margin: auto -3mm; }
@@ -571,12 +597,14 @@ h3 { font-size: 9.2pt; line-height: 1.16; font-weight: 800; letter-spacing: -.01
 .ticket::after { bottom: -1.2mm; }
 .ticket-main { padding: 2.4mm 2.2mm 2.4mm 2.8mm; }
 .ticket h3 { font-size: 8.2pt; }
-.ticket p { margin-top: .5mm; font-size: 6pt; line-height: 1.26; color: rgba(255, 253, 250, .76); }
-.ticket-stub { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 1.4mm 1.3mm; border-left: .3mm dashed rgba(255, 253, 250, .45); }
+.ticket p { margin-top: .5mm; font-size: 6pt; line-height: 1.26; color: #C6CBD1; }
+.ticket-stub { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 1.4mm 1.3mm; border-left: .3mm dashed #7C8A9B; }
 .ticket-stub strong { font-size: 9pt; font-weight: 800; letter-spacing: -.02em; color: var(--pink); font-variant-numeric: tabular-nums; white-space: nowrap; }
-.ticket-stub span { margin-top: .3mm; font-size: 4.9pt; line-height: 1.16; color: rgba(255, 253, 250, .76); }
+.ticket-stub span { margin-top: .3mm; font-size: 4.9pt; line-height: 1.16; color: #C6CBD1; }
 .ticket-stub .stub-word { font-size: 6.6pt; line-height: 1.16; letter-spacing: 0; color: var(--paper); white-space: normal; }
 .ticket-teal { background: var(--teal); }
+.ticket-teal p { color: #CBDDD7; }
+.ticket-teal .ticket-stub { border-left-color: #87B3A9; }
 .also { margin-top: 3mm; }
 .fine { margin-top: 2.2mm; font-size: 5.5pt; line-height: 1.32; color: var(--muted); }
 
@@ -593,21 +621,20 @@ h3 { font-size: 9.2pt; line-height: 1.16; font-weight: 800; letter-spacing: -.01
 .pill { display: inline-flex; align-items: center; gap: .6mm; padding: 0 1.1mm; border: .2mm solid var(--navy); border-radius: 2mm; font-size: 6pt; font-weight: 700; line-height: 1.35; color: var(--navy); vertical-align: 1px; white-space: nowrap; }
 
 /* ---------- back cover ---------- */
-.back-veil { position: absolute; inset: 62% -${BLEED_MM}mm -${BLEED_MM}mm; background: linear-gradient(180deg, rgba(16, 43, 78, 0) 0%, ${NAVY} 24%); }
 .back-door { position: absolute; left: 8mm; top: 7mm; width: 82mm; height: 88mm; }
 .back-door-text { position: absolute; left: 11mm; right: 11mm; bottom: 8mm; text-align: center; color: var(--paper); }
-.back-door-text .eyebrow { color: rgba(255, 253, 250, .86); }
+.back-door-text .eyebrow { color: #F9DEE6; }
 .back-door-text .display { margin: 2mm -3mm 0; font-size: 22.5pt; white-space: nowrap; }
 .back-door-text em { color: var(--paper); font-size: 1.08em; }
 .back-door-text .lead { margin-top: 2.6mm; font-size: 8pt; text-wrap: balance; }
-.back-foot { position: absolute; left: 8mm; right: 8mm; bottom: 6mm; color: rgba(255, 253, 250, .86); font-size: 6.5pt; line-height: 1.34; text-align: center; }
+.back-foot { position: absolute; left: 8mm; right: 8mm; bottom: 6mm; color: #DEE0E2; font-size: 6.5pt; line-height: 1.34; text-align: center; }
 .back-foot p { text-wrap: balance; }
 .back-foot p + p { margin-top: .5mm; }
 .back-services { list-style: none; display: flex; justify-content: center; flex-wrap: wrap; gap: 1mm 2.6mm; margin-bottom: 2mm; color: var(--paper); }
 .back-services li { font-size: 6pt; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
 .back-services li::before { content: ''; display: inline-block; width: 1.1mm; height: 1.1mm; margin-right: .9mm; border-radius: 50%; background: var(--pink); vertical-align: 1px; }
 .back-sign { display: grid; justify-items: center; gap: 1mm; margin-top: 2mm; }
-.back-sign .back-credits { font-size: 4.8pt; line-height: 1.25; color: rgba(255, 253, 250, .66); }
+.back-sign .back-credits { font-size: 4.8pt; line-height: 1.25; color: #AEB6C0; }
 `;
 
 function documentHtml(title, pageSize, css, body) {
@@ -706,9 +733,13 @@ function readme() {
 
 ЧТО ГДЕ
 
-  MehmonGo-booklet-print-A4.pdf   Для печати: 1 лист A4, две стороны.
-  MehmonGo-booklet-preview.pdf    8 страниц по порядку. Только посмотреть.
-  html/                           Те же страницы для браузера.
+  MehmonGo-booklet-print-A4.pdf         Для печати: 1 лист A4, две стороны.
+  MehmonGo-booklet-print-A4-curves.pdf  То же, весь текст в кривых: для типографии
+                                        и для импорта в CorelDRAW.
+  svg-curves/                           Те же две стороны в SVG, если Corel
+                                        плохо импортирует PDF.
+  MehmonGo-booklet-preview.pdf          8 страниц по порядку. Только посмотреть.
+  html/                                 Те же страницы для браузера.
 
 КАК НАПЕЧАТАТЬ
 
@@ -725,8 +756,11 @@ function readme() {
 
 В ТИПОГРАФИИ
 
-  Отдайте тот же файл. В нём уже есть вылеты ${BLEED_MM} мм и метки реза. Попросите
-  биговку и две скобы.
+  Отдайте MehmonGo-booklet-print-A4-curves.pdf. В нём уже есть вылеты ${BLEED_MM} мм
+  и метки реза, а шрифты не нужны: текст в кривых. Попросите биговку и две скобы.
+
+  Если просят файл CDR: CorelDRAW открывает этот PDF через «Файл → Импорт» и сам
+  сохраняет его как CDR. Создать CDR без самого CorelDRAW нечем.
 
 ГДЕ СТАВИТЬ
 
@@ -740,6 +774,9 @@ function readme() {
   Телефон и часы: content/contact.json. Затем:
 
     npm run booklet
+    npm run booklet:curves
+
+  Вторая команда один раз требует: pip install pymupdf
 
 ФОТОГРАФИИ
 

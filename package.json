@@ -25,6 +25,7 @@
     "icons": "node scripts/build-app-icons.mjs",
     "brochure": "node scripts/build-tour-brochure.mjs \"../MehmonGo-туры\"",
     "booklet": "tsx scripts/build-room-booklet.mjs",
+    "booklet:curves": "python scripts/outline-booklet-pdf.py \"../MehmonGo-книжка\"",
     "deck": "tsx scripts/build-hotel-deck.mjs",
     "routes": "node scripts/build-route-sheets.mjs \"../MehmonGo-маршруты\"",
     "telegram:check": "node scripts/check-telegram.mjs",
